@@ -3,29 +3,19 @@
 import numpy as np
 
 class Model:
-    def __init__(self, data, inpveclen=1, numclasses=10, numlayers=2, iteration=1):
+    def __init__(self, dataset, iteration=1):
         # long term we will probably want to use a data "generator" which pulls batches
         #    from a large set of patterns stored on disk, which helps with RAM.  I have
         #    an example of how to do this from Nick in the EARSHOT project (I can help
         #    with coding that also.) So you won't pass in "data", you'll pass in some object
         #    that the model can call to get a training batch from.
-        self.data = data
+        self.dataset = dataset
         self.iteration = iteration
         # if we are passing in the data - or a location to it (like a generator that will pull samples from files),
         #   you don't need to tell the model the inputsize - it can sniff it from one of the patterns
-        self.inpveclen = inpveclen
         # ditto with numclasses - just look at the length of any of the output vectors
-        self.numclasses = numclasses
-        self.numlayers = numlayers
-        for i in range(1, (numlayers + 1)):
-            self.layersize = 2 ** (2 * i + 3)
-        # this is a number (set of numbers), one per layer, assumed and not computed
-        self.sigma = np.std((I - f(Ur)).T * (I - f(Ur)))
-        self.alpha = " related to variance of Gaussian priors "
-        self.lambda = " related to variance of Gaussian priors "
         self.U = np.random.rand()
         self.r = np.zeros()
-        self.k = " this is the learning rate.  It could be a constant, or a function that depends on epoch. (We can talk about this.)"
 
 
 
@@ -37,7 +27,7 @@ if __name__ == '__main__':
 
     # ---Size of input image vector--- #
     # Number of rows (m) are 3rd class argument; default at 1
-    inpvecwidth = 1 # Number of columns (n) will default at 1
+    #inpvecwidth = 1 # Number of columns (n) will default at 1
 
     # ---Number of classes--- #
     # MNIST image data consist of digits 0-9
