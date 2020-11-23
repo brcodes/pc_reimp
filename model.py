@@ -3,6 +3,22 @@
 import numpy as np
 import parameters
 
+def linear_trans(x):
+    return x
+
+def tanh_trans(x):
+    return np.tanh(x)
+
+def gauss_prior(a,x):
+    gp = 2*a*x
+    return gp
+
+def kurt_prior(a,x):
+    pass
+
+
+
+
 class Model:
     def __init__(self, dataset, iteration=1):
         # long term we will probably want to use a data "generator" which pulls batches
@@ -12,6 +28,54 @@ class Model:
         #    that the model can call to get a training batch from.
         self.dataset = dataset
         self.iteration = iteration
+        self.transform_dict = {'linear':linear_trans,'tanh':tanh_trans}
+        self.prior_dict = {'gaussian':gauss_prior}
+
+
+    def setup(self,p):
+        '''
+        Probably just move these to init.
+        '''
+        self.r_dict = {}
+        self.U_dict = {}
+        self.E_dict = {}
+
+        self.f = self.transform_dict[p.f_of_x]
+        self.gprime = self.prior_dict[p.r_prior]
+        self.hprime = self.prior_dict[p.U_prior]
+
+
+
+    def train(self):
+        '''
+        This uses gradient descent on r,U on a set of data in the form
+        of input,output (both vectors).
+        '''
+        # for image,target in images.items():
+        #   r[0] = image
+        #   r[nlayers + 1] = target
+        #   for i in range(1,nlayers):
+        #       do r[i] update with r[i-1], r[i]
+        #       do U[i] update
+        # calling the prior dict for r,U:
+        self.gprime(p.alpha,r)
+        self.hprime(p.lam,U)
+        pass
+
+
+    def test(self):
+        '''
+        Given one or more inputs, produce one or more outputs.
+        '''
+        pass
+
+# if __name__ == '__main__':
+#   data = data.GetData()
+#   p = ModelParameters(...)
+#   m = Model(data,p)
+#   m.train()
+#   look at results of model
+#   m.test()
 
 
 if __name__ == '__main__':
@@ -31,6 +95,8 @@ if __name__ == '__main__':
     """ Equations """
 
     # From Rao and Ballard 1999; Kevin Brown
+
+    transform = self.transform_dict[]
 
     ### --- Hierarchical Generative Model --- ###
 
