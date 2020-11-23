@@ -1,6 +1,7 @@
 # Ground-up rewrite of r&b predictive coding model toward use with MNIST data.
 
 import numpy as np
+import parameters
 
 class Model:
     def __init__(self, dataset, iteration=1):
@@ -11,59 +12,123 @@ class Model:
         #    that the model can call to get a training batch from.
         self.dataset = dataset
         self.iteration = iteration
-        # if we are passing in the data - or a location to it (like a generator that will pull samples from files),
-        #   you don't need to tell the model the inputsize - it can sniff it from one of the patterns
-        # ditto with numclasses - just look at the length of any of the output vectors
-        self.U = np.random.rand()
-        self.r = np.zeros()
 
 
-
-# this is a common trick that lets you combine "main loop stuff" with objects you
-#   can import later.
 if __name__ == '__main__':
 
-    """ Inputs to the Model """
+    """ Layer Setup """
 
-    # ---Size of input image vector--- #
-    # Number of rows (m) are 3rd class argument; default at 1
-    #inpvecwidth = 1 # Number of columns (n) will default at 1
+    # keep in mind final form, eg: I, r[i], r[i+1], l
+    r_dict = {}
+    U_dict = {}
+    E_dict = {}
 
-    # ---Number of classes--- #
-    # MNIST image data consist of digits 0-9
-    # There are 10 classes, one for each possible digit.
-
-    # ---Number of r, U layers--- #
-    # Number of predictive estimator modules
-    # We'll start with 2
-
-    # ---Sizes of r1,...,rN--- #
+    for layer in range(1, ModelParams.num_layers + 1):
+        r_dict['r{}'.format(layer)] = np.zeros((1,1), dtype=int)
+        U_dict['U{}'.format(layer)] = np.random.rand(1,1)
+        E_dict['E{}'.format(layer)] = np.zeros((1,1), dtype=int)
 
     """ Equations """
 
     # From Rao and Ballard 1999; Kevin Brown
 
-    # Eq (1)
+    ### --- Hierarchical Generative Model --- ###
 
-    I = f(Ur) + n
+    I = f(U.dot(r)) + n
 
-    # Optimization function
+    def f(x):
+        if ModelParams.f_of_x == "Linear":
+            return x
+        else:
+            x = np.tanh(x)
+            return x
 
-    E1 = 1/(np.square(self.sigma)) * (I - f(Ur)).T * (I - f(Ur))
+    ### --- Optimization Function --- ###
+
+    E1 = 1 / (np.square(ModelParams.sigma)) * (I - f(Ur)).T * (I - f(Ur))
+    + 1 / (np.square(ModelParams.sigma)) * (r[i] - r[i + 1]).T * (r[i] - r[i + 1])
 
     E = E1 + g(r) + h(U)
 
-    # Prior distributions
-    # N.B. - we also need the derivative of any of the priors with respect to their
-    #   arguments
+    ### --- Prior Distributions --- ###
+
+    # g(r) is the -log of the prior probability of r
 
     def g(r):
-        for i in range(0, numlayers + 1):
-        g_output = self.alpha * np.log(1 + np.square(r))
-        return g_output
+        if ModelParams.prior == "Gaussian":
+            g_gauss = ModelParams.alpha * np.square(r))
+            return g_gauss
+        else:
+            g_kurt = ModelParams.alpha * np.log(1 + np.square(r))
+            return g_kurt
 
-    """ Model """
+    # g'(r)
 
-    # Create empty input vector
+    def g_prime(r):
+        if ModelParams.prior == "Gaussian":
+            g_prime_gauss = 2 * ModelParams.alpha * r
+            return g_prime_gauss
+        else:
+            g_prime_kurt = 2 * ModelParams.alpha * r /
+            (1 + np.square(r))
+            return g_prime_kurt
 
-    model_input_vector = np.zeros(shape=(inpveclen,inpvecwidth))
+    # h(U) is the -log of the prior probability of U
+
+    def h(U):
+        if ModelParams.prior == "Gaussian":
+            h_gauss = ModelParams.lam * np.square(U)
+            return h_gauss
+        else:
+            h_kurt = ModelParams.lam * np.log(1 + np.square(U))
+            return h_kurt
+
+    # h'(U)
+
+    def h_prime(U):
+        if ModelParams.prior == "Gaussian":
+            h_prime_gauss = 2 * ModelParams.lam * U
+            return h_prime_gauss
+        else:
+            h_prime_kurt = 2 * ModelParams.lam * U /
+            (1 + np.square(U))
+            return h_prime_kurt
+
+    ### --- Network Dynamics and Synaptic Learning --- ###
+
+    # Gradient descent on E with respect to r, assuming Gaussian prior
+
+    def dr_dt():
+        if ModelParams.f_of_x == "Linear":
+            dr_dt = (ModelParams.k * U.T / np.square(ModelParams.sigma))
+            * np.identity(len(?)) * (I - f(U.dot(r))
+            + (ModelParams.k * U.T / np.square(ModelParams.sigma))
+            * (r[i + 1] - r[i]) - (ModelParams.k / 2) * g_prime(r[i])
+            return dr_dt
+        else:
+            dr_dt = ?
+            return dr_dt
+
+    # Gradient descent on E with respect to U, assuming Gaussian prior
+
+    def dU_dt():
+        if ModelParams.f_of_x == "Linear":
+            dU_dt = (ModelParams.k / np.square(ModelParams.sigma))
+            * np.identity(len(?)) * (I - f(U.dot(r)) * r[i].T
+            - ModelParams.k * ModelParams.lam * U[i]
+            return dU_dt
+        else:
+            dU_dt = ?
+            return dU_dt
+
+    """ Model Updates """
+
+    ### --- r --- ###
+
+    r[i] = f(U[i + 1].dot(r[i + 1]))
+
+    ### --- U --- ###
+
+    dU = (ModelParams.k_U / ModelParams.sigma) * np.outer(F3.dot(E[i - 1]), r[i]) \
+        - ModelParams.k_U * ModelParams.lamb * U[i]
+        U_dict[i] += dU
