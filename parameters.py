@@ -15,9 +15,10 @@ class ModelParams(object):
     '''
     Class for holding and checking parameters relevant to model creation.
     '''
-    input_size = attr.ib(validator=attr.validators.instance_of(int))
+    img_num_pixels = attr.ib(default=256,validator=attr.validators.instance_of(int))
+    num_classes = attr.ib(default=10,validator=attr.validators.instance_of(int))
     num_layers = attr.ib(default=2,validator=attr.validators.instance_of(int))
-    layer_size =
+    layer_size = attr.ib(default=32,validator=attr.validators.instance_of(int))
     batch_size = attr.ib(default=10,validator=attr.validators.instance_of(int))
     num_epochs = attr.ib(default=100,validator=attr.validators.instance_of(int))
     #" this is the learning rate.  It could be a constant, or a function that depends on epoch. (We can talk about this.)"
