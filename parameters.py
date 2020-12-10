@@ -24,7 +24,8 @@ class ModelParameters(object):
     # priors on parameters
     alpha = attr.ib(default=1.0,validator=attr.validators.instance_of(float)) #" related to variance of Gaussian priors "
     lam = attr.ib(default=0.02,validator=attr.validators.instance_of(float)) #" related to variance of Gaussian priors "
-    prior = attr.ib(default="gaussian",validator=attr.validators.in_(['gaussian','kurtotic']))
+    r_prior = attr.ib(default="gaussian",validator=attr.validators.in_(['gaussian','kurtotic']))
+    U_prior = attr.ib(default="gaussian",validator=attr.validators.in_(['gaussian','kurtotic']))
     # unit activation function (linear, tanh, relu, etc.)
     unit_act = attr.ib(default="linear",validator=attr.validators.in_(['linear','tanh'])
     # learning schedules - these should become strings for a learning schedule dispatcher
@@ -33,17 +34,4 @@ class ModelParameters(object):
     # training time
     batch_size = attr.ib(default=10,validator=attr.validators.instance_of(int))
     num_epochs = attr.ib(default=100,validator=attr.validators.instance_of(int))
-
-
-
-    """ Inputs to the Model """
-
-    # ---Size of input image vector--- #
-
-    # ---Number of classes--- #
-
-    # ---Number of r, U layers--- #
-    # Number of predictive estimator modules
-    # Start with 2
-
-    # ---Sizes of r1,...,rN--- #
+    

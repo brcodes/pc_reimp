@@ -26,6 +26,7 @@ class TestModel(unittest.testcase):
         #   - layer n is the output layer
         #   - layer n+1 is the class labels/output pattern, which is the
         #       same size as layer n so we don't need to
+        n_layers = self.model.num_layers
         n_layers = self.model.num
         # shove the fake input vector into the correct slot
         self.model.r[0] = input
