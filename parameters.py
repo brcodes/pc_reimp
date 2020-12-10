@@ -11,25 +11,30 @@ def file_not_found(instance,attribute,value):
 
 
 @attr.s(kw_only=True)
-class ModelParams(object):
+class ModelParameters(object):
     '''
     Class for holding and checking parameters relevant to model creation.
     '''
-    img_num_pixels = attr.ib(default=256,validator=attr.validators.instance_of(int))
-    num_classes = attr.ib(default=10,validator=attr.validators.instance_of(int))
-    num_layers = attr.ib(default=2,validator=attr.validators.instance_of(int))
-    layer_size = attr.ib(default=32,validator=attr.validators.instance_of(int))
-    batch_size = attr.ib(default=10,validator=attr.validators.instance_of(int))
-    num_epochs = attr.ib(default=100,validator=attr.validators.instance_of(int))
-    #" this is the learning rate.  It could be a constant, or a function that depends on epoch. (We can talk about this.)"
-    k_r = attr.ib(default=0.5,validator=attr.validators.instance_of(float))
-    k_U = attr.ib(default=0.5,validator=attr.validators.instance_of(float))
-    # this is a number (set of numbers), one per layer, assumed and not computed
-    sigma = attr.ib(default=1.0,validator=attr.validators.instance_of(float))
+    # sizes of representations and weights
+    input_size = attr.ib(default=256,validator=attr.validators.instance_of(int))
+    output_size = attr.ib(default=10,validator=attr.validators.instance_of(int))
+    hidden_sizes = attr.ib(default=[32],validator=attr.validators.instance_of(list))
+    # hidden layer variance
+    sigma = attr.ib(default=[1.0],validator=attr.validators.instance_of(list))
+    # priors on parameters
     alpha = attr.ib(default=1.0,validator=attr.validators.instance_of(float)) #" related to variance of Gaussian priors "
     lam = attr.ib(default=0.02,validator=attr.validators.instance_of(float)) #" related to variance of Gaussian priors "
-    prior = attr.ib(default="Gaussian",validator=attr.validators.instance_of(string)) # additional prior option: "Kurtotic"
-    f_of_x = attr.ib(default="Linear",validator=attr.validators.instance_of(string) # additional option: f(x) = tanh(x): "Tanh"
+    prior = attr.ib(default="gaussian",validator=attr.validators.in_(['gaussian','kurtotic']))
+    # unit activation function (linear, tanh, relu, etc.)
+    unit_act = attr.ib(default="linear",validator=attr.validators.in_(['linear','tanh'])
+    # learning schedules - these should become strings for a learning schedule dispatcher
+    k_r = attr.ib(default=0.5,validator=attr.validators.instance_of(float))
+    k_U = attr.ib(default=0.5,validator=attr.validators.instance_of(float))
+    # training time
+    batch_size = attr.ib(default=10,validator=attr.validators.instance_of(int))
+    num_epochs = attr.ib(default=100,validator=attr.validators.instance_of(int))
+
+
 
     """ Inputs to the Model """
 
