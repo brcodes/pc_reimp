@@ -25,10 +25,10 @@ class TestModel(unittest.testcase):
         #   - layer 0 is the input (not trained)
         #   - layer n is the output layer
         #   - layer n+1 is the class labels/output pattern, which is the
-        #       same size as layer n so we don't need to 
+        #       same size as layer n so we don't need to
         n_layers = self.model.num
         # shove the fake input vector into the correct slot
         self.model.r[0] = input
-        for i in range(0,n_layers):
+        for i in range(0,len(self.model.hidden_sizes)+1):
             rhat = np.dot(self.model.U[i+1],self.model.r[i+1])
             self.assertEqual(rhat,self.model.r[i])
