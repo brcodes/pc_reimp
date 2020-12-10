@@ -20,25 +20,39 @@ def kurt_prior(a,x):
 
 
 class Model:
-    def __init__(self, dataset, iteration=1):
+    def __init__(self, parameters):
         # long term we will probably want to use a data "generator" which pulls batches
         #    from a large set of patterns stored on disk, which helps with RAM.  I have
         #    an example of how to do this from Nick in the EARSHOT project (I can help
         #    with coding that also.) So you won't pass in "data", you'll pass in some object
         #    that the model can call to get a training batch from.
-        self.dataset = dataset
-        self.iteration = iteration
-        self.transform_dict = {'linear':linear_trans,'tanh':tanh_trans}
+        self.parameters = parameters
+
+        self.unit_act = {'linear':linear_trans,'tanh':tanh_trans}
         self.prior_dict = {'gaussian':gauss_prior}
 
-        self.r_dict = {}
-        self.U_dict = {}
-        self.E_dict = {}
+        # I've dropped the "dict" so we don't have to type so much
+        self.r = {}
+        self.U = {}
+        self.E = 0
 
-        self.f = self.transform_dict[p.f_of_x]
-        self.gprime = self.prior_dict[p.r_prior]
-        self.hprime = self.prior_dict[p.U_prior]
+        self.f = self.transform_dict[self.parameters.unit_act]
+        self.gprime = self.prior_dict[self.parameters.r_prior]
+        self.hprime = self.prior_dict[self.parameters.U_prior]
 
+        '''
+        NOTE ON INSTANTIATION:
+        As I've currently set the parameters:
+            r[0] has size parameters.input_size
+            r[1] has size parameters.hidden_size[0] (so you know what size U/U.T is now)
+            r[2] has size parameters.hidden_size[1]
+            etc.
+            r[n] MUST have size equal to parameters.output_size
+
+        When we train, each r/U pair is updated according to the equations in my notes.
+        For layer n ONLY, it has the standard update plus another term that uses the
+        output class vectors (layer n+1) and is a function of sigmoid(r[n])
+        '''
 
         """
         Equations
