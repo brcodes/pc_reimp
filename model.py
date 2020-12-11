@@ -22,7 +22,7 @@ def kurt_prior(a, x):
     return kp
 
 
-class Model:
+class PredictiveCodingNetwork:
     def __init__(self, parameters):
 
         self.p = parameters
@@ -191,7 +191,7 @@ class Model:
                 #   U[i] -> U[i] - (lr/sigma^2)*F[i]*(r[i-1] - f(U[i]*r[i]))*r[i].T + lr/2*h'(U[i])
             # need to add correction term to output layer that compares to output pattern (so far
             #   all we have done is make the network reconstruct all the intermediate layers properly)
-            # this update looks roughly like: 
+            # this update looks roughly like:
             # U[i] -> U[i] + (lr/2)*(Y[i,:]- softmax(r[output]))
 
 
