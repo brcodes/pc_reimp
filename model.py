@@ -42,11 +42,28 @@ class Model:
         self.num_layers = len(self.p.hidden_sizes) + 1
 
         # set variables
-        n_layers = self.num_layers
-        input_size = self.p.input_size
-        hidden_sizes = self.p.hidden_sizes
-        output_size = self.p.output_size
 
+        # don't need this as a parameter anymore - n_layers = 1 + len(hidden_sizes) + 1
+        # n_layers = self.num_layers
+        self.input_size = self.p.input_size
+        self.hidden_sizes = self.p.hidden_sizes
+        self.output_size = self.p.output_size
+
+        self.n_layers = len(self.hidden_sizes) + 2
+
+        # initialize the appropriate r's and U's
+        # N.B - MAY NEED TO DO THIS PROPERLY USING PRIORS AT SOME POINT
+        # input - NOT TRAINED
+        self.r[0] = np.random.zeros(input_size)
+        # hidden layers
+        for i in range(1,len(hidden_sizes)+1):
+            self.r[i] = np.random.randn(hidden_sizes[i-1])
+            self.U[i] = np.randon.randn(r[i-1],r[i])
+        # output
+        self.r[len(hidden_sizes)+1] = np.random.randn(output_size)
+        self.U[len(hidden_sizes)+1] = np.random.randn(output_size,self.r[len(hidden_sizes)])
+
+        '''
         # create empty r and U vectors of the correct size and index by layer
         for i in range(0, n_layers-1):
 
@@ -81,7 +98,7 @@ class Model:
             This loop did not create matrix objects for classification layer n + 1,
             should they be created here?
             """
-
+        '''
         '''
         NOTE ON INSTANTIATION:
         As I've currently set the parameters:
@@ -155,11 +172,31 @@ class Model:
     # to set up the model in a way other than specified by the init function
 
 
-    def train(self):
+    def train(self,X,Y):
         '''
-        This uses gradient descent on r,U on a set of data in the form
-        of input,output (both vectors).
+        X: matrix of input patterns (n_patterns x input_size)
+        Y: matrix of output/target patterns (n_patterns x output_size)
+
+        N.B.: We can just write this for one epoch now (batch size 1) and then
+         add the outer loops later.
         '''
+        for i in range(X.shape[0]):
+            # copy first image into r[0]
+            self.r[0] = X[i,;]
+            # r,U updates can be written symmetrically for all layers including output
+            for layer in range(1,num_layers):
+                # do r update - will look something like
+                #   r[i] -> r[i] + (learning_rate/sigma^2)*F[i]*(r[i-1] - f(U[i]*r[i]))*r[i].T
+                # do U update - will look something like
+                #   U[i] -> U[i] - (lr/sigma^2)*F[i]*(r[i-1] - f(U[i]*r[i]))*r[i].T + lr/2*h'(U[i])
+            # need to add correction term to output layer that compares to output pattern (so far
+            #   all we have done is make the network reconstruct all the intermediate layers properly)
+            # this update looks roughly like: 
+            # U[i] -> U[i] + (lr/2)*(Y[i,:]- softmax(r[output]))
+
+
+
+
         # we will use a data "generator" which pulls batches from a large set of patterns stored on disk
 
         # for image,target in images.items():
