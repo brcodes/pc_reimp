@@ -3,6 +3,7 @@
 import numpy as np
 import pypredcoding.parameters
 import unittest
+import pypredcoding.data as data
 
 
 # activation functions
@@ -45,16 +46,24 @@ output class vectors (layer n+1) and is a function of sigmoid(r[n])
     transform = self.transform_dict[]
 
 
-    ### --- Hierarchical Generative Model --- ###
+    ---
+    Hierarchical Generative Model
+    ---
+
     I = f(U.dot(r)) + n
 
+    ---
+    Optimization Function
+    ---
 
-    ### --- Optimization Function --- ###
     E1 = 1 / (np.square(self.p.sigma)) * (I - f(Ur)).T * (I - f(Ur))
     + 1 / (np.square(self.p.sigma)) * (r[i] - r[i + 1]).T * (r[i] - r[i + 1])
 
 
-    ### --- Network Dynamics and Synaptic Learning --- ###
+    ---
+    Network Dynamics and Synaptic Learning
+    ---
+
     # Gradient descent on E with respect to r, assuming Gaussian prior
     def dr_dt():
         if self.p.f_of_x == "Linear":
@@ -136,6 +145,7 @@ class PredictiveCodingNetwork:
 
 
     def train(self,X,Y):
+
         '''
         X: matrix of input patterns (n_patterns x input_size)
         Y: matrix of output/target patterns (n_patterns x output_size)
@@ -159,8 +169,19 @@ class PredictiveCodingNetwork:
             # this update looks roughly like:
             # U[i] -> U[i] + (lr/2)*(Y[i,:]- softmax(r[output]))
         '''
-        return
+            for layer in range(1, self.n_layers):
 
+                # r update
+                self.r[i] += (self.p.k_r / np.square(self.p.sigma)) \
+                * self.f(i) * (self.r[i-1] - f(self.U[i].dot(self.r[i])) \
+                * self.r[i].T
+
+                # U update
+                self.U[i] += (self.p.k_U / np.square(self.p.sigma)) \
+                * self.f(i) * (self.r[i-1] - self.f(self.U[i].dot(self.r[i])) \
+                * self.r[i].T + self.k_U / 2 * self.hprime(self.U[i])
+
+                return
 
     def test(self,X,Y):
         '''

@@ -5,9 +5,9 @@ from numpy import ceil,prod
 
 def get_mnist_data(frac_samp=None,return_test=False):
     '''
-    Returns MNIST training examples (and potentially test) data.  Images are
-    returned in an array of n_samples x 28 x 28, and target patterns are
-    n_samples x num_classes one hot vectors.
+    Returns MNIST training examples (and potentially test) data.  Images (X_train and
+    X_test) are returned in an array of n_samples x 28 x 28, and target patterns
+    (y_train and y_test) are n_samples x num_classes one hot vectors.
 
     keras's mnist load returns 60,000 training samples and 10,000 test samples.
     Set frac_samp to a number in [0,1] to reduce the proportion of samples
@@ -41,7 +41,7 @@ def flatten_images(image_array):
     '''
     N = image_array.shape[0]
     dim_x = image_array.shape[1]
-    dim_y = image_array.shape[1]
+    dim_y = image_array.shape[2]
     return image_array.reshape(N,dim_x*dim_y)
 
 
