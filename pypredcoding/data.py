@@ -1,6 +1,7 @@
 from keras.datasets import mnist
 from keras.utils import np_utils
-from numpy import ceil,prod
+import cv2
+import numpy as np
 
 
 def get_mnist_data(frac_samp=None,return_test=False):
@@ -20,8 +21,8 @@ def get_mnist_data(frac_samp=None,return_test=False):
     y_train = np_utils.to_categorical(y_train)
     # prune data
     if frac_samp is not None:
-        n_train = int(ceil(frac_samp*X_train.shape[0]))
-        n_test = int(ceil(frac_samp*X_test.shape[0]))
+        n_train = int(np.ceil(frac_samp*X_train.shape[0]))
+        n_test = int(np.ceil(frac_samp*X_test.shape[0]))
     else:
         n_train = X_train.shape[0]
         n_test = X_test.shape[0]
@@ -60,3 +61,47 @@ def inflate_vectors(vector_array,shape_2d=None):
         shape_2d[0] = sq
         shape_2d[1] = sq
     return vector_array.reshape(N,shape_2d[0],shape_2d[1])
+
+def rescale_images(vector_array):
+    rescaled_array = (vector_array - vector_array.min()) / (vector_array.max() - vector_array.min())
+    return rescaled_array
+
+def apply_DoG(image_array, kern_size, sigma1, sigma2):
+    if sigma1 >= sigma2:
+        print("Error [DoG]: sigma2 must be greater than sigma1")
+        return
+    for i in range(0, image_array.shape[0]):
+        image = image_array[i,:,:]
+        g1 = cv2.GaussianBlur(image, kern_size, sigma1)
+        g2 = cv2.GaussianBlur(image, kern_size, sigma2)
+        image_array[i,:,:] = g2 - g1
+    return image_array
+
+def apply_standardization(image_array):
+    flattened_images = flatten_images(image_array)
+    for i in range(0, image_array.shape[0]):
+        image = flattened_images[i,:]
+        standardized = (image - np.mean(image)) / np.std(image)
+        rescaled = rescale_images(standardized)
+        inflated_image = inflate_vectors(rescaled)
+    return inflated_image
+
+def apply_ZCA(image_array):
+
+    flattened_images = flatten_images(image_array)
+    # normalize
+    images_norm = flattened_images / 255
+    # subtract mean pixel value from each pixel in each image
+    images_norm = images_norm - images_norm.mean(axis=0)
+    # create covariance matrix
+    cov = np.cov(images_norm, rowvar=False)
+    # single value decomposition of covariance matrix
+    U,S,V = np.linalg.svd(cov)
+    # ZCA
+    epsilon = 0.1
+    images_ZCA = U.dot(np.diag(1.0/np.sqrt(S + epsilon))).dot(U.T).dot(images_norm.T).T
+    # rescale
+    images_ZCA_rescaled = rescale_images(image_ZCA)
+    # inflate
+    inflated_images = inflate_vectors(image_ZCA_rescaled)
+    return inflated_images
