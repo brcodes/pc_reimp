@@ -53,7 +53,7 @@ def inflate_vectors(vector_array,shape_2d=None):
     assumed to be square.
 
     This function will fail on a single input vector unless you give it an empty
-    first axis (np.newaxis,:)
+    first axis (np.newaxis,:).
     '''
     N = vector_array.shape[0]
     if shape_2d == None:
@@ -63,13 +63,33 @@ def inflate_vectors(vector_array,shape_2d=None):
     return vector_array.reshape(N,shape_2d[0],shape_2d[1])
 
 def rescale_images(vector_array):
+    '''
+    Though applied in this module to accept an array of N x s flattened images (vectors)
+    and return an array of the same size, this function will accept and return an
+    array of any size.
+    '''
     rescaled_array = (vector_array - vector_array.min()) / (vector_array.max() - vector_array.min())
     return rescaled_array
 
 def apply_DoG(image_array, kern_size, sigma1, sigma2):
+    '''
+    Accepts an array of N x dim_x x dim_y images (N images each of dim_x x dim_y size),
+    and returns an array of the same size.
+
+    Kernel size (kern_size) accepts a single integer or a 2-character tuple of ints.
+
+    Requires two standard deviation parameters (sigma1 and sigma2), where
+    sigma2 > sigma1. These parameters facilitate subtraction of the original image (g1)
+    from a less blurred version of the image (g2).
+
+    This function will fail on a single image unless you give it an empty first
+    axis (np.newaxis,:,:).
+    '''
+    # error notice
     if sigma1 >= sigma2:
         print("Error [DoG]: sigma2 must be greater than sigma1")
         return
+    # apply filter to each image
     for i in range(0, image_array.shape[0]):
         image = image_array[i,:,:]
         g1 = cv2.GaussianBlur(image, kern_size, sigma1)
@@ -78,7 +98,16 @@ def apply_DoG(image_array, kern_size, sigma1, sigma2):
     return image_array
 
 def apply_standardization(image_array):
+    '''
+    Accepts an array of N x dim_x x dim_y images (N images each of dim_x x dim_y size),
+    and returns an array of the same size.
+
+    This function will fail on a single image unless you give it an empty first
+    axis (np.newaxis,:,:).
+    '''
+    # flatten
     flattened_images = flatten_images(image_array)
+    # standardize, rescale and inflate each image
     for i in range(0, image_array.shape[0]):
         image = flattened_images[i,:]
         standardized = (image - np.mean(image)) / np.std(image)
@@ -86,10 +115,18 @@ def apply_standardization(image_array):
         inflated_image = inflate_vectors(rescaled)
     return inflated_image
 
-def apply_ZCA(image_array):
+def apply_ZCA(image_array, epsilon=0.1):
+    '''
+    Accepts an array of N x dim_x x dim_y images (N images each of dim_x x dim_y size),
+    and returns an array of the same size.
 
+    Epsilon is a whitening coefficient. (Sudeep 2016 uses 0.1)
+
+    This function will fail on a single image unless you give it an empty first
+    axis (np.newaxis,:,:).
+    '''
+    # flatten and normalize
     flattened_images = flatten_images(image_array)
-    # normalize
     images_norm = flattened_images / 255
     # subtract mean pixel value from each pixel in each image
     images_norm = images_norm - images_norm.mean(axis=0)
@@ -97,8 +134,7 @@ def apply_ZCA(image_array):
     cov = np.cov(images_norm, rowvar=False)
     # single value decomposition of covariance matrix
     U,S,V = np.linalg.svd(cov)
-    # ZCA
-    epsilon = 0.1
+    # perform ZCA
     images_ZCA = U.dot(np.diag(1.0/np.sqrt(S + epsilon))).dot(U.T).dot(images_norm.T).T
     # rescale
     images_ZCA_rescaled = rescale_images(image_ZCA)
