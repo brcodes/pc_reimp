@@ -57,10 +57,12 @@ def inflate_vectors(vector_array,shape_2d=None):
     '''
     N = vector_array.shape[0]
     if shape_2d == None:
-        sq = int(sqrt(vector_array.shape[1]))
-        shape_2d[0] = sq
-        shape_2d[1] = sq
-    return vector_array.reshape(N,shape_2d[0],shape_2d[1])
+        side = int(np.sqrt(vector_array.shape[1]))
+        return vector_array.reshape(N, side, side)
+    else:
+        height = shape_2d[0]
+        width = shape_2d[1]
+        return vector_array.reshape(N, height, width)
 
 def rescale_images(vector_array):
     '''
@@ -76,10 +78,10 @@ def apply_DoG(image_array, kern_size, sigma1, sigma2):
     Accepts an array of N x dim_x x dim_y images (N images each of dim_x x dim_y size),
     and returns an array of the same size.
 
-    Kernel size (kern_size) accepts a single integer or a 2-character tuple of ints.
+    Kernel size (kern_size) must be a single integer or a 2-int tuple.
 
     Requires two standard deviation parameters (sigma1 and sigma2), where
-    sigma2 > sigma1. These parameters facilitate subtraction of the original image (g1)
+    sigma2 (g2) > sigma1 (g1). These parameters facilitate subtraction of the original image (g1)
     from a less blurred version of the image (g2).
 
     This function will fail on a single image unless you give it an empty first
@@ -107,13 +109,15 @@ def apply_standardization(image_array):
     '''
     # flatten
     flattened_images = flatten_images(image_array)
-    # standardize, rescale and inflate each image
+    # standardize, rescale, reshape and inflate each image (per-image stdization, not per-pixel)
     for i in range(0, image_array.shape[0]):
         image = flattened_images[i,:]
-        standardized = (image - np.mean(image)) / np.std(image)
-        rescaled = rescale_images(standardized)
-        inflated_image = inflate_vectors(rescaled)
-    return inflated_image
+        stdized = (image - np.mean(image)) / np.std(image)
+        rescaled = rescale_images(stdized)
+        # standardized and rescaled 1D vector put back into 2D vector array
+        flattened_images[i,:] = rescaled
+    inflated_images = inflate_vectors(flattened_images)
+    return inflated_images
 
 def apply_ZCA(image_array, epsilon=0.1):
     '''
@@ -137,7 +141,7 @@ def apply_ZCA(image_array, epsilon=0.1):
     # perform ZCA
     images_ZCA = U.dot(np.diag(1.0/np.sqrt(S + epsilon))).dot(U.T).dot(images_norm.T).T
     # rescale
-    images_ZCA_rescaled = rescale_images(image_ZCA)
+    images_ZCA_rescaled = rescale_images(images_ZCA)
     # inflate
-    inflated_images = inflate_vectors(image_ZCA_rescaled)
+    inflated_images = inflate_vectors(images_ZCA_rescaled)
     return inflated_images

@@ -169,19 +169,19 @@ class PredictiveCodingNetwork:
             # this update looks roughly like:
             # U[i] -> U[i] + (lr/2)*(Y[i,:]- softmax(r[output]))
         '''
-            for layer in range(1, self.n_layers):
+        for layer in range(1, self.n_layers):
 
-                # r update
-                self.r[i] += (self.p.k_r / np.square(self.p.sigma)) \
-                * self.f(i) * (self.r[i-1] - f(self.U[i].dot(self.r[i])) \
-                * self.r[i].T
+            # r update
+            self.r[i] += (self.p.k_r / np.square(self.p.sigma)) \
+            * self.f(i) * (self.r[i-1] - f(self.U[i].dot(self.r[i])) \
+            * self.r[i].T
 
-                # U update
-                self.U[i] += (self.p.k_U / np.square(self.p.sigma)) \
-                * self.f(i) * (self.r[i-1] - self.f(self.U[i].dot(self.r[i])) \
-                * self.r[i].T + self.k_U / 2 * self.hprime(self.U[i])
+            # U update
+            self.U[i] += (self.p.k_U / np.square(self.p.sigma)) \
+            * self.f(i) * (self.r[i-1] - self.f(self.U[i].dot(self.r[i])) \
+            * self.r[i].T + self.k_U / 2 * self.hprime(self.U[i])
 
-                return
+            return
 
     def test(self,X,Y):
         '''
