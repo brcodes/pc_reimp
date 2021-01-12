@@ -8,6 +8,7 @@ class TestDataUtil(unittest.TestCase):
     # Note: test_datautil.py will currently fail 7/7 tests using pytest if
     # in SetUp(), get_mnist_data() argument return_test = True. Anywhere self.X.shape is used,
     # the following "AttributeError: 'tuple' object has no attribute 'shape'" will occur.
+    # This occurs because self.X is now the tuple (X_train[:n_train,:,:],y_train[:n_train,:])
 
     def setUp(self):
         # grab a few MNIST images
@@ -34,9 +35,9 @@ class TestDataUtil(unittest.TestCase):
 
     def test_inflate(self):
         '''
-        Inflates the target patterns from shape (N,10) to (N,5,2).
+        Inflates the target patterns from shape (N,10) to (N,5,2) [shape_2d!=None].
         Inflates flattened sample images from shape (N,x*y) to (N,x,y), where x = y
-        (N square images generated).
+        (N square images generated)[shape_2d=None].
         '''
         inf_y = inflate_vectors(self.y,shape_2d=(5,2))
         self.assertEqual(inf_y.shape,(self.n_train,5,2))
