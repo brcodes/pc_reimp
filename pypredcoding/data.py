@@ -64,7 +64,8 @@ def inflate_vectors(vector_array,shape_2d=None):
         width = shape_2d[1]
         return vector_array.reshape(N, height, width)
 
-def rescale_images(vector_array):
+
+def rescaling_filter(vector_array):
     '''
     Though applied in this module to accept an array of N x s flattened images (vectors)
     and return an array of the same size, this function will accept and return an
@@ -73,7 +74,8 @@ def rescale_images(vector_array):
     rescaled_array = (vector_array - vector_array.min()) / (vector_array.max() - vector_array.min())
     return rescaled_array
 
-def apply_DoG(image_array, kern_size, sigma1, sigma2):
+
+def diff_of_gaussians_filter(image_array, kern_size, sigma1, sigma2):
     '''
     Accepts an array of N x dim_x x dim_y images (N images each of dim_x x dim_y size),
     and returns an array of the same size.
@@ -99,7 +101,8 @@ def apply_DoG(image_array, kern_size, sigma1, sigma2):
         image_array[i,:,:] = g2 - g1
     return image_array
 
-def apply_standardization(image_array):
+
+def standardization_filter(image_array):
     '''
     Accepts an array of N x dim_x x dim_y images (N images each of dim_x x dim_y size),
     and returns an array of the same size.
@@ -119,7 +122,8 @@ def apply_standardization(image_array):
     inflated_images = inflate_vectors(flattened_images)
     return inflated_images
 
-def apply_ZCA(image_array, epsilon=0.1):
+
+def zca_filter(image_array, epsilon=0.1):
     '''
     Accepts an array of N x dim_x x dim_y images (N images each of dim_x x dim_y size),
     and returns an array of the same size.
