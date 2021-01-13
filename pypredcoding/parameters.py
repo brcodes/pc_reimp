@@ -18,9 +18,9 @@ class ModelParameters(object):
     # sizes of representations and weights
     input_size = attr.ib(default=256,validator=attr.validators.instance_of(int))
     output_size = attr.ib(default=10,validator=attr.validators.instance_of(int))
-    hidden_sizes = attr.ib(default=[32],validator=attr.validators.instance_of(list))
+    hidden_sizes = attr.ib(default=[32,32],validator=attr.validators.instance_of(list))
     # hidden layer variance
-    sigma = attr.ib(default=[1.0],validator=attr.validators.instance_of(list))
+    sigma = attr.ib(default=[1.0,1.0],validator=attr.validators.instance_of(list))
     # priors on parameters
     alpha = attr.ib(default=1.0,validator=attr.validators.instance_of(float)) #" related to variance of Gaussian priors "
     lam = attr.ib(default=0.02,validator=attr.validators.instance_of(float)) #" related to variance of Gaussian priors "

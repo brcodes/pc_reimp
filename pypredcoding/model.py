@@ -101,59 +101,60 @@ output class vectors (layer n+1) and is a function of sigmoid(r[n])
 '''
 
 
-class PredictiveCodingNetwork:
+class PredictiveCodingClassifier:
     def __init__(self, parameters):
 
         self.p = parameters
 
+        # possible choices for transformations and priors
         self.unit_act = {'linear':linear_trans,'tanh':tanh_trans}
         self.prior_dict = {'gaussian':gauss_prior, 'kurtotic':kurt_prior}
 
-        # I've dropped the "dict" so we don't have to type so much
+        # all the representations (including the image r[0] which is not trained)
         self.r = {}
+        # softmax output layer
+        self.o = np.zeros(self.p.output_size)
+
+        # synaptic weights controlling reconstruction in the network
         self.U = {}
+
+        # actual cost/loss function (if we want to keep track)
         self.E = 0
 
+        # priors and transforms
         self.f = self.unit_act[self.p.unit_act]
         self.gprime = self.prior_dict[self.p.r_prior]
         self.hprime = self.prior_dict[self.p.U_prior]
 
-        self.num_layers = len(self.p.hidden_sizes) + 1
-
-        # set variables
-
-        # don't need this as a parameter anymore - n_layers = 1 + len(hidden_sizes) + 1
-        # n_layers = self.num_layers
-        self.input_size = self.p.input_size
-        self.hidden_sizes = self.p.hidden_sizes
-        self.output_size = self.p.output_size
-
-        self.n_layers = len(self.hidden_sizes) + 2
+        self.n_layers = len(self.p.hidden_sizes) + 2
 
         # initialize the appropriate r's and U's
         # N.B - MAY NEED TO DO THIS PROPERLY USING PRIORS AT SOME POINT
-        # input - NOT TRAINED
-        self.r[0] = np.zeros(self.input_size)
+        # input
+        self.r[0] = np.zeros(self.p.input_size)
+
         # hidden layers
-        for i in range(1,len(self.hidden_sizes)+1):
-            self.r[i] = np.random.randn(self.hidden_sizes[i-1])
+        for i in range(1,len(self.p.hidden_sizes)+1):
+            self.r[i] = np.random.randn(self.p.hidden_sizes[i-1])
             self.U[i] = np.random.randn(len(self.r[i-1]),len(self.r[i]))
-        # output
-        self.r[len(self.hidden_sizes)+1] = np.random.randn(self.output_size)
-        self.U[len(self.hidden_sizes)+1] = np.random.randn(len(self.r[len(self.hidden_sizes)]),self.output_size)
+
+        # "output" layer"
+        self.o = np.random.randn(self.p.output_size)
+        # final set of weights to the output
+        self.U_o = np.random.randn(self.p.output_size,self.p.hidden_sizes[-1])
+
         return
 
 
     def train(self,X,Y):
-
         '''
         X: matrix of input patterns (n_patterns x input_size)
         Y: matrix of output/target patterns (n_patterns x output_size)
 
-        N.B.: We can just write this for one epoch now (batch size 1) and then
-         add the outer loops later.
-        '''
-        '''
+        I'm pretty sure the R&B model basically requires a batch size of 1, since
+        we have to fit the r's to each individual image and they are ephemeral.
+
+        # some pseudocode here
         for i in range(X.shape[0]):
             # copy first image into r[0]
             self.r[0] = X[i,:]
@@ -169,6 +170,7 @@ class PredictiveCodingNetwork:
             # this update looks roughly like:
             # U[i] -> U[i] + (lr/2)*(Y[i,:]- softmax(r[output]))
         '''
+        '''
         for layer in range(1, self.n_layers):
 
             # r update
@@ -182,8 +184,9 @@ class PredictiveCodingNetwork:
             * self.r[i].T + self.k_U / 2 * self.hprime(self.U[i])
 
             return
+        '''
 
-    def test(self,X,Y):
+    def test(self,X):
         '''
         Given one or more inputs, produce one or more outputs.
         '''

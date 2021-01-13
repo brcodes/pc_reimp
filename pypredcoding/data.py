@@ -116,7 +116,7 @@ def standardization_filter(image_array):
     for i in range(0, image_array.shape[0]):
         image = flattened_images[i,:]
         stdized = (image - np.mean(image)) / np.std(image)
-        rescaled = rescale_images(stdized)
+        rescaled = rescaling_filter(stdized)
         # standardized and rescaled 1D vector put back into 2D vector array
         flattened_images[i,:] = rescaled
     inflated_images = inflate_vectors(flattened_images)
@@ -145,7 +145,7 @@ def zca_filter(image_array, epsilon=0.1):
     # perform ZCA
     images_ZCA = U.dot(np.diag(1.0/np.sqrt(S + epsilon))).dot(U.T).dot(images_norm.T).T
     # rescale
-    images_ZCA_rescaled = rescale_images(images_ZCA)
+    images_ZCA_rescaled = rescaling_filter(images_ZCA)
     # inflate
     inflated_images = inflate_vectors(images_ZCA_rescaled)
     return inflated_images

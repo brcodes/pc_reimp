@@ -52,7 +52,7 @@ class TestDataUtil(unittest.TestCase):
         min = 0 and max = 1.
         '''
         flat_X = flatten_images(self.X)
-        resc_img = rescale_images(flat_X)
+        resc_img = rescaling_filter(flat_X)
         self.assertEqual(resc_img.shape,(self.n_train,28*28))
         self.assertEqual(resc_img.min(),0)
         self.assertEqual(resc_img.max(),1)
@@ -61,19 +61,19 @@ class TestDataUtil(unittest.TestCase):
         '''
         Makes sure applying DoG generates the correct image array shape.
         '''
-        DoG_X = apply_DoG(self.X, (5,5), sigma1=1.3, sigma2=2.6)
+        DoG_X = diff_of_gaussians_filter(self.X, (5,5), sigma1=1.3, sigma2=2.6)
         self.assertEqual(DoG_X.shape,(self.n_train,28,28))
 
     def test_standardization(self):
         '''
         Makes sure applying image standardization generates the correct image array shape.
         '''
-        Stdized_X = apply_standardization(self.X)
+        Stdized_X = standardization_filter(self.X)
         self.assertEqual(Stdized_X.shape,(self.n_train,28,28))
 
     def test_ZCA(self):
         '''
         Makes sure applying ZCA generates the correct image array shape.
         '''
-        ZCA_X = apply_ZCA(self.X)
+        ZCA_X = zca_filter(self.X)
         self.assertEqual(ZCA_X.shape,(self.n_train,28,28))
