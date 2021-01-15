@@ -5,24 +5,27 @@ from pypredcoding.data import *
 
 class TestDataUtil(unittest.TestCase):
 
-    # Note: test_datautil.py will currently fail 7/7 tests using pytest if
-    # in SetUp(), get_mnist_data() argument return_test = True. Anywhere self.X.shape is used,
-    # the following "AttributeError: 'tuple' object has no attribute 'shape'" will occur.
-    # This occurs because self.X is now the tuple (X_train[:n_train,:,:],y_train[:n_train,:])
-
     def setUp(self):
         # grab a few MNIST images
-        self.X,self.y = get_mnist_data(frac_samp=0.1,return_test=False)
+        (self.X,self.y),(self.X_test,self.y_test) = get_mnist_data(frac_samp=0.1,return_test=True)
         self.n_train = self.X.shape[0]
 
-
-    def test_mnist_read(self):
+    def test_mnist_read_trainmode(self):
         '''
         Make sure that the MNIST read returns what we think it should,
         size-wise.
         '''
         self.assertEqual(self.X.shape,(self.n_train,28,28))
         self.assertEqual(self.y.shape,(self.n_train,10))
+
+    def test_mnist_read_testmode(self):
+        '''
+        Makes sure that if get_mnist_data() is used to load test images in addition to
+        training images (i.e. if return_test=True), that size of training set > testing set.
+        This ensures that get_mnist_data() loads data successfully in either "train" or "test" mode.
+        '''
+        self.assertGreater(self.n_train,self.X_test.shape[0])
+        self.assertGreater(self.y.shape[0],self.y_test.shape[0])
 
 
     def test_flatten(self):

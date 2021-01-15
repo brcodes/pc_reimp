@@ -75,16 +75,17 @@ def rescaling_filter(vector_array):
     return rescaled_array
 
 
-def diff_of_gaussians_filter(image_array, kern_size, sigma1, sigma2):
+def diff_of_gaussians_filter(image_array, kern_size=(5,5), sigma1=1.3, sigma2=2.6):
     '''
     Accepts an array of N x dim_x x dim_y images (N images each of dim_x x dim_y size),
     and returns an array of the same size.
 
-    Kernel size (kern_size) must be a single integer or a 2-int tuple.
+    Kernel size (kern_size) must be a 2-int tuple, (x,y), where x = kernel width and
+    y = kernel height in number of pixels. Default to kernel size used in Monica Li's dataset.py.
 
     Requires two standard deviation parameters (sigma1 and sigma2), where
     sigma2 (g2) > sigma1 (g1). These parameters facilitate subtraction of the original image (g1)
-    from a less blurred version of the image (g2).
+    from a less blurred version of the image (g2). Default to values found in Monica Li's dataset.py.
 
     This function will fail on a single image unless you give it an empty first
     axis (np.newaxis,:,:).
@@ -107,21 +108,28 @@ def standardization_filter(image_array):
     Accepts an array of N x dim_x x dim_y images (N images each of dim_x x dim_y size),
     and returns an array of the same size.
 
+    Standardizes a sample image (1D vector) by subtracting the all-images mean pixel value (mean across
+    all images in image_array), and dividing by the all-images standard pixel deviation (stdev
+    across all images). This is per-image standardization, not per-pixel.
+
     This function will fail on a single image unless you give it an empty first
     axis (np.newaxis,:,:).
     '''
-    # flatten
+    # flatten sample images
     flattened_images = flatten_images(image_array)
-    # standardize, rescale, reshape and inflate each image (per-image stdization, not per-pixel)
+
+    # mean and stdev across all images
+    all_imgs_mean = np.mean(flattened_images)
+    all_imgs_std = np.std(flattened_images)
+
+    # standardize, reshape, and inflate each image
     for i in range(0, image_array.shape[0]):
         image = flattened_images[i,:]
-        stdized = (image - np.mean(image)) / np.std(image)
-        rescaled = rescaling_filter(stdized)
-        # standardized and rescaled 1D vector put back into 2D vector array
-        flattened_images[i,:] = rescaled
+        stdized = (image - all_imgs_mean) / all_imgs_std
+        # put 1D image back into 2D vector array
+        flattened_images[i,:] = stdized
     inflated_images = inflate_vectors(flattened_images)
     return inflated_images
-
 
 def zca_filter(image_array, epsilon=0.1):
     '''
