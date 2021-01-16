@@ -28,8 +28,8 @@ def get_mnist_data(frac_samp=None,return_test=False):
         n_test = X_test.shape[0]
     # send it all back
     if return_test:
-        return (X_train[:n_train,:,:],y_train[:n_train,:]),(X_test[:n_test,:,:],y_test[:n_test,:])
-    return X_train[:n_train,:,:],y_train[:n_train,:]
+        return (X_train[:n_train,:,:].astype('float64'),y_train[:n_train,:]).astype('float64'),(X_test[:n_test,:,:].astype('float64'),y_test[:n_test,:].astype('float64'))
+    return X_train[:n_train,:,:].astype('float64'),y_train[:n_train,:].astype('float64')
 
 
 def flatten_images(image_array):
@@ -65,13 +65,15 @@ def inflate_vectors(vector_array,shape_2d=None):
         return vector_array.reshape(N, height, width)
 
 
-def rescaling_filter(vector_array):
+def rescaling_filter(vector_array,scaling_range=[0,1]):
     '''
     Though applied in this module to accept an array of N x s flattened images (vectors)
     and return an array of the same size, this function will accept and return an
     array of any size.
+
+    Scales the input image range to be in [a,b]
     '''
-    rescaled_array = (vector_array - vector_array.min()) / (vector_array.max() - vector_array.min())
+    rescaled_array = scaling_range[0] + (scaling_range[1]-scaling_range[0])*((vector_array - vector_array.min()) / (vector_array.max() - vector_array.min()))
     return rescaled_array
 
 
@@ -95,12 +97,13 @@ def diff_of_gaussians_filter(image_array, kern_size=(5,5), sigma1=1.3, sigma2=2.
         print("Error [DoG]: sigma2 must be greater than sigma1")
         return
     # apply filter to each image
+    filtered_array = np.zeros_like(image_array)
     for i in range(0, image_array.shape[0]):
         image = image_array[i,:,:]
         g1 = cv2.GaussianBlur(image, kern_size, sigma1)
         g2 = cv2.GaussianBlur(image, kern_size, sigma2)
-        image_array[i,:,:] = g2 - g1
-    return image_array
+        filtered_array[i,:,:] = g2 - g1
+    return filtered_array
 
 
 def standardization_filter(image_array):
@@ -108,28 +111,18 @@ def standardization_filter(image_array):
     Accepts an array of N x dim_x x dim_y images (N images each of dim_x x dim_y size),
     and returns an array of the same size.
 
-    Standardizes a sample image (1D vector) by subtracting the all-images mean pixel value (mean across
-    all images in image_array), and dividing by the all-images standard pixel deviation (stdev
-    across all images). This is per-image standardization, not per-pixel.
+    Standardizes a sample image (1D vector) by subtracting it's mean pixel value and
+    then dividing by the standard deviation of the pixel values.
 
     This function will fail on a single image unless you give it an empty first
     axis (np.newaxis,:,:).
     '''
-    # flatten sample images
-    flattened_images = flatten_images(image_array)
+    whitened = np.zeros_like(image_array)
+    for i in range(0,image_array.shape[0]):
+        image = image_array[i,:,:]
+        whitened[i,:,:] = (image - image.mean())/image.std()
+    return whitened
 
-    # mean and stdev across all images
-    all_imgs_mean = np.mean(flattened_images)
-    all_imgs_std = np.std(flattened_images)
-
-    # standardize, reshape, and inflate each image
-    for i in range(0, image_array.shape[0]):
-        image = flattened_images[i,:]
-        stdized = (image - all_imgs_mean) / all_imgs_std
-        # put 1D image back into 2D vector array
-        flattened_images[i,:] = stdized
-    inflated_images = inflate_vectors(flattened_images)
-    return inflated_images
 
 def zca_filter(image_array, epsilon=0.1):
     '''
