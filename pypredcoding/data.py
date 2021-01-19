@@ -86,8 +86,8 @@ def diff_of_gaussians_filter(image_array, kern_size=(5,5), sigma1=1.3, sigma2=2.
     y = kernel height in number of pixels. Default to kernel size used in Monica Li's dataset.py.
 
     Requires two standard deviation parameters (sigma1 and sigma2), where
-    sigma2 (g2) > sigma1 (g1). These parameters facilitate subtraction of the original image (g1)
-    from a less blurred version of the image (g2). Default to values found in Monica Li's dataset.py.
+    sigma2 (g2) > sigma1 (g1). These parameters facilitate subtraction of the original image
+    from a less blurred version of the image. Default to values found in Monica Li's dataset.py.
 
     This function will fail on a single image unless you give it an empty first
     axis (np.newaxis,:,:).
@@ -102,7 +102,7 @@ def diff_of_gaussians_filter(image_array, kern_size=(5,5), sigma1=1.3, sigma2=2.
         image = image_array[i,:,:]
         g1 = cv2.GaussianBlur(image, kern_size, sigma1)
         g2 = cv2.GaussianBlur(image, kern_size, sigma2)
-        filtered_array[i,:,:] = g2 - g1
+        filtered_array[i,:,:] = g1 - g2
     return filtered_array
 
 
@@ -134,6 +134,7 @@ def zca_filter(image_array, epsilon=0.1):
     This function will fail on a single image unless you give it an empty first
     axis (np.newaxis,:,:).
     '''
+    zca_imgs = np.zeros_like(image_array)
     # flatten and normalize
     flattened_images = flatten_images(image_array)
     images_norm = flattened_images / 255
@@ -145,8 +146,6 @@ def zca_filter(image_array, epsilon=0.1):
     U,S,V = np.linalg.svd(cov)
     # perform ZCA
     images_ZCA = U.dot(np.diag(1.0/np.sqrt(S + epsilon))).dot(U.T).dot(images_norm.T).T
-    # rescale
-    images_ZCA_rescaled = rescaling_filter(images_ZCA)
     # inflate
-    inflated_images = inflate_vectors(images_ZCA_rescaled)
-    return inflated_images
+    zca_imgs = inflate_vectors(images_ZCA)
+    return zca_imgs

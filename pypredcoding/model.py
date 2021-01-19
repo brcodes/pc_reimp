@@ -1,4 +1,4 @@
-# Implementation of r&b predictive coding model toward use with MNIST data.
+# Implementation of r&b predictive coding model with MNIST data.
 
 import numpy as np
 import pypredcoding.parameters
@@ -21,84 +21,6 @@ def gauss_prior(a, x):
 def kurt_prior(a, x):
     kp = 2 * a * x / (1 + np.square(x))
     return kp
-
-'''
-NOTE ON INSTANTIATION:
-As I've currently set the parameters:
-    r[0] has size parameters.input_size
-    r[1] has size parameters.hidden_size[0] (so you know what size U/U.T is now)
-    r[2] has size parameters.hidden_size[1]
-    etc.
-    r[n] MUST have size equal to parameters.output_size
-
-When we train, each r/U pair is updated according to the equations in my notes.
-For layer n ONLY, it has the standard update plus another term that uses the
-output class vectors (layer n+1) and is a function of sigmoid(r[n])
-
-
-    ---
-    Equations
-    ---
-
-    # From Rao and Ballard 1999; Kevin Brown
-
-
-    transform = self.transform_dict[]
-
-
-    ---
-    Hierarchical Generative Model
-    ---
-
-    I = f(U.dot(r)) + n
-
-    ---
-    Optimization Function
-    ---
-
-    E1 = 1 / (np.square(self.p.sigma)) * (I - f(Ur)).T * (I - f(Ur))
-    + 1 / (np.square(self.p.sigma)) * (r[i] - r[i + 1]).T * (r[i] - r[i + 1])
-
-
-    ---
-    Network Dynamics and Synaptic Learning
-    ---
-
-    # Gradient descent on E with respect to r, assuming Gaussian prior
-    def dr_dt():
-        if self.p.f_of_x == "Linear":
-            dr_dt = (self.p.k * U.T / np.square(self.p.sigma))
-            * np.identity(len(?)) * (I - f(U.dot(r))
-            + (self.p.k * U.T / np.square(self.p.sigma))
-            * (r[i + 1] - r[i]) - (self.p.k / 2) * g_prime(r[i])
-            return dr_dt
-        else:
-            dr_dt = ?
-            return dr_dt
-
-    # Gradient descent on E with respect to U, assuming Gaussian prior
-    def dU_dt():
-        if self.p.f_of_x == "Linear":
-            dU_dt = (self.p.k / np.square(self.p.sigma))
-            * np.identity(len(?)) * (I - f(U.dot(r)) * r[i].T
-            - self.p.k * self.p.lam * U[i]
-            return dU_dt
-        else:
-            dU_dt = ?
-            return dU_dt
-
-    ---
-    Model Updates
-    ---
-
-    # r updates
-    r[i] = f(U[i + 1].dot(r[i + 1]))
-
-    # U updates
-    dU = (self.p.k_U / self.p.sigma) * np.outer(F3.dot(E[i - 1]), r[i]) \
-        - self.p.k_U * self.p.lam * U[i]
-        U_dict[i] += dU
-'''
 
 
 class PredictiveCodingClassifier:
@@ -153,38 +75,31 @@ class PredictiveCodingClassifier:
 
         I'm pretty sure the R&B model basically requires a batch size of 1, since
         we have to fit the r's to each individual image and they are ephemeral.
+        '''
 
-        # some pseudocode here
-        for i in range(X.shape[0]):
+        # filling in kb pseudocode with real objects
+        for i in range(0, X.shape[0]):
             # copy first image into r[0]
             self.r[0] = X[i,:]
             # r,U updates can be written symmetrically for all layers including output
-            for layer in range(1,num_layers):
-                pass
-                # do r update - will look something like
-                #   r[i] -> r[i] + (learning_rate/sigma^2)*F[i]*(r[i-1] - f(U[i]*r[i]))*r[i].T
-                # do U update - will look something like
-                #   U[i] -> U[i] - (lr/sigma^2)*F[i]*(r[i-1] - f(U[i]*r[i]))*r[i].T + lr/2*h'(U[i])
+            for layer in range(1,self.p.num_layers):
+                # do r update
+                self.r[i] += (self.p.k_r / self.p.sigma) \
+                  * self.U[i].T.dot(np.diag(1-self.f(self.U[i].dot(self.r[i]))).dot(self.r[i]-self.f(self.U[i].dot(self.r[i])))) \
+                  + (self.p.k_r / self.p.sigma) * -(self.r[i]+self.f(self.U[i+1].dot(self.r[i+1]))) \
+                  - self.p.k_r * self.p.alpha * self.r[i]
+                # do U update
+                self.U[i] += (self.p.k_U / self.p.sigma) \
+                  * np.outer(np.diag(1-self.f(self.U[i].dot(self.r[i]))).dot(self.r[i]-self.f(self.U[i].dot(self.r[i])))), self.r[i]) \
+                  - self.p.k_U * self.p.lambda * self.U[i]
+
             # need to add correction term to output layer that compares to output pattern (so far
-            #   all we have done is make the network reconstruct all the intermediate layers properly)
+            # all we have done is make the network reconstruct all the intermediate layers properly)
             # this update looks roughly like:
-            # U[i] -> U[i] + (lr/2)*(Y[i,:]- softmax(r[output]))
-        '''
-        '''
-        for layer in range(1, self.n_layers):
+                self.U[i] += (self.p.k_U/2)*(Y[i,:]- softmax(self.r[output]))
 
-            # r update
-            self.r[i] += (self.p.k_r / np.square(self.p.sigma)) \
-            * self.f(i) * (self.r[i-1] - f(self.U[i].dot(self.r[i])) \
-            * self.r[i].T
+        return
 
-            # U update
-            self.U[i] += (self.p.k_U / np.square(self.p.sigma)) \
-            * self.f(i) * (self.r[i-1] - self.f(self.U[i].dot(self.r[i])) \
-            * self.r[i].T + self.k_U / 2 * self.hprime(self.U[i])
-
-            return
-        '''
 
     def test(self,X):
         '''
