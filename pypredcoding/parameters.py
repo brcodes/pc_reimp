@@ -28,9 +28,11 @@ class ModelParameters(object):
     U_prior = attr.ib(default="gaussian",validator=attr.validators.in_(['gaussian','kurtotic']))
     # unit activation function (linear, tanh, relu, etc.)
     unit_act = attr.ib(default="linear",validator=attr.validators.in_(['linear','tanh']))
+    # classification cost type
+    classification = attr.ib(default="C1",validator=attr.validators.in_(['C1','C2']))
     # learning schedules - these should become strings for a learning schedule dispatcher
     k_r = attr.ib(default=0.5,validator=attr.validators.instance_of(float))
     k_U = attr.ib(default=0.5,validator=attr.validators.instance_of(float))
     # training time
-    batch_size = attr.ib(default=10,validator=attr.validators.instance_of(int))
+    batch_size = attr.ib(default=1,validator=attr.validators.instance_of(int))
     num_epochs = attr.ib(default=100,validator=attr.validators.instance_of(int))
