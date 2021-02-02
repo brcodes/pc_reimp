@@ -11,14 +11,16 @@ def linear_trans(U_dot_r):
     """ Though intended to operate on some U.dot(r), will take any numerical
     argument x and return the tuple (f(x), F(x)). Linear transformation. """
     f = U_dot_r
-    F = U_dot_r
+    #F = U_dot_r
+    F = np.eye(len(f))
     return (f, F)
 
 def tanh_trans(U_dot_r):
     """ Though intended to operate on some U.dot(r), will take any numerical
     argument x and return the tuple (f(x), F(x)). Tanh transformation. """
     f = np.tanh(U_dot_r)
-    F = 1 - np.tanh(U_dot_r) ** 2
+    #F = 1 - np.tanh(U_dot_r) ** 2
+    F = np.diat(1 - np.tanh(U_dot_r)**2)
     return (f, F)
 
 # r, U prior functions
