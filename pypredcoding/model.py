@@ -20,7 +20,7 @@ def tanh_trans(U_dot_r):
     argument x and return the tuple (f(x), F(x)). Tanh transformation. """
     f = np.tanh(U_dot_r)
     #F = 1 - np.tanh(U_dot_r) ** 2
-    F = np.diat(1 - np.tanh(U_dot_r)**2)
+    F = np.diag(1 - np.tanh(U_dot_r)**2)
     return (f, F)
 
 # r, U prior functions
