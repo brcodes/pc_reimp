@@ -119,8 +119,8 @@ class PredictiveCodingClassifier:
                 # r,U updates written symmetrically for all layers including output
                 for i in range(1,n):
                     # r[i] update
-                    self.r[i] += (self.p.k_r / self.p.sigma ** 2) \
-                    * self.U[i].T.dot(self.f(self.U[i].dot(self.r[i]))[1].dot(self.r.[i-1]-self.f(self.U[i].dot(self.r[i]))[0])) \
+                    self.r[i] = (self.p.k_r / self.p.sigma ** 2) \
+                    * self.U[i].T.dot(self.f(self.U[i].dot(self.r[i]))[1].dot(self.r.[i-1] - self.f(self.U[i].dot(self.r[i]))[0])) \
                     + (self.p.k_r / self.p.sigma ** 2) * (self.f(self.U[i+1].dot(self.r[i+1]))[0] - self.r[i]) \
                     - (self.p.k_r / 2) * self.g(self.r[i],self.p.alpha)[1]
 
@@ -135,28 +135,28 @@ class PredictiveCodingClassifier:
                     + self.h(self.U[i],self.p.lambda)[0] + self.g(self.r[i],self.p.alpha)[0]
 
                 # # r[n] update (C1)
-                # self.r[n] += (self.p.k_r / self.p.sigma ** 2) \
-                # * self.U[n].T.dot(self.f(self.U[n].dot(self.r[n]))[1].dot(self.r[n-1]-self.f(self.U[n].dot(self.r[n]))[0])) \
+                # self.r[n] = (self.p.k_r / self.p.sigma ** 2) \
+                # * self.U[n].T.dot(self.f(self.U[n].dot(self.r[n]))[1].dot(self.r[n-1] - self.f(self.U[n].dot(self.r[n]))[0])) \
                 # - (self.p.k_r / 2) * self.g(self.r[n],self.p.alpha)[1] \
                 # # classification term
                 # + (self.p.k_o / 2) * (label - softmax(self.r[n]))
 
                 # r(n) update (C2)
-                self.r[n] += (self.p.k_r / self.p.sigma ** 2) \
-                * self.U[n].T.dot(self.f(self.U[n].dot(self.r[n]))[1].dot(self.r[n-1]-self.f(self.U[n].dot(self.r[n]))[0])) \
+                self.r[n] = (self.p.k_r / self.p.sigma ** 2) \
+                * self.U[n].T.dot(self.f(self.U[n].dot(self.r[n]))[1].dot(self.r[n-1] - self.f(self.U[n].dot(self.r[n]))[0])) \
                 - (self.p.k_r / 2) * self.g(self.r[n],self.p.alpha)[1] \
                 # classification term
                 for L in range(0,self.p.output_size):
-                    rC2 += label[L].dot((self.U_o[L]-self.U_o.T.dot(self.o)) / (np.exp(self.U_o.dot(self.r[n])).sum()))
+                    rC2 += label[L].dot((self.U_o[L] - self.U_o.T.dot(self.o)) / (np.exp(self.U_o.dot(self.r[n])).sum()))
                 + (self.p.k_o / 2) * rC2
 
-                # U[n] update (C1,C2) (identical to U[i], except index numbers)
+                # U[n] update (C1, C2) (identical to U[i], except index numbers)
                 self.U[n] += (self.p.k_U / self.p.sigma ** 2) \
                 * (self.f(self.U[n].dot(self.r[n]))[1].dot(self.r[n-1] - self.f(self.U[n].dot(self.r[n]))[0])).dot(self.r[n].T) \
                 - (self.p.k_U / 2) * self.h(self.U[n],self.p.lambda)[1]
 
                 # U(o) update (C2)
-                self.U_o += (self.p.k_o / 2) * (label.dot(self.r[n].T) - (self.p.output_size / np.exp(self.U_o.dot(self.r[n])).sum())) \
+                self.U_o = (self.p.k_o / 2) * (label.dot(self.r[n].T) - (self.p.output_size / np.exp(self.U_o.dot(self.r[n])).sum())) \
                 * self.o.dot(self.r[n].T)) - (self.p.k_o / 2) * self.h(self.U_o,self.p.lambda)[1]
 
                 # # E update (C1)
@@ -176,8 +176,37 @@ class PredictiveCodingClassifier:
         '''
         Given one or more inputs, produce one or more outputs.
         '''
+
         n = self.n_layers
+        # reset cost function
+        self.E = 0
+        # initialize output dictionary
+        output_r = {}
 
+        # loop through testing images
+        for image in range(0, X.shape[0]):
+            # copy first image into r[0]
+            self.r[0] = X[image,:]
 
+            # loop through intermediate layers
+            # r updates written symmetrically for all layers including output
+            for i in range(1,n):
+                # r[i] update
+                self.r[i] = (self.p.k_r / self.p.sigma ** 2) \
+                * self.U[i].T.dot(self.f(self.U[i].dot(self.r[i]))[1].dot(self.r.[i-1] - self.f(self.U[i].dot(self.r[i]))[0])) \
+                + (self.p.k_r / self.p.sigma ** 2) * (self.f(self.U[i+1].dot(self.r[i+1]))[0] - self.r[i]) \
+                - (self.p.k_r / 2) * self.g(self.r[i],self.p.alpha)[1]
 
-        return
+                # optimization function E
+                self.E += (1 / self.p.sigma ** 2) \
+                * (self.r[i] - self.f(self.U[i+1].dot(self.r[i+1]))[0]).T.dot(self.r[i] - self.f(self.U[i+1].dot(self.r[i+1]))[0])
+                + self.h(self.U[i],self.p.lambda)[0] + self.g(self.r[i],self.p.alpha)[0]
+
+            # r(n) update (C1, C2)
+            self.r[n] = (self.p.k_r / self.p.sigma ** 2) \
+            * self.U[n].T.dot(self.f(self.U[n].dot(self.r[n]))[1].dot(self.r[n-1] - self.f(self.U[n].dot(self.r[n]))[0])) \
+            - (self.p.k_r / 2) * self.g(self.r[n],self.p.alpha)[1]
+
+            output_r[image] = self.r[n]
+
+        return output_r
