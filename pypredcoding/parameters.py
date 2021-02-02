@@ -33,6 +33,7 @@ class ModelParameters(object):
     # learning schedules - these should become strings for a learning schedule dispatcher
     k_r = attr.ib(default=0.5,validator=attr.validators.instance_of(float))
     k_U = attr.ib(default=0.5,validator=attr.validators.instance_of(float))
+    k_o = attr.ib(default=0.5,validator=attr.validators.instance_of(float))
     # training time
     batch_size = attr.ib(default=1,validator=attr.validators.instance_of(int))
     num_epochs = attr.ib(default=100,validator=attr.validators.instance_of(int))

@@ -1,51 +1,44 @@
 # Implementation of r&b predictive coding model with MNIST data.
 
 import numpy as np
-from pypredcoding.parameters import ModelParameters as MP
+import pypredcoding.parameters as parameters
 import unittest
 import pypredcoding.data as data
 
 
 # activation functions
-def linear_trans(x):
-    return x
+def linear_trans(U_dot_r):
+    """ Though intended to operate on some U.dot(r), will take any numerical
+    argument x and return the tuple (f(x), F(x)). Linear transformation. """
+    f = U_dot_r
+    F = U_dot_r
+    return (f, F)
 
-def tanh_trans(x):
-    return np.tanh(x)
+def tanh_trans(U_dot_r):
+    """ Though intended to operate on some U.dot(r), will take any numerical
+    argument x and return the tuple (f(x), F(x)). Tanh transformation. """
+    f = np.tanh(U_dot_r)
+    F = 1 - np.tanh(U_dot_r) ** 2
+    return (f, F)
 
-def F(U,r):
-    MP.unit_act == 'linear'
-        return U.dot(r)
-    else:
-        # if 'tanh'
-        return 1 - np.tanh(U.dot(r))^2
+# r, U prior functions
+def gauss_prior(r_or_U, alph_or_lam):
+    """ Takes an argument pair of either r & alpha, or U & lambda, and returns
+    a tuple of (g(r), g'(r)), or (h(U), h'(U)), respectively. Gaussian prior. """
+    g_or_h = alph_or_lam * r_or_U ** 2
+    gprime_or_hprime = 2 * alph_or_lam * r_or_U
+    return (g_or_h, gprime_or_hprime)
 
-# g/prime (r) and h/prime (U) priors
-# the argument a represents either alpha (r) or lambda (U)
-def gauss_prior(a, x):
-    gp = 2 * a * x
-    return gp
-
-def kurt_prior(a, x):
-    kp = 2 * a * x / (1 + x^2)
-    return kp
-
-def g(r):
-    if MP.r_prior == 'gaussian'
-        return MP.alpha * r^2
-    else:
-        return MP.alpha * np.log(1 + r^2)
-
-def h(U):
-    if MP.U_prior == 'gaussian'
-        return MP.lambda * U^2
-    else:
-        return MP.lambda * np.log(1 + U^2)
+def kurt_prior(r_or_U, alph_or_lam):
+    """ Takes an argument pair of either r & alpha, or U & lambda, and returns
+    a tuple of (g(r), g'(r)), or (h(U), h'(U)), respectively. Sparse kurtotic prior. """
+    g_or_h = alph_or_lam * np.log(1 + r_or_U ** 2)
+    gprime_or_hprime = 2 * alph_or_lam * r_or_U / (1 + r_or_U ** 2)
+    return (g_or_h, gprime_or_hprime)
 
 # softmax function
 def softmax(r):
-    return np.exp(r) / (np.exp(r) * MP.output_size)
-
+    return np.exp(r) / np.exp(r).sum()
 
 
 class PredictiveCodingClassifier:
@@ -68,15 +61,22 @@ class PredictiveCodingClassifier:
 
         # priors and transforms
         self.f = self.unit_act[self.p.unit_act]
+        # how to call f(x): self.f(self.U.dot(self.r))[0]
+        # how to call F(x): self.f(self.U.dot(self.r))[1]
 
-        self.gprime = self.prior_dict[self.p.r_prior]
-        self.hprime = self.prior_dict[self.p.U_prior]
+        self.g = self.prior_dict[self.p.r_prior]
+        # how to call g(r): self.g(self.r,self.p.alpha)[0]
+        # how to call g'(r): self.g(self.r,self.p.alpha)[1]
+
+        self.h = self.prior_dict[self.p.U_prior]
+        # how to call h(U): self.h(self.U,self.p.lamba)[0]
+        # how to call h'(U): self.h(self.U,self.p.lambda)[1]
 
         self.n_layers = len(self.p.hidden_sizes) + 2
 
         # initialize the appropriate r's and U's
         # N.B - MAY NEED TO DO THIS PROPERLY USING PRIORS AT SOME POINT
-        # input
+        # input - how is this done? check r&b
         self.r[0] = np.zeros(self.p.input_size)
 
         # hidden layers
@@ -84,82 +84,90 @@ class PredictiveCodingClassifier:
             self.r[i] = np.random.randn(self.p.hidden_sizes[i-1])
             self.U[i] = np.random.randn(len(self.r[i-1]),len(self.r[i]))
 
-        # "output" layer"
+        # "output" layer
         self.o = np.random.randn(self.p.output_size)
         # final set of weights to the output
         self.U_o = np.random.randn(self.p.output_size,self.p.hidden_sizes[-1])
-
-        # classification cost
-        self.C = self.p.classification
 
         return
 
     def train(self,X,Y):
         '''
-        X: matrix of input patterns (n_patterns x input_size)
-        Y: matrix of output/target patterns (n_patterns x output_size)
+        X: matrix of input patterns (N_patterns x input_size)
+        Y: matrix of output/target patterns (N_patterns x output_size)
 
         I'm pretty sure the R&B model basically requires a batch size of 1, since
         we have to fit the r's to each individual image and they are ephemeral.
         '''
 
-        # classification cost types
-        def classification_1(L, l, r):
-            for i in range(0,L-1):
-                C1 = l[i,:].dot(np.log(softmax(r)))
-                return -C1
-
-        def classification_2(L, l, U, r):
-            for i in range(0,L-1):
-                C2 = l[i,:].dot(np.log(softmax(U.dot(r))))
-                return -C2 + h(U)
-
         n = self.n_layers
 
-        # loop through training images
-        for image in range(0, X.shape[0]):
-            # copy first image into r[0]
-            self.r[0] = X[image,:]
+        # loop through training image dataset num_epochs times
+        for epoch in range(0,self.p.num_epochs):
+            # shuffle all input and output pairs each epoch
+            N_permuted_indices = np.random.permutation(len(X.shape[0]))
+            X_shuffled = X[N_permuted_indices]
+            Y_shuffled = Y[N_permuted_indices]
 
-            # r,U updates can be written symmetrically for all layers including output
-            # how do I skip
-            for i in range(1,n-1):
-                # do r update
-                self.r[i] += (self.p.k_r / self.p.sigma^2) \
-                * self.U[i].T.dot(F(self.U[i],self.r[i]).dot(self.r.[i-1]-self.f(self.U[i].dot(self.r[i])))) \
-                + (self.p.k_r / self.p.sigma^2) * (self.f(self.U[i+1].dot(self.r[i+1])) - self.r[i]) \
-                - (self.p.k_r / 2) * self.gprime(self.p.alpha,self.r[i])
+            # loop through training images
+            for image in range(0, X.shape[0]):
+                # copy first image into r[0]
+                self.r[0] = X_shuffled[image,:]
+                label = Y_shuffled[image,:]
 
-                # do U update
-                self.U[i] += (self.p.k_U / self.p.sigma^2) \
-                * (F(self.U[i],self.r[i]).dot(self.r[i-1] - self.f(self.U[i].dot(self.r[i])))).dot(self.r[i].T) \
-                - (self.p.k_U / 2) * self.hprime(self.p.lambda,self.U[i])
+                # loop through intermediate layers
+                # r,U updates written symmetrically for all layers including output
+                for i in range(1,n):
+                    # r[i] update
+                    self.r[i] += (self.p.k_r / self.p.sigma ** 2) \
+                    * self.U[i].T.dot(self.f(self.U[i].dot(self.r[i]))[1].dot(self.r.[i-1]-self.f(self.U[i].dot(self.r[i]))[0])) \
+                    + (self.p.k_r / self.p.sigma ** 2) * (self.f(self.U[i+1].dot(self.r[i+1]))[0] - self.r[i]) \
+                    - (self.p.k_r / 2) * self.g(self.r[i],self.p.alpha)[1]
 
-                # optimization function E if classification_1
-                self.E = (1 / self.p.sigma^2) \
-                * (self.r[i] - self.f(self.U[i+1].dot(self.r[i+1]))).T.dot(self.r[i] - self.f(self.U[i+1].dot(self.r[i+1])))
-                + h(self.U[i]) + g(self.r[i]) + classification_1()
+                    # U[i] update
+                    self.U[i] += (self.p.k_U / self.p.sigma ** 2) \
+                    * (self.f(self.U[i].dot(self.r[i]))[1].dot(self.r[i-1] - self.f(self.U[i].dot(self.r[i]))[0])).dot(self.r[i].T) \
+                    - (self.p.k_U / 2) * self.h(self.U[i],self.p.lambda)[1]
 
-            # need to add correction term to output layer that compares to output pattern
-            # r[n] update, if C1
-            self.r[n] += (self.p.k_r / self.p.sigma^2) \
-            * self.U[n].T.dot(F(self.U[n],self.r[n]).dot(self.r.[n-1]-self.f(self.U[n].dot(self.r[n])))) \
-            - (self.p.k_r / 2) * self.gprime(self.p.alpha,self.r[n]) \
-            # classification term
-            + (self.p.k_r / 2) * (Y[image,:] - softmax(self.r[n]))
+                    # optimization function E
+                    self.E += (1 / self.p.sigma ** 2) \
+                    * (self.r[i] - self.f(self.U[i+1].dot(self.r[i+1]))[0]).T.dot(self.r[i] - self.f(self.U[i+1].dot(self.r[i+1]))[0])
+                    + self.h(self.U[i],self.p.lambda)[0] + self.g(self.r[i],self.p.alpha)[0]
 
-            # # if C2
-            # # U(n) update
-            # self.U_o += (self.p.k_U / 2) \
-            # * Y[image,:].dot(self.r[n].T) - softmax(self.U_o[n].dot(self.r[n])) * self.p.output_size
-            # - (self.p.k_U / 2) * self.hprime(self.p.lambda,self.U_o[n])
+                # # r[n] update (C1)
+                # self.r[n] += (self.p.k_r / self.p.sigma ** 2) \
+                # * self.U[n].T.dot(self.f(self.U[n].dot(self.r[n]))[1].dot(self.r[n-1]-self.f(self.U[n].dot(self.r[n]))[0])) \
+                # - (self.p.k_r / 2) * self.g(self.r[n],self.p.alpha)[1] \
+                # # classification term
+                # + (self.p.k_o / 2) * (label - softmax(self.r[n]))
 
-            # # r(n) update if C2
-            # self.r[n] += (self.p.k_r / self.p.sigma^2) \
-            # * self.U[n].T.dot(F(self.U[n],self.r[n]).dot(self.r.[n-1]-self.f(self.U[n].dot(self.r[n])))) \
-            # - (self.p.k_r / 2) * self.gprime(self.p.alpha,self.r[n]) \
-            # # classification term
-            # + (self.p.k_r / 2) * (Y[image,:].dot(self.U_o[image] - self.U_o.T.dot(self.o) - softmax(self.r[n]))
+                # r(n) update (C2)
+                self.r[n] += (self.p.k_r / self.p.sigma ** 2) \
+                * self.U[n].T.dot(self.f(self.U[n].dot(self.r[n]))[1].dot(self.r[n-1]-self.f(self.U[n].dot(self.r[n]))[0])) \
+                - (self.p.k_r / 2) * self.g(self.r[n],self.p.alpha)[1] \
+                # classification term
+                for L in range(0,self.p.output_size):
+                    rC2 += label[L].dot((self.U_o[L]-self.U_o.T.dot(self.o)) / (np.exp(self.U_o.dot(self.r[n])).sum()))
+                + (self.p.k_o / 2) * rC2
+
+                # U[n] update (C1,C2) (identical to U[i], except index numbers)
+                self.U[n] += (self.p.k_U / self.p.sigma ** 2) \
+                * (self.f(self.U[n].dot(self.r[n]))[1].dot(self.r[n-1] - self.f(self.U[n].dot(self.r[n]))[0])).dot(self.r[n].T) \
+                - (self.p.k_U / 2) * self.h(self.U[n],self.p.lambda)[1]
+
+                # U(o) update (C2)
+                self.U_o += (self.p.k_o / 2) * (label.dot(self.r[n].T) - (self.p.output_size / np.exp(self.U_o.dot(self.r[n])).sum())) \
+                * self.o.dot(self.r[n].T)) - (self.p.k_o / 2) * self.h(self.U_o,self.p.lambda)[1]
+
+                # # E update (C1)
+                # for L in range(0,self.p.output_size):
+                #     C1 = -label[L].dot(np.log(softmax(r[n])))
+                #     self.E += C1
+
+                # E update (C2)
+                for L in range(0,self.p.output_size):
+                    C2 = -label[L].dot(np.log(softmax(self.U_o.dot(r[n])))) + self.h(self.U_o,self.p.lambda)[0]
+                    self.E += C2
 
         return
 
@@ -168,4 +176,8 @@ class PredictiveCodingClassifier:
         '''
         Given one or more inputs, produce one or more outputs.
         '''
+        n = self.n_layers
+
+
+
         return
