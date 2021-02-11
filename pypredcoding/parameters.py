@@ -16,7 +16,7 @@ class ModelParameters(object):
     Class for holding and checking parameters relevant to model creation.
     '''
     # sizes of representations and weights
-    input_size = attr.ib(default=256,validator=attr.validators.instance_of(int))
+    input_size = attr.ib(default=784,validator=attr.validators.instance_of(int))
     output_size = attr.ib(default=10,validator=attr.validators.instance_of(int))
     hidden_sizes = attr.ib(default=[32,32],validator=attr.validators.instance_of(list))
     # hidden layer variance
@@ -37,4 +37,4 @@ class ModelParameters(object):
     # training time
     batch_size = attr.ib(default=1,validator=attr.validators.instance_of(int))
     ''' change num_epochs back to something reasonable after model can generate normal output '''
-    num_epochs = attr.ib(default=2,validator=attr.validators.instance_of(int))
+    num_epochs = attr.ib(default=1,validator=attr.validators.instance_of(int))
