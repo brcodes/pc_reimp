@@ -36,4 +36,5 @@ class ModelParameters(object):
     k_o = attr.ib(default=0.5,validator=attr.validators.instance_of(float))
     # training time
     batch_size = attr.ib(default=1,validator=attr.validators.instance_of(int))
-    num_epochs = attr.ib(default=100,validator=attr.validators.instance_of(int))
+    ''' change num_epochs back to something reasonable after model can generate normal output '''
+    num_epochs = attr.ib(default=2,validator=attr.validators.instance_of(int))

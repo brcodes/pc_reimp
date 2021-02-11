@@ -28,7 +28,7 @@ def get_mnist_data(frac_samp=None,return_test=False):
         n_test = X_test.shape[0]
     # send it all back
     if return_test:
-        return (X_train[:n_train,:,:].astype('float64'),y_train[:n_train,:]).astype('float64'),(X_test[:n_test,:,:].astype('float64'),y_test[:n_test,:].astype('float64'))
+        return (X_train[:n_train,:,:].astype('float64'),y_train[:n_train,:].astype('float64')),(X_test[:n_test,:,:].astype('float64'),y_test[:n_test,:].astype('float64'))
     return X_train[:n_train,:,:].astype('float64'),y_train[:n_train,:].astype('float64')
 
 
