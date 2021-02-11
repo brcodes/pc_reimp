@@ -143,9 +143,11 @@ class PredictiveCodingClassifier:
             for image in range(0, num_images):
 
                 # copy first image into r[0]
-                """ fix size discrepancy: single loaded image is (784,1) and r[0] setup layer is (256,1) """
-                # self.r[0] = X_shuffled[image,:][:,None]
-                self.r[0] = np.random.randn(self.p.input_size,1)
+                """ Fix size discrepancy: single loaded image is (784,1) and r[0] setup layer is (256,1) """
+
+                self.r[0] = X_shuffled[image,:][:,None]
+                # self.r[0] = np.random.randn(self.p.input_size,1)
+
                 print("r[0] (loaded image) shape is " + str(np.shape(self.r[0])) + '\n')
 
                 # initialize "output" layer o (for classification method 2 (C2))
@@ -159,6 +161,7 @@ class PredictiveCodingClassifier:
                 for layer in range(1,self.n_non_input_layers):
                     # model state per layer
                     self.r[layer] = np.random.randn(self.p.hidden_sizes[layer-1],1)
+
                     print("r{} reinitialized shape is ".format(layer) + str(np.shape(self.r[layer])) + '\n')
 
                     # loop through intermediate layers
@@ -194,6 +197,7 @@ class PredictiveCodingClassifier:
 
                         print("E update value:" + str(self.E))
                         print("E update, sum of prior terms h(U) + g(r) shape:")
+
                         print((self.h(self.U[i],self.p.lam)[0] + self.g(np.squeeze(self.r[i]),self.p.alpha)[0]).shape)
 
                     # r[n] update (C1)
@@ -227,9 +231,10 @@ class PredictiveCodingClassifier:
 
                     # E update (C1)
                     for L in range(0,self.p.output_size):
-                        print('\n'+str(label[L])+'\n')
                         C1 = -(np.log(softmax(self.r[n]))).dot(label[L])
                         self.E = self.E + C1
+
+                        print('\n'+'label element {} size is: '.format(L) + str(label[L])+'\n')
 
                     print("Error after image {} is:".format(image) + '\n')
                     print(self.E)
@@ -240,14 +245,17 @@ class PredictiveCodingClassifier:
                     #     self.E = self.E + C2
 
             # adjust learning rates for r, U, or o every epoch
-            self.p.k_r += 0.05
-            self.p.k_U += 0.05
-            self.p.k_o += 0.05
+            # self.p.k_r += 0.05
+            # self.p.k_U += 0.05
+            # self.p.k_o += 0.05
 
             # store average cost per epoch
             self.E_avg_per_epoch.append(self.E / num_images)
 
+        print('\n' + "Average error per each (of {}) epochs:".format(self.p.num_epochs))
+        print(self.E_avg_per_epoch)
         print("Model trained.")
+
         return
 
 

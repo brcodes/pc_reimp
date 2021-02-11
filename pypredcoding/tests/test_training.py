@@ -30,3 +30,6 @@ class TestTraining(unittest.TestCase):
 
         # train model
         self.model.train(X_flat, y_train)
+
+        print("E avg per epoch")
+        print(self.model.E_avg_per_epoch)
