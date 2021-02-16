@@ -1,8 +1,3 @@
-"""
-Created on Thu Feb  4 15:49:21 2021
-
-@author: everett
-"""
 
 """ pypredcoding model v1 test utility """
 
@@ -30,6 +25,3 @@ class TestTraining(unittest.TestCase):
 
         # train model
         self.model.train(X_flat, y_train)
-
-        print("E avg per epoch")
-        print(self.model.E_avg_per_epoch)

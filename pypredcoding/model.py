@@ -1,8 +1,8 @@
 # Implementation of r&b 1999 predictive coding model with MNIST data.
 
 import numpy as np
-import pypredcoding.parameters as parameters
-import pypredcoding.data as data
+import parameters as parameters
+import data as data
 import unittest
 
 # activation functions
@@ -88,26 +88,26 @@ class PredictiveCodingClassifier:
         # initialize image input layer of size (input_size,)
         self.r[0] = np.random.randn(self.p.input_size,1)
 
-        print('\n' + "*** __init__ function layer setup ***")
-        print("r[0] (setup) shape is " + str(np.shape(self.r[0])))
-        print(" len " + str(len(self.r[0])) + '\n')
+        # print('\n' + "*** __init__ function layer setup ***")
+        # print("r[0] (setup) shape is " + str(np.shape(self.r[0])))
+        # print(" len " + str(len(self.r[0])) + '\n')
 
         # initialize r's and U's for hidden layers
         for i in range(1,self.n_non_input_layers):
             self.r[i] = np.random.randn(self.p.hidden_sizes[i-1],1)
             self.U[i] = np.random.randn(len(self.r[i-1]),len(self.r[i]))
 
-            print("r[{}] shape is ".format(i) + str(np.shape(self.r[i])))
-            print(" len " + str(len(self.r[i])) + '\n')
-            print("U[{}] shape is ".format(i) + str(np.shape(self.U[i]))+ '\n')
+            # print("r[{}] shape is ".format(i) + str(np.shape(self.r[i])))
+            # print(" len " + str(len(self.r[i])) + '\n')
+            # print("U[{}] shape is ".format(i) + str(np.shape(self.U[i]))+ '\n')
 
         # initialize "output" layer
         self.o = np.random.randn(self.p.output_size,1)
         # and final set of weights to the output
         self.U_o = np.random.randn(self.p.output_size,self.p.hidden_sizes[-1])
 
-        print("o shape is " + str(np.shape(self.o)) + '\n')
-        print("U_o shape is " + str(np.shape(self.U_o)) + '\n')
+        # print("o shape is " + str(np.shape(self.o)) + '\n')
+        # print("U_o shape is " + str(np.shape(self.U_o)) + '\n')
 
         return
 
@@ -126,9 +126,10 @@ class PredictiveCodingClassifier:
         # loop through training image dataset num_epochs times
         for epoch in range(0,self.p.num_epochs):
             # shuffle order of training set input image / output vector pairs each epoch
-            N_permuted_indices = np.random.permutation(X.shape[0])
-            X_shuffled = X[N_permuted_indices]
-            Y_shuffled = Y[N_permuted_indices]
+            N_permuted_indices = np.random.permutation(X_flat.shape[0])
+            X_shuffled = X_flat[N_permuted_indices]
+            Y_shuffled = y_train[N_permuted_indices]
+            # print("y_shuffled shape is: " + '\n' + str(Y_shuffled.shape))
 
             # number of training images
             num_images = X_shuffled.shape[0]
@@ -136,19 +137,18 @@ class PredictiveCodingClassifier:
             # initialize cost function output
             self.E = 0
 
-            print("*** train() function values and layers ***")
-            print("Number of training images is {}".format(num_images) + '\n')
+            # print("*** train() function values and layers ***")
+            # print("Number of training images is {}".format(num_images) + '\n')
+
+            print("epoch {}".format(epoch+1))
+            print('\n')
 
             # loop through training images
             for image in range(0, num_images):
 
                 # copy first image into r[0]
-                """ Fix size discrepancy: single loaded image is (784,1) and r[0] setup layer is (256,1) """
-
                 self.r[0] = X_shuffled[image,:][:,None]
-                # self.r[0] = np.random.randn(self.p.input_size,1)
-
-                print("r[0] (loaded image) shape is " + str(np.shape(self.r[0])) + '\n')
+                # print("r[0] (loaded image) shape is " + str(np.shape(self.r[0])) + '\n')
 
                 # initialize "output" layer o (for classification method 2 (C2))
                 self.o = np.random.randn(self.p.output_size,1)
@@ -156,93 +156,128 @@ class PredictiveCodingClassifier:
                 self.U_o = np.random.randn(self.p.output_size,self.p.hidden_sizes[-1])
                 # designate label vector
                 label = Y_shuffled[image,:]
+                # print("label shape is: " + '\n' + str(label.shape))
 
                 # initialize new r's
                 for layer in range(1,self.n_non_input_layers):
-                    # model state per layer
+                    # self state per layer
                     self.r[layer] = np.random.randn(self.p.hidden_sizes[layer-1],1)
+                    # print("r{} reinitialized shape is ".format(layer) + str(np.shape(self.r[layer])) + '\n')
 
-                    print("r{} reinitialized shape is ".format(layer) + str(np.shape(self.r[layer])) + '\n')
+                # loop through intermediate layers (will fail if number of hidden layers is 1)
+                # r,U updates written symmetrically for all layers including output
+                for i in range(1,n):
+                    # r[i] update
+                    self.r[i] = self.r[i] + (self.p.k_r / self.p.sigma[i-1] ** 2) \
+                    * self.U[i].T.dot(self.f(self.U[i].dot(self.r[i]))[1].dot(self.r[i-1] - self.f(self.U[i].dot(self.r[i]))[0])) \
+                    + (self.p.k_r / self.p.sigma[i] ** 2) * (self.f(self.U[i+1].dot(self.r[i+1]))[0] - self.r[i]) \
+                    - (self.p.k_r / 2) * self.g(self.r[i],self.p.alpha[i-1])[1]
 
-                    # loop through intermediate layers
-                    # r,U updates written symmetrically for all layers including output
-                    for i in range(1,n):
-                        # r[i] update
-                        self.r[i] = self.r[i] + (self.p.k_r / self.p.sigma[i-1] ** 2) \
-                        * self.U[i].T.dot(self.f(self.U[i].dot(self.r[i]))[1].dot(self.r[i-1] - self.f(self.U[i].dot(self.r[i]))[0])) \
-                        + (self.p.k_r / self.p.sigma[i-1] ** 2) * (self.f(self.U[i+1].dot(self.r[i+1]))[0] - self.r[i]) \
-                        - (self.p.k_r / 2) * self.g(self.r[i],self.p.alpha)[1]
+                    print("r{} update term (image{} epoch{})".format(i, image+1, epoch+1))
+                    print((((self.p.k_r / self.p.sigma[i-1] ** 2) \
+                    * self.U[i].T.dot(self.f(self.U[i].dot(self.r[i]))[1].dot(self.r[i-1] - self.f(self.U[i].dot(self.r[i]))[0]))) \
+                    + (self.p.k_r / self.p.sigma[i] ** 2) * (self.f(self.U[i+1].dot(self.r[i+1]))[0] - self.r[i]) \
+                    - (self.p.k_r / 2) * self.g(self.r[i],self.p.alpha[i-1])[1])[:5,0])
+                    print('\n')
 
-                        print("After r[{}] update:".format(i))
-                        print("r{} shape is ".format(i) + str(np.shape(self.r[i])) + '\n')
-                        print("r{} shape is ".format(i+1) + str(np.shape(self.r[i+1])) + '\n')
-                        print("U{} shape is ".format(i) + str(np.shape(self.U[i])) + '\n')
-                        print("U{} shape is ".format(i+1) + str(np.shape(self.U[i+1])) + '\n')
+                    # print("After r[{}] update:".format(i))
+                    # print("r{} shape is ".format(i) + str(np.shape(self.r[i])) + '\n')
+                    # print("r{} shape is ".format(i+1) + str(np.shape(self.r[i+1])) + '\n')
+                    # print("U{} shape is ".format(i) + str(np.shape(self.U[i])) + '\n')
+                    # print("U{} shape is ".format(i+1) + str(np.shape(self.U[i+1])) + '\n')
 
-                        # U[i] update
-                        self.U[i] = self.U[i] + (self.p.k_U / self.p.sigma[i-1] ** 2) \
-                        * (self.f(self.U[i].dot(self.r[i]))[1].dot(self.r[i-1] - self.f(self.U[i].dot(self.r[i]))[0])).dot(self.r[i].T) \
-                        - (self.p.k_U / 2) * self.h(self.U[i],self.p.lam)[1]
+                    # U[i] update
+                    self.U[i] = self.U[i] + (self.p.k_U / self.p.sigma[i-1] ** 2) \
+                    * (self.f(self.U[i].dot(self.r[i]))[1].dot(self.r[i-1] - self.f(self.U[i].dot(self.r[i]))[0])).dot(self.r[i].T) \
+                    - (self.p.k_U / 2) * self.h(self.U[i],self.p.lam[i-1])[1]
 
-                        print("After U[{}] update:".format(i))
-                        print("r{} shape is ".format(i) + str(np.shape(self.r[i])) + '\n')
-                        print("r{} shape is ".format(i+1) + str(np.shape(self.r[i+1])) + '\n')
-                        print("U{} shape is ".format(i) + str(np.shape(self.U[i])) + '\n')
-                        print("U{} shape is ".format(i+1) + str(np.shape(self.U[i+1])) + '\n')
+                    print("U{} update term (image{} epoch{})".format(i, image+1, epoch+1))
+                    print(((self.p.k_U / self.p.sigma[i-1] ** 2) \
+                    * (self.f(self.U[i].dot(self.r[i]))[1].dot(self.r[i-1] - self.f(self.U[i].dot(self.r[i]))[0])).dot(self.r[i].T) \
+                    - (self.p.k_U / 2) * self.h(self.U[i],self.p.lam[i-1])[1])[:5,0])
+                    print('\n')
 
-                        # optimization function E
-                        self.E = self.E + (1 / self.p.sigma[i-1] ** 2) \
-                        * (self.r[i] - self.f(self.U[i+1].dot(self.r[i+1]))[0]).T.dot(self.r[i] - self.f(self.U[i+1].dot(self.r[i+1]))[0])
-                        + self.h(self.U[i],self.p.lam)[0] + self.g(np.squeeze(self.r[i]),self.p.alpha)[0]
+                    # print("U update:")
 
-                        print("E update value:" + str(self.E))
-                        print("E update, sum of prior terms h(U) + g(r) shape:")
+                    # print("After U[{}] update:".format(i))
+                    # print("r{} shape is ".format(i) + str(np.shape(self.r[i])) + '\n')
+                    # print("r{} shape is ".format(i+1) + str(np.shape(self.r[i+1])) + '\n')
+                    # print("U{} shape is ".format(i) + str(np.shape(self.U[i])) + '\n')
+                    # print("U{} shape is ".format(i+1) + str(np.shape(self.U[i+1])) + '\n')
 
-                        print((self.h(self.U[i],self.p.lam)[0] + self.g(np.squeeze(self.r[i]),self.p.alpha)[0]).shape)
+                    # optimization function E
+                    self.E = self.E + (1 / self.p.sigma[i] ** 2) \
+                    * (self.r[i] - self.f(self.U[i+1].dot(self.r[i+1]))[0]).T.dot(self.r[i] - self.f(self.U[i+1].dot(self.r[i+1]))[0])
+                    + self.h(self.U[i],self.p.lam[i-1])[0] + self.g(np.squeeze(self.r[i]),self.p.alpha[i-1])[0]
 
-                    # r[n] update (C1)
-                    self.r[n] = self.r[n] + (self.p.k_r / self.p.sigma[i-1] ** 2) \
-                    * self.U[n].T.dot(self.f(self.U[n].dot(self.r[n]))[1].dot(self.r[n-1] - self.f(self.U[n].dot(self.r[n]))[0])) \
-                    - (self.p.k_r / 2) * self.g(self.r[n],self.p.alpha)[1] \
-                    # classification term
-                    + (self.p.k_o / 2) * (label - softmax(self.r[n]))
+                    print("E{} update term (image{} epoch{})".format(i, image+1, epoch+1))
+                    print(((1 / self.p.sigma[i] ** 2) \
+                    * (self.r[i] - self.f(self.U[i+1].dot(self.r[i+1]))[0]).T.dot(self.r[i] - self.f(self.U[i+1].dot(self.r[i+1]))[0])
+                    + self.h(self.U[i],self.p.lam[i-1])[0] + self.g(np.squeeze(self.r[i]),self.p.alpha[i-1])[0])[:5,0])
+                    print('\n')
 
-                    print("After r[{}] update:".format(n))
-                    print("r{} shape is ".format(n) + str(np.shape(self.r[n])) + '\n')
-
-                    # # r(n) update (C2)
-                    # self.r[n] = self.r[n] + (self.p.k_r / self.p.sigma[i-1] ** 2) \
-                    # * self.U[n].T.dot(self.f(self.U[n].dot(self.r[n]))[1].dot(self.r[n-1] - self.f(self.U[n].dot(self.r[n]))[0])) \
-                    # - (self.p.k_r / 2) * self.g(self.r[n],self.p.alpha)[1] \
-                    # # classification term
-                    # + (self.p.k_o / 2) * (self.U_o.T.dot(label) - self.U_o.T.dot(softmax(self.U_o.dot(self.r[n]))))
-
-                    # U[n] update (C1, C2) (identical to U[i], except index numbers)
-                    self.U[n] = self.U[n] + (self.p.k_U / self.p.sigma[i-1] ** 2) \
-                    * (self.f(self.U[n].dot(self.r[n]))[1].dot(self.r[n-1] - self.f(self.U[n].dot(self.r[n]))[0])).dot(self.r[n].T) \
-                    - (self.p.k_U / 2) * self.h(self.U[n],self.p.lam)[1]
-
-                    print("After U[{}] update:".format(n))
-                    print("U{} shape is ".format(n) + str(np.shape(self.U[n])) + '\n')
-
-                    # # U_o update (C2)
-                    # self.U_o = self.U_o + (self.p.k_o / 2) * (label.dot(self.r[n].T) - (self.p.output_size / np.exp(self.U_o.dot(self.r[n])).sum())\
-                    # * self.o.dot(self.r[n].T)) - (self.p.k_o / 2) * self.h(self.U_o,self.p.lam)[1]
-
-                    # E update (C1)
-                    for L in range(0,self.p.output_size):
-                        C1 = -(np.log(softmax(self.r[n]))).dot(label[L])
-                        self.E = self.E + C1
-
-                        print('\n'+'label element {} size is: '.format(L) + str(label[L])+'\n')
-
-                    print("Error after image {} is:".format(image) + '\n')
+                    print("E{} without classifier term (image{} epoch{})".format(i, image+1, epoch+1))
                     print(self.E)
+                    print('\n')
 
-                    # # E update (C2)
-                    # for L in range(0,self.p.output_size):
-                    #     C2 = -(np.log(softmax(self.U_o.dot(self.r[n])))).dot(label[L]) + self.h(self.U_o,self.p.lam)[0]
-                    #     self.E = self.E + C2
+                # r[n] update (C1)
+                self.r[n] = self.r[n] + (self.p.k_r / self.p.sigma[n-1] ** 2) \
+                * self.U[n].T.dot(self.f(self.U[n].dot(self.r[n]))[1].dot(self.r[n-1] - self.f(self.U[n].dot(self.r[n]))[0])) \
+                - (self.p.k_r / 2) * self.g(self.r[n],self.p.alpha[n-1])[1] \
+                # classification term
+                + (self.p.k_o / 2) * (label - softmax(self.r[n]))
+
+                print("r{} update term (image{} epoch{})".format(n, image+1, epoch+1))
+                print(((self.p.k_r / self.p.sigma[n-1] ** 2) \
+                * self.U[n].T.dot(self.f(self.U[n].dot(self.r[n]))[1].dot(self.r[n-1] - self.f(self.U[n].dot(self.r[n]))[0])) \
+                - (self.p.k_r / 2) * self.g(self.r[n],self.p.alpha[n-1])[1])[:5,0])
+                print('\n')
+
+                # print("After r[{}] update:".format(n))
+                # print("r{} shape is ".format(n) + str(np.shape(self.r[n])) + '\n')
+
+                # # r(n) update (C2)
+                # self.r[n] = self.r[n] + (self.p.k_r / self.p.sigma[n-1] ** 2) \
+                # * self.U[n].T.dot(self.f(self.U[n].dot(self.r[n]))[1].dot(self.r[n-1] - self.f(self.U[n].dot(self.r[n]))[0])) \
+                # - (self.p.k_r / 2) * self.g(self.r[n],self.p.alpha[n-1])[1] \
+                # # classification term
+                # + (self.p.k_o / 2) * (self.U_o.T.dot(label) - self.U_o.T.dot(softmax(self.U_o.dot(self.r[n]))))
+
+                # U[n] update (C1, C2) (identical to U[i], except index numbers)
+                self.U[n] = self.U[n] + (self.p.k_U / self.p.sigma[n-1] ** 2) \
+                * (self.f(self.U[n].dot(self.r[n]))[1].dot(self.r[n-1] - self.f(self.U[n].dot(self.r[n]))[0])).dot(self.r[n].T) \
+                - (self.p.k_U / 2) * self.h(self.U[n],self.p.lam[n-1])[1]
+
+                print("U{} update term (image{} epoch{})".format(n, image+1, epoch+1))
+                print(((self.p.k_U / self.p.sigma[n-1] ** 2) \
+                * (self.f(self.U[n].dot(self.r[n]))[1].dot(self.r[n-1] - self.f(self.U[n].dot(self.r[n]))[0])).dot(self.r[n].T) \
+                - (self.p.k_U / 2) * self.h(self.U[n],self.p.lam[n-1])[1])[:5,0])
+                print('\n')
+
+                # print("After U[{}] update:".format(n))
+                # print("U{} shape is ".format(n) + str(np.shape(self.U[n])) + '\n')
+
+                # # U_o update (C2)
+                # self.U_o = self.U_o + (self.p.k_o / 2) * (label.dot(self.r[n].T) - (self.p.output_size / np.exp(self.U_o.dot(self.r[n])).sum())\
+                # * self.o.dot(self.r[n].T)) - (self.p.k_o / 2) * self.h(self.U_o,self.p.lam[n-1])[1]
+
+                # E update (C1)
+
+                # C1 = -label[:,None].dot(np.log(softmax(self.r[n].T)))[0,0]
+                # self.E = self.E + C1
+
+                # print("C1")
+                # print(C1)
+                # print('\n')
+
+                # print("E{} post-classifier term (image{} epoch{})".format(n, image+1, epoch+1))
+                # print(self.E)
+                # print('\n')
+
+                # # E update (C2)
+                # for L in range(0,self.p.output_size):
+                #     C2 = -(np.log(softmax(self.U_o.dot(self.r[n])))).dot(label[L]) + self.h(self.U_o,self.p.lam[n-1])[0]
+                #     self.E = self.E + C2
 
             # adjust learning rates for r, U, or o every epoch
             # self.p.k_r += 0.05
@@ -252,9 +287,17 @@ class PredictiveCodingClassifier:
             # store average cost per epoch
             self.E_avg_per_epoch.append(self.E / num_images)
 
-        print('\n' + "Average error per each (of {}) epochs:".format(self.p.num_epochs))
-        print(self.E_avg_per_epoch)
+
+        # print("self.r")
+        # print(self.r)
+        # print("self.U")
+        # print(self.U)
+
+        print("Average error per each (of {}) epochs:".format(self.p.num_epochs))
+        print(str(self.E_avg_per_epoch))
+        print('\n')
         print("Model trained.")
+        print('\n')
 
         return
 
@@ -263,6 +306,7 @@ class PredictiveCodingClassifier:
         '''
         Given one or more inputs, produce one or more outputs.
         '''
+
 
         # number of hidden layers
         n = self.n_hidden_layers
@@ -285,26 +329,26 @@ class PredictiveCodingClassifier:
             for layer in range(1,self.n_non_input_layers):
                 self.r[layer] = np.random.randn(self.p.hidden_sizes[layer-1],1)
 
-                # loop through intermediate layers
-                # r updates written symmetrically for all layers including output
-                for i in range(1,n):
-                    # r[i] update
-                    self.r[i] = self.r[i] + (self.p.k_r / self.p.sigma[i-1] ** 2) \
-                    * self.U[i].T.dot(self.f(self.U[i].dot(self.r[i]))[1].dot(self.r[i-1] - self.f(self.U[i].dot(self.r[i]))[0])) \
-                    + (self.p.k_r / self.p.sigma[i-1] ** 2) * (self.f(self.U[i+1].dot(self.r[i+1]))[0] - self.r[i]) \
-                    - (self.p.k_r / 2) * self.g(self.r[i],self.p.alpha)[1]
+            # loop through intermediate layers
+            # r updates written symmetrically for all layers including output
+            for i in range(1,n):
+                # r[i] update
+                self.r[i] = self.r[i] + (self.p.k_r / self.p.sigma[i-1] ** 2) \
+                * self.U[i].T.dot(self.f(self.U[i].dot(self.r[i]))[1].dot(self.r[i-1] - self.f(self.U[i].dot(self.r[i]))[0])) \
+                + (self.p.k_r / self.p.sigma[i] ** 2) * (self.f(self.U[i+1].dot(self.r[i+1]))[0] - self.r[i]) \
+                - (self.p.k_r / 2) * self.g(self.r[i],self.p.alpha[i-1])[1]
 
-                    # optimization function E
-                    self.E = self.E + (1 / self.p.sigma[i-1] ** 2) \
-                    * (self.r[i] - self.f(self.U[i+1].dot(self.r[i+1]))[0]).T.dot(self.r[i] - self.f(self.U[i+1].dot(self.r[i+1]))[0])
-                    + self.h(self.U[i],self.p.lam)[0] + self.g(np.squeeze(self.r[i]),self.p.alpha)[0]
+                # optimization function E
+                self.E = self.E + (1 / self.p.sigma[i] ** 2) \
+                * (self.r[i] - self.f(self.U[i+1].dot(self.r[i+1]))[0]).T.dot(self.r[i] - self.f(self.U[i+1].dot(self.r[i+1]))[0])
+                + self.h(self.U[i],self.p.lam[i-1])[0] + self.g(np.squeeze(self.r[i]),self.p.alpha[i-1])[0]
 
-                # r(n) update (C1, C2)
-                self.r[n] = self.r[n] + (self.p.k_r / self.p.sigma[i-1] ** 2) \
-                * self.U[n].T.dot(self.f(self.U[n].dot(self.r[n]))[1].dot(self.r[n-1] - self.f(self.U[n].dot(self.r[n]))[0])) \
-                - (self.p.k_r / 2) * self.g(self.r[n],self.p.alpha)[1]
+            # r(n) update (C1, C2)
+            self.r[n] = self.r[n] + (self.p.k_r / self.p.sigma[n-1] ** 2) \
+            * self.U[n].T.dot(self.f(self.U[n].dot(self.r[n]))[1].dot(self.r[n-1] - self.f(self.U[n].dot(self.r[n]))[0])) \
+            - (self.p.k_r / 2) * self.g(self.r[n],self.p.alpha[n-1])[1]
 
-                output_r[image] = self.r[n]
+            output_r[image] = self.r[n]
 
             self.E_avg_per_image.append(self.E / n)
 

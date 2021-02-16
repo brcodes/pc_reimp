@@ -19,11 +19,13 @@ class ModelParameters(object):
     input_size = attr.ib(default=784,validator=attr.validators.instance_of(int))
     output_size = attr.ib(default=10,validator=attr.validators.instance_of(int))
     hidden_sizes = attr.ib(default=[32,32],validator=attr.validators.instance_of(list))
-    # hidden layer variance
-    sigma = attr.ib(default=[1.0,1.0],validator=attr.validators.instance_of(list))
-    # priors on parameters
-    alpha = attr.ib(default=1.0,validator=attr.validators.instance_of(float)) #" related to variance of Gaussian priors "
-    lam = attr.ib(default=0.02,validator=attr.validators.instance_of(float)) #" related to variance of Gaussian priors "
+    # hidden layer variance - NOTE: must have >= number of elements as hidden_sizes
+    # r&b have layer 1 and 2 values, the rest are from mli pc model
+    sigma = attr.ib(default=[1.0,10.0,10.0,2.0],validator=attr.validators.instance_of(list))
+    # priors on parameters (layer 1 and 2 have r&b values, the rest are from mli pc model)
+    alpha = attr.ib(default=[1.0,0.05,0.05,0.05],validator=attr.validators.instance_of(list)) #" related to variance of Gaussian priors "
+    # layer 1 has r&b value, the rest are from mli pc model
+    lam = attr.ib(default=[0.02,0.00001,0.00001,0.00001],validator=attr.validators.instance_of(list)) #" related to variance of Gaussian priors "
     r_prior = attr.ib(default="gaussian",validator=attr.validators.in_(['gaussian','kurtotic']))
     U_prior = attr.ib(default="gaussian",validator=attr.validators.in_(['gaussian','kurtotic']))
     # unit activation function (linear, tanh, relu, etc.)
@@ -31,8 +33,8 @@ class ModelParameters(object):
     # classification cost type
     classification = attr.ib(default="C1",validator=attr.validators.in_(['C1','C2']))
     # learning schedules - these should become strings for a learning schedule dispatcher
-    k_r = attr.ib(default=0.5,validator=attr.validators.instance_of(float))
-    k_U = attr.ib(default=0.5,validator=attr.validators.instance_of(float))
+    k_r = attr.ib(default=0.0005,validator=attr.validators.instance_of(float))
+    k_U = attr.ib(default=0.005,validator=attr.validators.instance_of(float))
     k_o = attr.ib(default=0.5,validator=attr.validators.instance_of(float))
     # training time
     batch_size = attr.ib(default=1,validator=attr.validators.instance_of(int))
