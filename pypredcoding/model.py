@@ -13,12 +13,14 @@ def linear_trans(U_dot_r):
     F = np.eye(len(f))
     return (f, F)
 
+
 def tanh_trans(U_dot_r):
     """ Though intended to operate on some U.dot(r), will take any numerical
     argument x and return the tuple (f(x), F(x)). Tanh transformation. """
     f = np.tanh(U_dot_r)
     F = np.diag(1 - np.square(np.tanh(U_dot_r)))
     return (f, F)
+
 
 # r, U prior functions
 def gauss_prior(r_or_U, alph_or_lam):
@@ -28,12 +30,14 @@ def gauss_prior(r_or_U, alph_or_lam):
     gprime_or_hprime = 2 * alph_or_lam * r_or_U
     return (g_or_h, gprime_or_hprime)
 
+
 def kurt_prior(r_or_U, alph_or_lam):
     """ Takes an argument pair of either r & alpha, or U & lambda, and returns
     a tuple of (g(r), g'(r)), or (h(U), h'(U)), respectively. Sparse kurtotic prior. """
     g_or_h = alph_or_lam * np.log(1 + np.square(r_or_U))
     gprime_or_hprime = 2 * alph_or_lam * r_or_U / (1 + np.square(r_or_U))
     return (g_or_h, gprime_or_hprime)
+
 
 # softmax function
 def softmax(r):
@@ -55,12 +59,10 @@ class PredictiveCodingClassifier:
         # synaptic weights controlling reconstruction in the network
         self.U = {}
 
-        # cost/loss function output
-        self.E = 0
-        # average cost per epoch during training
+        # average cost per epoch during training; just representation terms
         self.E_avg_per_epoch = []
-        # average cost per image during testing (useful?)
-        self.E_avg_per_image = []
+        # average cost per epoch during training; just classification term
+        self.C_avg_per_epoch = []
 
         # priors and transforms
         self.f = self.unit_act[self.p.unit_act]
@@ -111,6 +113,7 @@ class PredictiveCodingClassifier:
 
         return
 
+
     def train(self,X,Y):
         '''
         X: matrix of input patterns (N_patterns x input_size)
@@ -134,8 +137,10 @@ class PredictiveCodingClassifier:
             # number of training images
             num_images = X_shuffled.shape[0]
 
-            # initialize cost function output
-            self.E = 0
+            # we compute average cost per epoch (batch size = 1); separate classification
+            #   and representation costs so we can compare OOM sizes
+            E = 0
+            C = 0
 
             # print("*** train() function values and layers ***")
             # print("Number of training images is {}".format(num_images) + '\n')
@@ -212,7 +217,7 @@ class PredictiveCodingClassifier:
 
                     print("E{} update term (image{} epoch{})".format(i, image+1, epoch+1))
                     print(((1 / self.p.sigma[i] ** 2) \
-                    * (self.r[i] - self.f(self.U[i+1].dot(self.r[i+1]))[0]).T.dot(self.r[i] - self.f(self.U[i+1].dot(self.r[i+1]))[0])
+                    * ((self.r[i] - self.f(self.U[i+1].dot(self.r[i+1]))[0]).T.dot(self.r[i] - self.f(self.U[i+1].dot(self.r[i+1]))[0]))[0,0]
                     + self.h(self.U[i],self.p.lam[i-1])[0] + self.g(np.squeeze(self.r[i]),self.p.alpha[i-1])[0])[:5,0])
                     print('\n')
 
@@ -285,7 +290,8 @@ class PredictiveCodingClassifier:
             # self.p.k_o += 0.05
 
             # store average cost per epoch
-            self.E_avg_per_epoch.append(self.E / num_images)
+            self.E_avg_per_epoch.append(E/num_images)
+            self.C_avg_per_epoch.append(C/num_images)
 
 
         # print("self.r")
