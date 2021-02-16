@@ -13,12 +13,14 @@ def linear_trans(U_dot_r):
     F = np.eye(len(f))
     return (f, F)
 
+
 def tanh_trans(U_dot_r):
     """ Though intended to operate on some U.dot(r), will take any numerical
     argument x and return the tuple (f(x), F(x)). Tanh transformation. """
     f = np.tanh(U_dot_r)
     F = np.diag(1 - np.square(np.tanh(U_dot_r)))
     return (f, F)
+
 
 # r, U prior functions
 def gauss_prior(r_or_U, alph_or_lam):
@@ -28,12 +30,14 @@ def gauss_prior(r_or_U, alph_or_lam):
     gprime_or_hprime = 2 * alph_or_lam * r_or_U
     return (g_or_h, gprime_or_hprime)
 
+
 def kurt_prior(r_or_U, alph_or_lam):
     """ Takes an argument pair of either r & alpha, or U & lambda, and returns
     a tuple of (g(r), g'(r)), or (h(U), h'(U)), respectively. Sparse kurtotic prior. """
     g_or_h = alph_or_lam * np.log(1 + np.square(r_or_U))
     gprime_or_hprime = 2 * alph_or_lam * r_or_U / (1 + np.square(r_or_U))
     return (g_or_h, gprime_or_hprime)
+
 
 # softmax function
 def softmax(r):
@@ -193,8 +197,8 @@ class PredictiveCodingClassifier:
 
                         # optimization function E
                         E = E + ((1 / self.p.sigma[i-1] ** 2) \
-                        * (self.r[i] - self.f(self.U[i+1].dot(self.r[i+1]))[0]).T.dot(self.r[i] - self.f(self.U[i+1].dot(self.r[i+1]))[0])
-                        + self.h(self.U[i],self.p.lam)[0] + self.g(np.squeeze(self.r[i]),self.p.alpha)[0])[0,0]
+                        * ((self.r[i] - self.f(self.U[i+1].dot(self.r[i+1]))[0]).T.dot(self.r[i] - self.f(self.U[i+1].dot(self.r[i+1]))[0]))[0,0]
+                        + self.h(self.U[i],self.p.lam)[0] + self.g(np.squeeze(self.r[i]),self.p.alpha)[0]
 
                         print("E update value:" + str(self.E))
                         print("E update, sum of prior terms h(U) + g(r) shape:")
