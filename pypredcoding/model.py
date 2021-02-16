@@ -55,12 +55,10 @@ class PredictiveCodingClassifier:
         # synaptic weights controlling reconstruction in the network
         self.U = {}
 
-        # cost/loss function output
-        self.E = 0
-        # average cost per epoch during training
+        # average cost per epoch during training; just representation terms
         self.E_avg_per_epoch = []
-        # average cost per image during testing (useful?)
-        self.E_avg_per_image = []
+        # average cost per epoch during training; just classification term
+        self.C_avg_per_epoch = []
 
         # priors and transforms
         self.f = self.unit_act[self.p.unit_act]
@@ -111,6 +109,7 @@ class PredictiveCodingClassifier:
 
         return
 
+
     def train(self,X,Y):
         '''
         X: matrix of input patterns (N_patterns x input_size)
@@ -133,8 +132,10 @@ class PredictiveCodingClassifier:
             # number of training images
             num_images = X_shuffled.shape[0]
 
-            # initialize cost function output
-            self.E = 0
+            # we compute average cost per epoch (batch size = 1); separate classification
+            #   and representation costs so we can compare OOM sizes
+            E = 0
+            C = 0
 
             print("*** train() function values and layers ***")
             print("Number of training images is {}".format(num_images) + '\n')
@@ -191,9 +192,9 @@ class PredictiveCodingClassifier:
                         print("U{} shape is ".format(i+1) + str(np.shape(self.U[i+1])) + '\n')
 
                         # optimization function E
-                        self.E = self.E + (1 / self.p.sigma[i-1] ** 2) \
+                        E = E + ((1 / self.p.sigma[i-1] ** 2) \
                         * (self.r[i] - self.f(self.U[i+1].dot(self.r[i+1]))[0]).T.dot(self.r[i] - self.f(self.U[i+1].dot(self.r[i+1]))[0])
-                        + self.h(self.U[i],self.p.lam)[0] + self.g(np.squeeze(self.r[i]),self.p.alpha)[0]
+                        + self.h(self.U[i],self.p.lam)[0] + self.g(np.squeeze(self.r[i]),self.p.alpha)[0])[0,0]
 
                         print("E update value:" + str(self.E))
                         print("E update, sum of prior terms h(U) + g(r) shape:")
@@ -229,15 +230,17 @@ class PredictiveCodingClassifier:
                     # self.U_o = self.U_o + (self.p.k_o / 2) * (label.dot(self.r[n].T) - (self.p.output_size / np.exp(self.U_o.dot(self.r[n])).sum())\
                     # * self.o.dot(self.r[n].T)) - (self.p.k_o / 2) * self.h(self.U_o,self.p.lam)[1]
 
-                    # E update (C1)
-                    for L in range(0,self.p.output_size):
-                        C1 = -(np.log(softmax(self.r[n]))).dot(label[L])
-                        self.E = self.E + C1
+                    C = C - label.T.dot((np.log(softmax(self.r[n]))))[0,0]
 
-                        print('\n'+'label element {} size is: '.format(L) + str(label[L])+'\n')
+                    # E update (C1)
+                    #for L in range(0,self.p.output_size):
+                    #    C1 = -(np.log(softmax(self.r[n]))).dot(label[L])
+                    #    self.E = self.E + C1
+
+                    #    print('\n'+'label element {} size is: '.format(L) + str(label[L])+'\n')
 
                     print("Error after image {} is:".format(image) + '\n')
-                    print(self.E)
+                    print(E,C)
 
                     # # E update (C2)
                     # for L in range(0,self.p.output_size):
@@ -250,10 +253,11 @@ class PredictiveCodingClassifier:
             # self.p.k_o += 0.05
 
             # store average cost per epoch
-            self.E_avg_per_epoch.append(self.E / num_images)
+            self.E_avg_per_epoch.append(E/num_images)
+            self.C_avg_per_epoch.append(C/num_images)
 
         print('\n' + "Average error per each (of {}) epochs:".format(self.p.num_epochs))
-        print(self.E_avg_per_epoch)
+        print(self.E_avg_per_epoch,self.C_avg_per_epoch)
         print("Model trained.")
 
         return
