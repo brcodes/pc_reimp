@@ -158,6 +158,39 @@ class PredictiveCodingClassifier:
         return
 
 
+    def rep_cost(self):
+        '''
+        Uses current r/U states to compute the least squares portion of the error
+        (concerned with accurate reconstruction of the input).
+        '''
+        E = 0
+        # LSQ cost
+        for i in range(0,len(self.r)):
+            v = (self.r[i] - self.f(self.U[i+1].dot(self.r[i+1])))[0]
+            E += ((1/self.sigma[i+1])*v.T.dot(v))[0,0]
+        # priors on r[1],...,r[n]; U[1],...,U[n]
+        for i in range(1,len(self.r)+1):
+            E += (self.h(self.U[i],self.p.lam[i-1])[0] + self.g(np.squeeze(self.r[i]),self.p.alpha[i-1])[0])
+        return E
+
+
+    def class_cost_1(self,label):
+        """ Calculates the classification portion of the cost function output of a training
+        image using classification method C1. """
+        n = self.n_non_input_layers
+        C1 = -1*label[:,None].T.dot(np.log(softmax(self.r[n])))[0,0]
+        return C1
+
+
+    def class_cost_2(self,label):
+        """ Calculates the classification portion of the cost function output of a training
+        image using classification method C2, uninclusive of the prior term. """
+        n = self.n_non_input_layers
+        C2 = -1*label[:,None].T.dot(np.log(softmax(U_o.dot(self.r[n]))))[0,0]
+        return C2
+
+
+    '''
     def rep_cost(self, r_i, r_i_1, U_i_1, sig):
         """ Calculates the "f(Ur)" portion of the cost function output of a layer i
         uninclusive of priors h(Ui) or g(ri). This function has been defined in the body of
@@ -169,7 +202,7 @@ class PredictiveCodingClassifier:
         * ((r_i - self.f(U_i_1.dot(r_i_1))[0]).T.dot(r_i - self.f(U_i_1.dot(r_i_1))[0])[0,0])
 
         return E_update
-
+    '''
 
     def train(self,X,Y):
         '''
@@ -232,6 +265,8 @@ class PredictiveCodingClassifier:
 
                     # print("r{} reinitialized shape is ".format(layer) + str(np.shape(self.r[layer])) + '\n')
 
+                # XXX remove
+                '''
                 # calculate cost between Image and 1st layer, add it to total cost
                 E = E + self.rep_cost(self.r[0],self.r[1],self.U[1],self.p.sigma[1])
 
@@ -240,6 +275,7 @@ class PredictiveCodingClassifier:
                 print('\n')
                 print(E)
                 print('\n')
+                '''
 
                 # initialize "output" layer o (for classification method 2 (C2))
                 self.o = np.random.randn(self.p.output_size,1)
@@ -315,6 +351,8 @@ class PredictiveCodingClassifier:
                 # self.U_o = self.U_o + (self.p.k_o / 2) * (label.dot(self.r[n].T) - (self.p.output_size / np.exp(self.U_o.dot(self.r[n])).sum())\
                 # * self.o.dot(self.r[n].T)) - (self.p.k_o / 2) * self.h(self.U_o,self.p.lam[n-1])[1]
 
+                # XXX remove
+                '''
                 # optimization function E
                 for i in range(1,n):
                     E = E + self.rep_cost(self.r[i],self.r[i+1],self.U[i+1],self.p.sigma[i]) \
@@ -328,6 +366,10 @@ class PredictiveCodingClassifier:
                     print("E total, after layer {} update (image{} epoch{})".format(i, image+1, epoch+1))
                     print(E)
                     print('\n')
+                '''
+                E = self.rep_cost()
+                # when classifying
+                E = E + self.class_cost_c1(label)
 
                 # E classification update (C1)
                 # C = C - class_c1(self.r[n], label)
