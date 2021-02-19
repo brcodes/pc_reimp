@@ -20,7 +20,7 @@ class ModelParameters(object):
     output_size = attr.ib(default=10,validator=attr.validators.instance_of(int))
     hidden_sizes = attr.ib(default=[32,32],validator=attr.validators.instance_of(list))
     # hidden layer variance - NOTE: must have >= number of elements as hidden_sizes
-    # r&b have layer 1 and 2 values, the rest are from mli pc model
+    # r&b have layer 1 and 2 values as 1.0, 10.0 respectively; the rest are from mli pc model
     sigma = attr.ib(default=[1.0,10.0,10.0,2.0],validator=attr.validators.instance_of(list))
     # priors on parameters (layer 1 and 2 have r&b values, the rest are from mli pc model)
     alpha = attr.ib(default=[1.0,0.05,0.05,0.05],validator=attr.validators.instance_of(list)) #" related to variance of Gaussian priors "
@@ -39,4 +39,4 @@ class ModelParameters(object):
     # training time
     batch_size = attr.ib(default=1,validator=attr.validators.instance_of(int))
     ''' change num_epochs back to something reasonable after model can generate normal output '''
-    num_epochs = attr.ib(default=1,validator=attr.validators.instance_of(int))
+    num_epochs = attr.ib(default=10,validator=attr.validators.instance_of(int))
