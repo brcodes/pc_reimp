@@ -3,7 +3,7 @@
 import numpy as np
 import parameters as parameters
 import data as data
-import unittest
+from matplotlib import pyplot as plt
 
 # activation functions
 def linear_trans(U_dot_r):
@@ -37,20 +37,6 @@ def kurt_prior(r_or_U, alph_or_lam):
     g_or_h = alph_or_lam * np.log(1 + np.square(r_or_U)).sum()
     gprime_or_hprime = 2 * alph_or_lam * r_or_U / (1 + np.square(r_or_U))
     return (g_or_h, gprime_or_hprime)
-
-
-def class_c1(r_n, label):
-    """ Calculates the classification portion of the cost function output of a training
-    image using classification method C1. """
-    C1 = label[:,None].dot((np.log(softmax(r_n.T))))[0,0]
-    return C1
-
-
-def class_c2(r_n, U_o, label):
-    """ Calculates the classification portion of the cost function output of a training
-    image using classification method C2, uninclusive of the prior term. """
-    C2 = (np.log(softmax(U_o.dot(r_n))).dot(label))[0,0]
-    return C2
 
 
 # softmax function
@@ -135,6 +121,9 @@ class PredictiveCodingClassifier:
             print("U[{}] shape is ".format(i) + str(np.shape(self.U[i])))
             print('\n')
 
+        print("len(self.r): " + str(len(self.r)))
+        print('\n')
+
         # initialize "output" layer
         self.o = np.random.randn(self.p.output_size,1)
         # and final set of weights to the output
@@ -165,44 +154,30 @@ class PredictiveCodingClassifier:
         '''
         E = 0
         # LSQ cost
-        for i in range(0,len(self.r)):
-            v = (self.r[i] - self.f(self.U[i+1].dot(self.r[i+1])))[0]
-            E += ((1/self.sigma[i+1])*v.T.dot(v))[0,0]
+        for i in range(0,len(self.r)-1):
+            v = (self.r[i] - self.f(self.U[i+1].dot(self.r[i+1]))[0])
+            E = E + ((1 / self.p.sigma_sq[i+1]) * v.T.dot(v))[0,0]
         # priors on r[1],...,r[n]; U[1],...,U[n]
-        for i in range(1,len(self.r)+1):
-            E += (self.h(self.U[i],self.p.lam[i-1])[0] + self.g(np.squeeze(self.r[i]),self.p.alpha[i-1])[0])
+        for i in range(1,len(self.r)):
+            E = E + (self.h(self.U[i],self.p.lam[i])[0] + self.g(np.squeeze(self.r[i]),self.p.alpha[i])[0])
         return E
 
 
     def class_cost_1(self,label):
         """ Calculates the classification portion of the cost function output of a training
         image using classification method C1. """
-        n = self.n_non_input_layers
-        C1 = -1*label[:,None].T.dot(np.log(softmax(self.r[n])))[0,0]
+        n = self.n_hidden_layers
+        C1 = -1*label[:,None].dot(np.log(softmax(self.r[n].T)))[0,0]
         return C1
 
 
     def class_cost_2(self,label):
         """ Calculates the classification portion of the cost function output of a training
         image using classification method C2, uninclusive of the prior term. """
-        n = self.n_non_input_layers
-        C2 = -1*label[:,None].T.dot(np.log(softmax(U_o.dot(self.r[n]))))[0,0]
+        n = self.n_hidden_layers
+        C2 = -1*label[:,None].dot(np.log(softmax((self.U_o.dot(self.r[n])).T)))[0,0]
         return C2
 
-
-    '''
-    def rep_cost(self, r_i, r_i_1, U_i_1, sig):
-        """ Calculates the "f(Ur)" portion of the cost function output of a layer i
-        uninclusive of priors h(Ui) or g(ri). This function has been defined in the body of
-        the class PredictiveCodingClassifier to take advantage of the activation
-        function self.f set by user argument during PCC instantiation. When calling for layers
-        r[0], r[i], and r[n], self.p.sigma[1], [i], and [n] should be used, respectively. """
-
-        E_update = (1 / sig ** 2) \
-        * ((r_i - self.f(U_i_1.dot(r_i_1))[0]).T.dot(r_i - self.f(U_i_1.dot(r_i_1))[0])[0,0])
-
-        return E_update
-    '''
 
     def train(self,X,Y):
         '''
@@ -265,18 +240,6 @@ class PredictiveCodingClassifier:
 
                     # print("r{} reinitialized shape is ".format(layer) + str(np.shape(self.r[layer])) + '\n')
 
-                # XXX remove
-                '''
-                # calculate cost between Image and 1st layer, add it to total cost
-                E = E + self.rep_cost(self.r[0],self.r[1],self.U[1],self.p.sigma[1])
-
-                print("E update, layer 0 (image{} epoch{})".format(image+1, epoch+1))
-                print(self.rep_cost(self.r[0],self.r[1],self.U[1],self.p.sigma[1]))
-                print('\n')
-                print(E)
-                print('\n')
-                '''
-
                 # initialize "output" layer o (for classification method 2 (C2))
                 self.o = np.random.randn(self.p.output_size,1)
                 # and final set of weights U_o to the output (C2)
@@ -290,58 +253,49 @@ class PredictiveCodingClassifier:
                 # r,U updates written symmetrically for all layers including output
                 for i in range(1,n):
                     # r[i] update
-                    self.r[i] = self.r[i] + (self.p.k_r / self.p.sigma[i-1] ** 2) \
+                    self.r[i] = self.r[i] + (self.p.k_r / self.p.sigma_sq[i]) \
                     * self.U[i].T.dot(self.f(self.U[i].dot(self.r[i]))[1].dot(self.r[i-1] - self.f(self.U[i].dot(self.r[i]))[0])) \
-                    + (self.p.k_r / self.p.sigma[i] ** 2) * (self.f(self.U[i+1].dot(self.r[i+1]))[0] - self.r[i]) \
-                    - (self.p.k_r / 2) * self.g(self.r[i],self.p.alpha[i-1])[1]
+                    + (self.p.k_r / self.p.sigma_sq[i+1]) * (self.f(self.U[i+1].dot(self.r[i+1]))[0] - self.r[i]) \
+                    - (self.p.k_r / 2) * self.g(self.r[i],self.p.alpha[i])[1]
 
                     # print("r{} update term (image{} epoch{})".format(i, image+1, epoch+1))
-                    # print((((self.p.k_r / self.p.sigma[i-1] ** 2) \
-                    # * self.U[i].T.dot(self.f(self.U[i].dot(self.r[i]))[1].dot(self.r[i-1] - self.f(self.U[i].dot(self.r[i]))[0]))) \
-                    # + (self.p.k_r / self.p.sigma[i] ** 2) * (self.f(self.U[i+1].dot(self.r[i+1]))[0] - self.r[i]) \
-                    # - (self.p.k_r / 2) * self.g(self.r[i],self.p.alpha[i-1])[1]))
+
                     # print('\n')
 
                     # U[i] update
-                    self.U[i] = self.U[i] + (self.p.k_U / self.p.sigma[i-1] ** 2) \
+                    self.U[i] = self.U[i] + (self.p.k_U / self.p.sigma_sq[i]) \
                     * (self.f(self.U[i].dot(self.r[i]))[1].dot(self.r[i-1] - self.f(self.U[i].dot(self.r[i]))[0])).dot(self.r[i].T) \
-                    - (self.p.k_U / 2) * self.h(self.U[i],self.p.lam[i-1])[1]
+                    - (self.p.k_U / 2) * self.h(self.U[i],self.p.lam[i])[1]
 
                     # print("U{} update term (image{} epoch{})".format(i, image+1, epoch+1))
-                    # print(((self.p.k_U / self.p.sigma[i-1] ** 2) \
-                    # * (self.f(self.U[i].dot(self.r[i]))[1].dot(self.r[i-1] - self.f(self.U[i].dot(self.r[i]))[0])).dot(self.r[i].T) \
-                    # - (self.p.k_U / 2) * self.h(self.U[i],self.p.lam[i-1])[1]))
+
                     # print('\n')
 
                 # r[n] update (C1)
-                self.r[n] = self.r[n] + (self.p.k_r / self.p.sigma[n-1] ** 2) \
+                self.r[n] = self.r[n] + (self.p.k_r / self.p.sigma_sq[n]) \
                 * self.U[n].T.dot(self.f(self.U[n].dot(self.r[n]))[1].dot(self.r[n-1] - self.f(self.U[n].dot(self.r[n]))[0])) \
-                - (self.p.k_r / 2) * self.g(self.r[n],self.p.alpha[n-1])[1] \
+                - (self.p.k_r / 2) * self.g(self.r[n],self.p.alpha[n])[1] \
                 # classification term
                 # + (self.p.k_o / 2) * (label - softmax(self.r[n]))
 
                 # print("r{} update term (image{} epoch{})".format(n, image+1, epoch+1))
-                # print((self.p.k_r / self.p.sigma[n-1] ** 2) \
-                # * self.U[n].T.dot(self.f(self.U[n].dot(self.r[n]))[1].dot(self.r[n-1] - self.f(self.U[n].dot(self.r[n]))[0])) \
-                # - (self.p.k_r / 2) * self.g(self.r[n],self.p.alpha[n-1])[1])
+
                 # print('\n')
 
                 # # r(n) update (C2)
-                # self.r[n] = self.r[n] + (self.p.k_r / self.p.sigma[n-1] ** 2) \
+                # self.r[n] = self.r[n] + (self.p.k_r / self.p.sigma_sq[n]) \
                 # * self.U[n].T.dot(self.f(self.U[n].dot(self.r[n]))[1].dot(self.r[n-1] - self.f(self.U[n].dot(self.r[n]))[0])) \
-                # - (self.p.k_r / 2) * self.g(self.r[n],self.p.alpha[n-1])[1] \
+                # - (self.p.k_r / 2) * self.g(self.r[n],self.p.alpha[n])[1] \
                 # # classification term
                 # + (self.p.k_o / 2) * (self.U_o.T.dot(label) - self.U_o.T.dot(softmax(self.U_o.dot(self.r[n]))))
 
                 # U[n] update (C1, C2) (identical to U[i], except index numbers)
-                self.U[n] = self.U[n] + (self.p.k_U / self.p.sigma[n-1] ** 2) \
+                self.U[n] = self.U[n] + (self.p.k_U / self.p.sigma_sq[n]) \
                 * (self.f(self.U[n].dot(self.r[n]))[1].dot(self.r[n-1] - self.f(self.U[n].dot(self.r[n]))[0])).dot(self.r[n].T) \
-                - (self.p.k_U / 2) * self.h(self.U[n],self.p.lam[n-1])[1]
+                - (self.p.k_U / 2) * self.h(self.U[n],self.p.lam[n])[1]
 
                 # print("U{} update term (image{} epoch{})".format(n, image+1, epoch+1))
-                # print((self.p.k_U / self.p.sigma[n-1] ** 2) \
-                # * (self.f(self.U[n].dot(self.r[n]))[1].dot(self.r[n-1] - self.f(self.U[n].dot(self.r[n]))[0])).dot(self.r[n].T) \
-                # - (self.p.k_U / 2) * self.h(self.U[n],self.p.lam[n-1])[1])
+
                 # print('\n')
 
                 # print("After U[{}] update:".format(n))
@@ -349,43 +303,35 @@ class PredictiveCodingClassifier:
 
                 # # U_o update (C2)
                 # self.U_o = self.U_o + (self.p.k_o / 2) * (label.dot(self.r[n].T) - (self.p.output_size / np.exp(self.U_o.dot(self.r[n])).sum())\
-                # * self.o.dot(self.r[n].T)) - (self.p.k_o / 2) * self.h(self.U_o,self.p.lam[n-1])[1]
+                # * self.o.dot(self.r[n].T)) - (self.p.k_o / 2) * self.h(self.U_o,self.p.lam[n])[1]
 
-                # XXX remove
-                '''
-                # optimization function E
-                for i in range(1,n):
-                    E = E + self.rep_cost(self.r[i],self.r[i+1],self.U[i+1],self.p.sigma[i]) \
-                    + (self.h(self.U[i],self.p.lam[i-1])[0] + self.g(np.squeeze(self.r[i]),self.p.alpha[i-1])[0])
+                # calculate optimization function E
 
-                    print("E update, layer {} (image{} epoch{})".format(i, image+1, epoch+1))
-                    print(self.rep_cost(self.r[i],self.r[i+1],self.U[i+1],self.p.sigma[i]) \
-                    + (self.h(self.U[i],self.p.lam[i-1])[0] + self.g(np.squeeze(self.r[i]),self.p.alpha[i-1])[0]))
-                    print('\n')
-
-                    print("E total, after layer {} update (image{} epoch{})".format(i, image+1, epoch+1))
-                    print(E)
-                    print('\n')
-                '''
                 E = self.rep_cost()
-                # when classifying
-                E = E + self.class_cost_c1(label)
+                # print("E update (image{} epoch{})".format( image+1, epoch+1))
+                # print(E)
+                # print('\n')
 
-                # E classification update (C1)
-                # C = C - class_c1(self.r[n], label)
-                # E = E + C
+                # # when classifying using C1
+                # C1 = self.class_cost_1(label)
+                # E = E + C1
+                #
+                # print("C1 update")
+                # print(C1)
+                # print('\n')
 
-                print("C update")
-                print(C)
-                print('\n')
+                # # when classifying using C2
+                # C2 = self.class_cost_2(label)
+                # E = E + C2
+                #
+                # print("C2 update")
+                # print(C2 )
+                # print('\n')
+                #
+                # print("E total, after classifier C (image{} epoch{})".format( image+1, epoch+1))
+                # print(E)
+                # print('\n')
 
-                print("E total, after classifier update C (image{} epoch{})".format( image+1, epoch+1))
-                print(E)
-                print('\n')
-
-                # # E update (C2)
-                # C = - class_c2(self.r[n], self.U_o, label) + (self.h(self.U_o,self.p.lam[n-1])[0])[0,0]
-                # E = E + C
 
             # adjust learning rates for r, U, or o every epoch
             # self.p.k_r += 0.05
@@ -393,8 +339,31 @@ class PredictiveCodingClassifier:
             # self.p.k_o += 0.05
 
             # store average cost per epoch
-            self.E_avg_per_epoch.append(E/num_images)
-            self.C_avg_per_epoch.append(C/num_images)
+
+            E_avg_per_epoch = E/num_images
+            C_avg_per_epoch = C/num_images
+
+            self.E_avg_per_epoch.append(E_avg_per_epoch)
+            self.C_avg_per_epoch.append(C_avg_per_epoch)
+
+            round_first = round(self.E_avg_per_epoch[0],1)
+            round_last = round(self.E_avg_per_epoch[-1],1)
+
+            print(round_first)
+            print(round_last)
+
+            # plot results
+            plt.plot(epoch+1, E_avg_per_epoch, '.k')
+            plt.title("HL = {}".format(self.n_hidden_layers) + '\n' + "k_r = {}".format(self.p.k_r) \
+            + '\n' + "k_U = {}".format(self.p.k_U))
+            if epoch == self.p.num_epochs-1:
+                plt.text(0.4*self.p.num_epochs,0.8*round_first, "E avg initial = {}".format(round_first) + '\n' \
+                + "E avg final = {}".format(round_last) + '\n' \
+                + "E avg descent magnitude = {}".format(round((round_first - round_last),1)) \
+                + '\n' + "Descent fold decrease = {}".format(round((round_first / round_last),1)))
+                plt.xlabel("epoch ({})".format(self.p.num_epochs))
+                plt.ylabel("E avg")
+
 
 
         print("Average representation error per each epoch ({} total), in format [E_epoch1, E_epoch2...]".format(self.p.num_epochs))
@@ -442,20 +411,20 @@ class PredictiveCodingClassifier:
             # r updates written symmetrically for all layers including output
             for i in range(1,n):
                 # r[i] update
-                self.r[i] = self.r[i] + (self.p.k_r / self.p.sigma[i-1] ** 2) \
+                self.r[i] = self.r[i] + (self.p.k_r / self.p.sigma_sq[i]) \
                 * self.U[i].T.dot(self.f(self.U[i].dot(self.r[i]))[1].dot(self.r[i-1] - self.f(self.U[i].dot(self.r[i]))[0])) \
-                + (self.p.k_r / self.p.sigma[i] ** 2) * (self.f(self.U[i+1].dot(self.r[i+1]))[0] - self.r[i]) \
-                - (self.p.k_r / 2) * self.g(self.r[i],self.p.alpha[i-1])[1]
+                + (self.p.k_r / self.p.sigma_sq[i+1]) * (self.f(self.U[i+1].dot(self.r[i+1]))[0] - self.r[i]) \
+                - (self.p.k_r / 2) * self.g(self.r[i],self.p.alpha[i])[1]
 
                 # optimization function E
-                E = E + (1 / self.p.sigma[i] ** 2) \
+                E = E + (1 / self.p.sigma_sq[i+1]) \
                 * (self.r[i] - self.f(self.U[i+1].dot(self.r[i+1]))[0]).T.dot(self.r[i] - self.f(self.U[i+1].dot(self.r[i+1]))[0])
-                + self.h(self.U[i],self.p.lam[i-1])[0] + self.g(np.squeeze(self.r[i]),self.p.alpha[i-1])[0]
+                + self.h(self.U[i],self.p.lam[i])[0] + self.g(np.squeeze(self.r[i]),self.p.alpha[i])[0]
 
             # r(n) update (C1, C2)
-            self.r[n] = self.r[n] + (self.p.k_r / self.p.sigma[n-1] ** 2) \
+            self.r[n] = self.r[n] + (self.p.k_r / self.p.sigma_sq[n]) \
             * self.U[n].T.dot(self.f(self.U[n].dot(self.r[n]))[1].dot(self.r[n-1] - self.f(self.U[n].dot(self.r[n]))[0])) \
-            - (self.p.k_r / 2) * self.g(self.r[n],self.p.alpha[n-1])[1]
+            - (self.p.k_r / 2) * self.g(self.r[n],self.p.alpha[n])[1]
 
             output_r[image] = self.r[n]
 

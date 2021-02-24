@@ -20,12 +20,12 @@ class ModelParameters(object):
     output_size = attr.ib(default=10,validator=attr.validators.instance_of(int))
     hidden_sizes = attr.ib(default=[32,32],validator=attr.validators.instance_of(list))
     # hidden layer variance - NOTE: must have >= number of elements as hidden_sizes
-    # r&b have layer 1 and 2 values as 1.0, 10.0 respectively; the rest are from mli pc model
-    sigma = attr.ib(default=[1.0,10.0,10.0,2.0],validator=attr.validators.instance_of(list))
+    # r&b have layer 1 and 2 values as 1.0, 10.0 respectively; the final value is from mli pc model "r3"
+    sigma_sq = attr.ib(default={1: 1.0, 2: 10.0, 3: 10.0, 4: 10.0, 5: 10.0, 6: 10.0, 7: 2.0},validator=attr.validators.instance_of(dict))
     # priors on parameters (layer 1 and 2 have r&b values, the rest are from mli pc model)
-    alpha = attr.ib(default=[1.0,0.05,0.05,0.05],validator=attr.validators.instance_of(list)) #" related to variance of Gaussian priors "
+    alpha = attr.ib(default={1: 1.0, 2: 0.05, 3: 0.05, 4: 0.05, 5: 0.05},validator=attr.validators.instance_of(dict)) #" related to variance of Gaussian priors "
     # layer 1 has r&b value, the rest are from mli pc model
-    lam = attr.ib(default=[0.02,0.00001,0.00001,0.00001],validator=attr.validators.instance_of(list)) #" related to variance of Gaussian priors "
+    lam = attr.ib(default={1: 0.02, 2: 0.00001, 3: 0.00001, 4: 0.00001, 5: 0.00001},validator=attr.validators.instance_of(dict)) #" related to variance of Gaussian priors "
     r_prior = attr.ib(default="gaussian",validator=attr.validators.in_(['gaussian','kurtotic']))
     U_prior = attr.ib(default="gaussian",validator=attr.validators.in_(['gaussian','kurtotic']))
     # unit activation function (linear, tanh, relu, etc.)
@@ -38,5 +38,4 @@ class ModelParameters(object):
     k_o = attr.ib(default=0.5,validator=attr.validators.instance_of(float))
     # training time
     batch_size = attr.ib(default=1,validator=attr.validators.instance_of(int))
-    ''' change num_epochs back to something reasonable after model can generate normal output '''
     num_epochs = attr.ib(default=10,validator=attr.validators.instance_of(int))
