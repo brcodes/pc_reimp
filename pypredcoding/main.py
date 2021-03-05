@@ -2,11 +2,18 @@ from data import get_mnist_data,flatten_images,standardization_filter
 from parameters import ModelParameters
 from model import PredictiveCodingClassifier
 import numpy as np
+import cProfile
+import pstats
+import re
+
+# from matplotlib import pyplot as plt
 
 
-if __name__ == '__main__':
+def main():
+    
+    
     # create and modify model parameters
-    p = ModelParameters(hidden_sizes = [32], k_r=0.00005, k_U = 0.0005, num_epochs = 100)
+    p = ModelParameters(hidden_sizes = [32,32,32,32,32,32,32], k_r = 0.0005, k_U = 0.005, num_epochs = 20)
     # load data
     # frac_samp 0.000166 = 10 images
     X_train, y_train = get_mnist_data(frac_samp=0.0166,return_test=False)
@@ -57,18 +64,24 @@ if __name__ == '__main__':
     X_dist = X_dist[1:,:,:]
     y_dist = y_dist[1:,:]
 
+    # shape and raw data verification of 10 dig x 10 imgs dataset
     # print(X_dist.shape)
     # print(y_dist.shape)
     # for i in range(0,100):
     #     print(y_dist[i])
-    #
     # for i in range(0,12):
     #     print(X_dist[i])
+    
+    # visually verify full 10 dig by 10 imgs practice set by printing each img
+    # for i in range(0,X_dist.shape[0]):
+    #     plt.imshow(X_dist[i,:,:])
+    #     plt.show()
 
     # do any rescaling, normalization here
     X_stdized = standardization_filter(X_dist)
     # flatten
     X_flat = flatten_images(X_stdized)
+    
     # instantiate model
     pcmod = PredictiveCodingClassifier(p)
     # train
@@ -77,3 +90,13 @@ if __name__ == '__main__':
     print('Total number of model parameters')
     print(pcmod.n_model_parameters)
     print('\n')
+    
+    
+if __name__ == '__main__':
+    # for cProfiling in bash shell
+    main()
+    
+    # pst = pstats.Stats('restats')
+    # pst.strip_dirs().sort_stats(-1).print_stats()
+    # cProfile.run('main()')
+  
