@@ -18,7 +18,7 @@ def tanh_trans(U_dot_r):
     """ Though intended to operate on some U.dot(r), will take any numerical
     argument x and return the tuple (f(x), F(x)). Tanh transformation. """
     f = np.tanh(U_dot_r)
-    F = np.diag(1 - np.square(np.tanh(U_dot_r)))
+    F = np.diag(1 - f.flatten()**2)
     return (f, F)
 
 
@@ -270,6 +270,13 @@ class PredictiveCodingClassifier:
                     # print("U{} update term (image{} epoch{})".format(i, image+1, epoch+1))
 
                     # print('\n')
+
+                # XXX DEBUG
+                #print(self.r[n].shape)
+                #print(self.U[n].T.shape)
+                #print(self.f(self.U[n].dot(self.r[n]))[1].shape)
+                #print((self.r[n-1] - self.f(self.U[n].dot(self.r[n]))[0]).shape)
+                #print(self.g(self.r[n],self.p.alpha[n])[1].shape)
 
                 # r[n] update (C1)
                 self.r[n] = self.r[n] + (self.p.k_r / self.p.sigma_sq[n]) \

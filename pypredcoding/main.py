@@ -6,7 +6,7 @@ import numpy as np
 
 if __name__ == '__main__':
     # create and modify model parameters
-    p = ModelParameters(hidden_sizes = [32], k_r=0.00005, k_U = 0.0005, num_epochs = 100)
+    p = ModelParameters(hidden_sizes = [32], k_r=0.00005, k_U = 0.0005, num_epochs = 100, unit_act='tanh')
     # load data
     # frac_samp 0.000166 = 10 images
     X_train, y_train = get_mnist_data(frac_samp=0.0166,return_test=False)
