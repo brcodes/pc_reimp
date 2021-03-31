@@ -2,7 +2,7 @@
 
 import numpy as np
 from matplotlib import pyplot as plt
-from plotting import pylab_pretty_plot
+# from kbutil.plotting import pylab_pretty_plot
 
 # activation functions
 def linear_trans(U_dot_r):
@@ -227,7 +227,6 @@ class PredictiveCodingClassifier:
                 # print("image {}".format(image+1))
                 # print('\n')
 
-
                 # copy first image into r[0]
                 self.r[0] = X_shuffled[image,:][:,None]
 
@@ -255,34 +254,33 @@ class PredictiveCodingClassifier:
 
                     """ Asymmetric Learning Rates hard coded into r[i], U[i] must be removed
                     and replaced with self.p.k_r, self.p.k_U """
-                    
+
                     # NOTE: self.p.k_r learning rate
                     # r[i] update
                     self.r[i] = self.r[i] + (self.p.k_r / self.p.sigma_sq[i]) \
                     * self.U[i].T.dot(self.f(self.U[i].dot(self.r[i]))[1].dot(self.r[i-1] - self.f(self.U[i].dot(self.r[i]))[0])) \
                     + (self.p.k_r / self.p.sigma_sq[i+1]) * (self.f(self.U[i+1].dot(self.r[i+1]))[0] - self.r[i]) \
                     - (self.p.k_r / 2) * self.g(self.r[i],self.p.alpha[i])[1]
-                    
-                    # # NOTE: hard coded learning rate for experimentation
+
+                    # # NOTE: hard coded learning rate for asymmetry experimentation
                     # # r[i] update
                     # L1_k = 0.0001
                     # self.r[i] = self.r[i] + (L1_k / self.p.sigma_sq[i]) \
                     # * self.U[i].T.dot(self.f(self.U[i].dot(self.r[i]))[1].dot(self.r[i-1] - self.f(self.U[i].dot(self.r[i]))[0])) \
                     # + (L1_k / self.p.sigma_sq[i+1]) * (self.f(self.U[i+1].dot(self.r[i+1]))[0] - self.r[i]) \
                     # - (L1_k / 2) * self.g(self.r[i],self.p.alpha[i])[1]
-                    
 
                     # print("r{} update term (image{} epoch{})".format(i, image+1, epoch+1))
 
                     # print('\n')
-                    
+
                     # NOTE: self.p.k_U learning rate
                     # U[i] update
                     self.U[i] = self.U[i] + (self.p.k_U / self.p.sigma_sq[i]) \
                     * (self.f(self.U[i].dot(self.r[i]))[1].dot(self.r[i-1] - self.f(self.U[i].dot(self.r[i]))[0])).dot(self.r[i].T) \
                     - (self.p.k_U / 2) * self.h(self.U[i],self.p.lam[i])[1]
-                    
-                    # # NOTE: hard coded learning rate for experimentation
+
+                    # # NOTE: hard coded learning rate for asymmetry experimentation
                     # # U[i] update
                     # self.U[i] = self.U[i] + (L1_k / self.p.sigma_sq[i]) \
                     # * (self.f(self.U[i].dot(self.r[i]))[1].dot(self.r[i-1] - self.f(self.U[i].dot(self.r[i]))[0])).dot(self.r[i].T) \
@@ -294,7 +292,7 @@ class PredictiveCodingClassifier:
 
                 """ Asymmetric Learning Rates hard coded into r[n], U[n] must be commented out
                 when finished """
-                
+
                 # NOTE: self.p.k_r learning rate
                 # r[n] update (C1)
                 self.r[n] = self.r[n] + (self.p.k_r / self.p.sigma_sq[n]) \
@@ -302,8 +300,8 @@ class PredictiveCodingClassifier:
                 - (self.p.k_r / 2) * self.g(self.r[n],self.p.alpha[n])[1] \
                 # classification term
                 # + (self.p.k_o / 2) * (label - softmax(self.r[n]))
-                
-                # # NOTE: hard coded learning rate for experimentation
+
+                # # NOTE: hard coded learning rate for asymmetry experimentation
                 # # r[n] update (C1)
                 # L2_k = 0.005
                 # self.r[n] = self.r[n] + (L2_k / self.p.sigma_sq[n]) \
@@ -328,8 +326,8 @@ class PredictiveCodingClassifier:
                 self.U[n] = self.U[n] + (self.p.k_U / self.p.sigma_sq[n]) \
                 * (self.f(self.U[n].dot(self.r[n]))[1].dot(self.r[n-1] - self.f(self.U[n].dot(self.r[n]))[0])).dot(self.r[n].T) \
                 - (self.p.k_U / 2) * self.h(self.U[n],self.p.lam[n])[1]
-                
-                # # NOTE: hard coded learning rate for experimentation
+
+                # # NOTE: hard coded learning rate for asymmetry experimentation
                 # # U[n] update (C1, C2) (identical to U[i], except index numbers)
                 # self.U[n] = self.U[n] + (L2_k / self.p.sigma_sq[n]) \
                 # * (self.f(self.U[n].dot(self.r[n]))[1].dot(self.r[n-1] - self.f(self.U[n].dot(self.r[n]))[0])).dot(self.r[n].T) \
@@ -392,11 +390,11 @@ class PredictiveCodingClassifier:
 
             # print(round_first)
             # print(round_last)
-            
+
             # kb-utils pylab_pretty_plot
-            pylab_pretty_plot()
-            
-                
+            # pylab_pretty_plot()
+
+
             # plot results same learning rate all layers
             plt.plot(epoch+1, E_avg_per_epoch, '.k')
             plt.title("{}-HL Model".format(self.n_hidden_layers) + '\n' + "k_r = {}".format(self.p.k_r) \
@@ -409,7 +407,7 @@ class PredictiveCodingClassifier:
                 plt.xlabel("epoch ({})".format(self.p.num_epochs))
                 plt.ylabel("E avg")
 
-            # # plot results different learning rates for i layers and n layer
+            # # plot results of asymmetry experiments, i.e. different learning rates for i layers and n layer
             # plt.plot(epoch+1, E_avg_per_epoch, '.k')
             # plt.title("{}-HL Model".format(self.n_hidden_layers) + '\n' + "L1 k_(r,U) = {}".format(L1_k) \
             # + '\n' + "L2 k_(r,U) = {}".format(L2_k))
@@ -420,7 +418,7 @@ class PredictiveCodingClassifier:
             #     + "E avg total descent = {}".format(round((round_first - round_last),1)))
             #     plt.xlabel("epoch ({})".format(self.p.num_epochs))
             #     plt.ylabel("E avg")
-                
+
 
 
         print("Average representation error per each epoch ({} total), in format [E_epoch1, E_epoch2...]".format(self.p.num_epochs))

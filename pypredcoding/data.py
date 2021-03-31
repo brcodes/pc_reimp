@@ -111,7 +111,7 @@ def standardization_filter(image_array):
     Accepts an array of N x dim_x x dim_y images (N images each of dim_x x dim_y size),
     and returns an array of the same size.
 
-    Standardizes a sample image (1D vector) by subtracting it's mean pixel value and
+    Standardizes a sample image (1D vector) by subtracting its mean pixel value and
     then dividing by the standard deviation of the pixel values.
 
     This function will fail on a single image unless you give it an empty first
