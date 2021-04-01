@@ -1,9 +1,8 @@
 # Implementation of r&b 1999 predictive coding model with MNIST data.
 
 import numpy as np
-import parameters as parameters
-import data as data
 from matplotlib import pyplot as plt
+# from kbutil.plotting import pylab_pretty_plot
 
 # activation functions
 def linear_trans(U_dot_r):
@@ -225,8 +224,8 @@ class PredictiveCodingClassifier:
             # loop through training images
             for image in range(0, num_images):
 
-                print("image {}".format(image+1))
-                print('\n')
+                # print("image {}".format(image+1))
+                # print('\n')
 
                 # copy first image into r[0]
                 self.r[0] = X_shuffled[image,:][:,None]
@@ -252,38 +251,64 @@ class PredictiveCodingClassifier:
                 # loop through intermediate layers (will fail if number of hidden layers is 1)
                 # r,U updates written symmetrically for all layers including output
                 for i in range(1,n):
+
+                    """ Asymmetric Learning Rates hard coded into r[i], U[i] must be removed
+                    and replaced with self.p.k_r, self.p.k_U """
+
+                    # NOTE: self.p.k_r learning rate
                     # r[i] update
                     self.r[i] = self.r[i] + (self.p.k_r / self.p.sigma_sq[i]) \
                     * self.U[i].T.dot(self.f(self.U[i].dot(self.r[i]))[1].dot(self.r[i-1] - self.f(self.U[i].dot(self.r[i]))[0])) \
                     + (self.p.k_r / self.p.sigma_sq[i+1]) * (self.f(self.U[i+1].dot(self.r[i+1]))[0] - self.r[i]) \
                     - (self.p.k_r / 2) * self.g(self.r[i],self.p.alpha[i])[1]
 
+                    # # NOTE: hard coded learning rate for asymmetry experimentation
+                    # # r[i] update
+                    # L1_k = 0.0001
+                    # self.r[i] = self.r[i] + (L1_k / self.p.sigma_sq[i]) \
+                    # * self.U[i].T.dot(self.f(self.U[i].dot(self.r[i]))[1].dot(self.r[i-1] - self.f(self.U[i].dot(self.r[i]))[0])) \
+                    # + (L1_k / self.p.sigma_sq[i+1]) * (self.f(self.U[i+1].dot(self.r[i+1]))[0] - self.r[i]) \
+                    # - (L1_k / 2) * self.g(self.r[i],self.p.alpha[i])[1]
+
                     # print("r{} update term (image{} epoch{})".format(i, image+1, epoch+1))
 
                     # print('\n')
 
+                    # NOTE: self.p.k_U learning rate
                     # U[i] update
                     self.U[i] = self.U[i] + (self.p.k_U / self.p.sigma_sq[i]) \
                     * (self.f(self.U[i].dot(self.r[i]))[1].dot(self.r[i-1] - self.f(self.U[i].dot(self.r[i]))[0])).dot(self.r[i].T) \
                     - (self.p.k_U / 2) * self.h(self.U[i],self.p.lam[i])[1]
 
+                    # # NOTE: hard coded learning rate for asymmetry experimentation
+                    # # U[i] update
+                    # self.U[i] = self.U[i] + (L1_k / self.p.sigma_sq[i]) \
+                    # * (self.f(self.U[i].dot(self.r[i]))[1].dot(self.r[i-1] - self.f(self.U[i].dot(self.r[i]))[0])).dot(self.r[i].T) \
+                    # - (L1_k / 2) * self.h(self.U[i],self.p.lam[i])[1]
+
                     # print("U{} update term (image{} epoch{})".format(i, image+1, epoch+1))
 
                     # print('\n')
 
-                # XXX DEBUG
-                #print(self.r[n].shape)
-                #print(self.U[n].T.shape)
-                #print(self.f(self.U[n].dot(self.r[n]))[1].shape)
-                #print((self.r[n-1] - self.f(self.U[n].dot(self.r[n]))[0]).shape)
-                #print(self.g(self.r[n],self.p.alpha[n])[1].shape)
+                """ Asymmetric Learning Rates hard coded into r[n], U[n] must be commented out
+                when finished """
 
+                # NOTE: self.p.k_r learning rate
                 # r[n] update (C1)
                 self.r[n] = self.r[n] + (self.p.k_r / self.p.sigma_sq[n]) \
                 * self.U[n].T.dot(self.f(self.U[n].dot(self.r[n]))[1].dot(self.r[n-1] - self.f(self.U[n].dot(self.r[n]))[0])) \
                 - (self.p.k_r / 2) * self.g(self.r[n],self.p.alpha[n])[1] \
                 # classification term
                 # + (self.p.k_o / 2) * (label - softmax(self.r[n]))
+
+                # # NOTE: hard coded learning rate for asymmetry experimentation
+                # # r[n] update (C1)
+                # L2_k = 0.005
+                # self.r[n] = self.r[n] + (L2_k / self.p.sigma_sq[n]) \
+                # * self.U[n].T.dot(self.f(self.U[n].dot(self.r[n]))[1].dot(self.r[n-1] - self.f(self.U[n].dot(self.r[n]))[0])) \
+                # - (L2_k / 2) * self.g(self.r[n],self.p.alpha[n])[1] \
+                # # classification term
+                # # + (self.p.k_o / 2) * (label - softmax(self.r[n]))
 
                 # print("r{} update term (image{} epoch{})".format(n, image+1, epoch+1))
 
@@ -296,10 +321,17 @@ class PredictiveCodingClassifier:
                 # # classification term
                 # + (self.p.k_o / 2) * (self.U_o.T.dot(label) - self.U_o.T.dot(softmax(self.U_o.dot(self.r[n]))))
 
+                # NOTE: self.p.k_U learning rate
                 # U[n] update (C1, C2) (identical to U[i], except index numbers)
                 self.U[n] = self.U[n] + (self.p.k_U / self.p.sigma_sq[n]) \
                 * (self.f(self.U[n].dot(self.r[n]))[1].dot(self.r[n-1] - self.f(self.U[n].dot(self.r[n]))[0])).dot(self.r[n].T) \
                 - (self.p.k_U / 2) * self.h(self.U[n],self.p.lam[n])[1]
+
+                # # NOTE: hard coded learning rate for asymmetry experimentation
+                # # U[n] update (C1, C2) (identical to U[i], except index numbers)
+                # self.U[n] = self.U[n] + (L2_k / self.p.sigma_sq[n]) \
+                # * (self.f(self.U[n].dot(self.r[n]))[1].dot(self.r[n-1] - self.f(self.U[n].dot(self.r[n]))[0])).dot(self.r[n].T) \
+                # - (L2_k / 2) * self.h(self.U[n],self.p.lam[n])[1]
 
                 # print("U{} update term (image{} epoch{})".format(n, image+1, epoch+1))
 
@@ -346,7 +378,6 @@ class PredictiveCodingClassifier:
             # self.p.k_o += 0.05
 
             # store average cost per epoch
-
             E_avg_per_epoch = E/num_images
             C_avg_per_epoch = C/num_images
 
@@ -355,21 +386,38 @@ class PredictiveCodingClassifier:
 
             round_first = round(self.E_avg_per_epoch[0],1)
             round_last = round(self.E_avg_per_epoch[-1],1)
+            round_min = round(min(self.E_avg_per_epoch),1)
 
-            print(round_first)
-            print(round_last)
+            # print(round_first)
+            # print(round_last)
 
-            # plot results
+            # kb-utils pylab_pretty_plot
+            # pylab_pretty_plot()
+
+
+            # plot results same learning rate all layers
             plt.plot(epoch+1, E_avg_per_epoch, '.k')
-            plt.title("HL = {}".format(self.n_hidden_layers) + '\n' + "k_r = {}".format(self.p.k_r) \
+            plt.title("{}-HL Model".format(self.n_hidden_layers) + '\n' + "k_r = {}".format(self.p.k_r) \
             + '\n' + "k_U = {}".format(self.p.k_U))
             if epoch == self.p.num_epochs-1:
                 plt.text(0.4*self.p.num_epochs,0.8*round_first, "E avg initial = {}".format(round_first) + '\n' \
                 + "E avg final = {}".format(round_last) + '\n' \
-                + "E avg descent magnitude = {}".format(round((round_first - round_last),1)) \
-                + '\n' + "Descent fold decrease = {}".format(round((round_first / round_last),1)))
+                + "E avg min = {}".format(round_min) + '\n' \
+                + "E avg total descent = {}".format(round((round_first - round_last),1)))
                 plt.xlabel("epoch ({})".format(self.p.num_epochs))
                 plt.ylabel("E avg")
+
+            # # plot results of asymmetry experiments, i.e. different learning rates for i layers and n layer
+            # plt.plot(epoch+1, E_avg_per_epoch, '.k')
+            # plt.title("{}-HL Model".format(self.n_hidden_layers) + '\n' + "L1 k_(r,U) = {}".format(L1_k) \
+            # + '\n' + "L2 k_(r,U) = {}".format(L2_k))
+            # if epoch == self.p.num_epochs-1:
+            #     plt.text(0.4*self.p.num_epochs,0.8*round_first, "E avg initial = {}".format(round_first) + '\n' \
+            #     + "E avg final = {}".format(round_last) + '\n' \
+            #     + "E avg min = {}".format(round_min) + '\n' \
+            #     + "E avg total descent = {}".format(round((round_first - round_last),1)))
+            #     plt.xlabel("epoch ({})".format(self.p.num_epochs))
+            #     plt.ylabel("E avg")
 
 
 
