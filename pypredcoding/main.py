@@ -13,7 +13,7 @@ def main():
 
     # create and modify model parameters
 
-    p = ModelParameters(unit_act='tanh',hidden_sizes = [32,32], k_r = 0.0005, k_U = 0.005, num_epochs = 20)
+    p = ModelParameters(unit_act='linear',hidden_sizes = [32,32,32,32,32,32,32], num_epochs = 400, k_r = 0.0005, k_U = 0.005)
 
     # instantiate model
 

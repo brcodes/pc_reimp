@@ -80,7 +80,7 @@ y_dist = y_dist[1:,:]
 #     plt.show()
 
 
-# NOTE: comment out code between these NOTES when pickling the Tanh dataset
+# NOTE: comment out the 8 lines of code below when pickling the Tanh dataset
 
 
 # # do any rescaling, normalization here
@@ -94,7 +94,7 @@ y_dist = y_dist[1:,:]
 # linear_data_out.close()
 
 
-# NOTE: comment out code between these NOTES when pickling the Tanh dataset
+# NOTE: comment out the 8 lines of code above when pickling the Tanh dataset
 
 
 """
@@ -106,6 +106,7 @@ Data for Tanh Model
 
 # scaling data to [-1,1]
 X_tanh_scaled = rescaling_filter(X_dist, scaling_range=[-1,1])
+
 # flatten
 X_flat_tanh = flatten_images(X_tanh_scaled)
 
