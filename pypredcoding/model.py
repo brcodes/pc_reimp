@@ -17,7 +17,7 @@ def tanh_trans(U_dot_r):
     """ Though intended to operate on some U.dot(r), will take any numerical
     argument x and return the tuple (f(x), F(x)). Tanh transformation. """
     f = np.tanh(U_dot_r)
-    F = np.diag(1 - np.square(np.tanh(U_dot_r)))
+    F = np.diag(1 - f.flatten()**2)
     return (f, F)
 
 
@@ -262,9 +262,9 @@ class PredictiveCodingClassifier:
                     + (self.p.k_r / self.p.sigma_sq[i+1]) * (self.f(self.U[i+1].dot(self.r[i+1]))[0] - self.r[i]) \
                     - (self.p.k_r / 2) * self.g(self.r[i],self.p.alpha[i])[1]
 
-                    # # NOTE: hard coded learning rate for asymmetry experimentation
+                    # """hard coded learning rate for asymmetry experimentation"""
                     # # r[i] update
-                    # L1_k = 0.0001
+                    # L1_k = 0.05
                     # self.r[i] = self.r[i] + (L1_k / self.p.sigma_sq[i]) \
                     # * self.U[i].T.dot(self.f(self.U[i].dot(self.r[i]))[1].dot(self.r[i-1] - self.f(self.U[i].dot(self.r[i]))[0])) \
                     # + (L1_k / self.p.sigma_sq[i+1]) * (self.f(self.U[i+1].dot(self.r[i+1]))[0] - self.r[i]) \
@@ -280,7 +280,7 @@ class PredictiveCodingClassifier:
                     * (self.f(self.U[i].dot(self.r[i]))[1].dot(self.r[i-1] - self.f(self.U[i].dot(self.r[i]))[0])).dot(self.r[i].T) \
                     - (self.p.k_U / 2) * self.h(self.U[i],self.p.lam[i])[1]
 
-                    # # NOTE: hard coded learning rate for asymmetry experimentation
+                    # """hard coded learning rate for asymmetry experimentation"""
                     # # U[i] update
                     # self.U[i] = self.U[i] + (L1_k / self.p.sigma_sq[i]) \
                     # * (self.f(self.U[i].dot(self.r[i]))[1].dot(self.r[i-1] - self.f(self.U[i].dot(self.r[i]))[0])).dot(self.r[i].T) \
@@ -301,9 +301,9 @@ class PredictiveCodingClassifier:
                 # classification term
                 # + (self.p.k_o / 2) * (label - softmax(self.r[n]))
 
-                # # NOTE: hard coded learning rate for asymmetry experimentation
+                # """hard coded learning rate for asymmetry experimentation"""
                 # # r[n] update (C1)
-                # L2_k = 0.005
+                # L2_k = 0.05
                 # self.r[n] = self.r[n] + (L2_k / self.p.sigma_sq[n]) \
                 # * self.U[n].T.dot(self.f(self.U[n].dot(self.r[n]))[1].dot(self.r[n-1] - self.f(self.U[n].dot(self.r[n]))[0])) \
                 # - (L2_k / 2) * self.g(self.r[n],self.p.alpha[n])[1] \
@@ -327,7 +327,7 @@ class PredictiveCodingClassifier:
                 * (self.f(self.U[n].dot(self.r[n]))[1].dot(self.r[n-1] - self.f(self.U[n].dot(self.r[n]))[0])).dot(self.r[n].T) \
                 - (self.p.k_U / 2) * self.h(self.U[n],self.p.lam[n])[1]
 
-                # # NOTE: hard coded learning rate for asymmetry experimentation
+                # """hard coded learning rate for asymmetry experimentation"""
                 # # U[n] update (C1, C2) (identical to U[i], except index numbers)
                 # self.U[n] = self.U[n] + (L2_k / self.p.sigma_sq[n]) \
                 # * (self.f(self.U[n].dot(self.r[n]))[1].dot(self.r[n-1] - self.f(self.U[n].dot(self.r[n]))[0])).dot(self.r[n].T) \
@@ -400,10 +400,11 @@ class PredictiveCodingClassifier:
             plt.title("{}-HL Model".format(self.n_hidden_layers) + '\n' + "k_r = {}".format(self.p.k_r) \
             + '\n' + "k_U = {}".format(self.p.k_U))
             if epoch == self.p.num_epochs-1:
-                plt.text(0.4*self.p.num_epochs,0.8*round_first, "E avg initial = {}".format(round_first) + '\n' \
+                plt.annotate("E avg initial = {}".format(round_first) + '\n' \
                 + "E avg final = {}".format(round_last) + '\n' \
                 + "E avg min = {}".format(round_min) + '\n' \
-                + "E avg total descent = {}".format(round((round_first - round_last),1)))
+                + "E avg total descent = {}".format(round((round_first - round_last),1)), (0.58,0.67), xycoords='figure fraction')
+
                 plt.xlabel("epoch ({})".format(self.p.num_epochs))
                 plt.ylabel("E avg")
 
@@ -412,10 +413,10 @@ class PredictiveCodingClassifier:
             # plt.title("{}-HL Model".format(self.n_hidden_layers) + '\n' + "L1 k_(r,U) = {}".format(L1_k) \
             # + '\n' + "L2 k_(r,U) = {}".format(L2_k))
             # if epoch == self.p.num_epochs-1:
-            #     plt.text(0.4*self.p.num_epochs,0.8*round_first, "E avg initial = {}".format(round_first) + '\n' \
+            #     plt.annotate("E avg initial = {}".format(round_first) + '\n' \
             #     + "E avg final = {}".format(round_last) + '\n' \
             #     + "E avg min = {}".format(round_min) + '\n' \
-            #     + "E avg total descent = {}".format(round((round_first - round_last),1)))
+            #     + "E avg total descent = {}".format(round((round_first - round_last),1)), (0.58,0.67), xycoords='figure fraction')
             #     plt.xlabel("epoch ({})".format(self.p.num_epochs))
             #     plt.ylabel("E avg")
 

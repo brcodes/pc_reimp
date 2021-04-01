@@ -112,7 +112,7 @@ def standardization_filter(image_array):
     and returns an array of the same size.
 
     Standardizes a sample image (1D vector) by subtracting its mean pixel value and
-    then dividing by the standard deviation of the pixel values.
+    then dividing by the standard deviation of the pixel values. (i.e. Z-score)
 
     This function will fail on a single image unless you give it an empty first
     axis (np.newaxis,:,:).
