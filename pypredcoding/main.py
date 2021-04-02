@@ -13,7 +13,9 @@ def main():
 
     # create and modify model parameters
 
-    p = ModelParameters(unit_act='linear',hidden_sizes = [32,32,32,32,32,32,32], num_epochs = 400, k_r = 0.0005, k_U = 0.005)
+    p = ModelParameters(unit_act='linear',hidden_sizes = [32,32,32,32,32,32,32], num_epochs = 400,
+        k_r_sched = {'step':{'initial':0.0005,'drop_factor':0.75,'drop_every':2}},
+        k_U_sched = {'step':{'initial':0.005,'drop_factor':0.75,'drop_every':2}})
 
     # instantiate model
 

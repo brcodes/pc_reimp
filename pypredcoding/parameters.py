@@ -32,10 +32,15 @@ class ModelParameters(object):
     unit_act = attr.ib(default="linear",validator=attr.validators.in_(['linear','tanh']))
     # classification cost type
     classification = attr.ib(default="C1",validator=attr.validators.in_(['C1','C2']))
+    # learning rate schedulers
+    k_r_sched = attr.ib(kw_only=True,default={'constant':{'initial':0.0005}},validator=attr.validators.instance_of(dict))
+    k_U_sched = attr.ib(kw_only=True,default={'constant':{'initial':0.0005}},validator=attr.validators.instance_of(dict))
+    k_o_sched = attr.ib(kw_only=True,default={'constant':{'initial':0.0005}},validator=attr.validators.instance_of(dict))
+    # KEEPING THESE FOR NOW, BUT EVENTUALLY THEY WILL BE GONE
     # learning schedules - these should become strings for a learning schedule dispatcher
-    k_r = attr.ib(default=0.0005,validator=attr.validators.instance_of(float))
-    k_U = attr.ib(default=0.005,validator=attr.validators.instance_of(float))
-    k_o = attr.ib(default=0.5,validator=attr.validators.instance_of(float))
+    #k_r = attr.ib(default=0.0005,validator=attr.validators.instance_of(float))
+    #k_U = attr.ib(default=0.005,validator=attr.validators.instance_of(float))
+    #k_o = attr.ib(default=0.5,validator=attr.validators.instance_of(float))
     # training time
     batch_size = attr.ib(default=1,validator=attr.validators.instance_of(int))
     num_epochs = attr.ib(default=10,validator=attr.validators.instance_of(int))
