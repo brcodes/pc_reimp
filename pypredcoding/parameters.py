@@ -34,7 +34,7 @@ class ModelParameters(object):
     classification = attr.ib(default="C1",validator=attr.validators.in_(['C1','C2']))
     # learning rate schedulers
     k_r_sched = attr.ib(kw_only=True,default={'constant':{'initial':0.0005}},validator=attr.validators.instance_of(dict))
-    k_U_sched = attr.ib(kw_only=True,default={'constant':{'initial':0.0005}},validator=attr.validators.instance_of(dict))
+    k_U_sched = attr.ib(kw_only=True,default={'constant':{'initial':0.005}},validator=attr.validators.instance_of(dict))
     k_o_sched = attr.ib(kw_only=True,default={'constant':{'initial':0.0005}},validator=attr.validators.instance_of(dict))
     # KEEPING THESE FOR NOW, BUT EVENTUALLY THEY WILL BE GONE
     # learning schedules - these should become strings for a learning schedule dispatcher

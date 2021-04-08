@@ -54,8 +54,8 @@ class PredictiveCodingClassifier:
         self.unit_act = {'linear':linear_trans,'tanh':tanh_trans}
         self.prior_dict = {'gaussian':gauss_prior, 'kurtotic':kurt_prior}
 
-        # NOTE: may use this functionality later
-        # possible classification methods
+        # # NOTE: may use this functionality later
+        # # possible classification methods
         # self.class_cost_dict = {'C1':class_c1, 'C2':class_c2}
 
         # all the representations (including the image r[0] which is not trained)
@@ -77,7 +77,8 @@ class PredictiveCodingClassifier:
         # how to call h(U): self.h(self.U,self.p.lam)[0]
         # how to call h'(U): self.h(self.U,self.p.lam)[1]
 
-        # classification method
+
+        # # classification method
         # self.class_cost = self.class_cost_dict[self.p.classification]
         # # if C1, how to call C1: C = C - self.class_cost(self.r[n], label)
         # # if C2, how to call C2: C = self.class_cost(self.r[n], self.U_o, label) + \
@@ -89,18 +90,24 @@ class PredictiveCodingClassifier:
             self.k_r_lr = partial(constant_lr,initial=self.p.k_r_sched['constant']['initial'])
         elif lr_r == 'step':
             self.k_r_lr = partial(step_decay_lr,initial=self.p.k_r_sched['step']['initial'],drop_every=self.p.k_r_sched['step']['drop_every'],drop_factor=self.p.k_r_sched['step']['drop_factor'])
+        elif lr_r == 'poly':
+            self.k_r_lr = partial(polynomial_decay_lr,initial=self.p.k_r_sched['poly']['initial'],max_epochs=self.p.k_r_sched['poly']['max_epochs'],poly_power=self.p.k_r_sched['poly']['poly_power'])
 
         lr_U = list(self.p.k_U_sched.keys())[0]
-        if lr_r == 'constant':
+        if lr_U == 'constant':
             self.k_U_lr = partial(constant_lr,initial=self.p.k_U_sched['constant']['initial'])
-        elif lr_r == 'step':
+        elif lr_U == 'step':
             self.k_U_lr = partial(step_decay_lr,initial=self.p.k_U_sched['step']['initial'],drop_every=self.p.k_U_sched['step']['drop_every'],drop_factor=self.p.k_U_sched['step']['drop_factor'])
+        elif lr_U == 'poly':
+            self.k_U_lr = partial(polynomial_decay_lr,initial=self.p.k_U_sched['poly']['initial'],max_epochs=self.p.k_U_sched['poly']['max_epochs'],poly_power=self.p.k_U_sched['poly']['poly_power'])
 
         lr_o = list(self.p.k_o_sched.keys())[0]
         if lr_o == 'constant':
             self.k_o_lr = partial(constant_lr,initial=self.p.k_o_sched['constant']['initial'])
-        elif lr_r == 'step':
+        elif lr_o == 'step':
             self.k_o_lr = partial(step_decay_lr,initial=self.p.k_o_sched['step']['initial'],drop_every=self.p.k_o_sched['step']['drop_every'],drop_factor=self.p.k_o_sched['step']['drop_factor'])
+        elif lr_o == 'poly':
+            self.k_o_lr = partial(polynomial_decay_lr,initial=self.p.k_o_sched['poly']['initial'],max_epochs=self.p.k_o_sched['poly']['max_epochs'],poly_power=self.p.k_o_sched['poly']['poly_power'])
 
 
         # total number of layers (Input, r1, r2... rn, Output)
@@ -188,7 +195,7 @@ class PredictiveCodingClassifier:
         """ Calculates the classification portion of the cost function output of a training
         image using classification method C1. """
         n = self.n_hidden_layers
-        C1 = -1*label[:,None].dot(np.log(softmax(self.r[n].T)))[0,0]
+        C1 = -1*label[None,:].dot(np.log(softmax(self.r[n])))[0,0]
         return C1
 
 
@@ -196,7 +203,7 @@ class PredictiveCodingClassifier:
         """ Calculates the classification portion of the cost function output of a training
         image using classification method C2, uninclusive of the prior term. """
         n = self.n_hidden_layers
-        C2 = -1*label[:,None].dot(np.log(softmax((self.U_o.dot(self.r[n])).T)))[0,0]
+        C2 = -1*label[None,:].dot(np.log(softmax((self.U_o.dot(self.r[n])))))[0,0]
         return C2
 
 
@@ -213,6 +220,8 @@ class PredictiveCodingClassifier:
         self.E_avg_per_epoch = []
         # average cost per epoch during training; just classification term
         self.C_avg_per_epoch = []
+        # accuracy per epoch during training
+        self.acc_per_epoch = []
 
         # number of hidden layers
         n = self.n_hidden_layers
@@ -237,6 +246,9 @@ class PredictiveCodingClassifier:
             E = 0
             C = 0
 
+            # accuracy per epoch: how many images are correctly guessed per epoch
+            num_correct = 0
+
             # set learning rates at the start of each epoch
             k_r = self.k_r_lr(epoch)
             k_U = self.k_U_lr(epoch)
@@ -247,8 +259,8 @@ class PredictiveCodingClassifier:
 
             print("epoch {}".format(epoch+1))
             # XXX DEBUG
-            print(k_r,k_U,k_o)
-            print('\n')
+            # print(k_r,k_U,k_o)
+            # print('\n')
 
             # loop through training images
             for image in range(0, num_images):
@@ -256,17 +268,15 @@ class PredictiveCodingClassifier:
                 # print("image {}".format(image+1))
                 # print('\n')
 
+
                 # copy first image into r[0]
                 self.r[0] = X_shuffled[image,:][:,None]
-
-                # print("r[0] (loaded image) shape is " + str(np.shape(self.r[0])) + '\n')
 
                 # initialize new r's
                 for layer in range(1,self.n_non_input_layers):
                     # self state per layer
                     self.r[layer] = np.random.randn(self.p.hidden_sizes[layer-1],1)
 
-                    # print("r{} reinitialized shape is ".format(layer) + str(np.shape(self.r[layer])) + '\n')
 
                 # initialize "output" layer o (for classification method 2 (C2))
                 self.o = np.random.randn(self.p.output_size,1)
@@ -275,14 +285,11 @@ class PredictiveCodingClassifier:
                 # designate label vector
                 label = Y_shuffled[image,:]
 
-                # print("label shape is: " + '\n' + str(label.shape))
 
                 # loop through intermediate layers (will fail if number of hidden layers is 1)
                 # r,U updates written symmetrically for all layers including output
                 for i in range(1,n):
 
-                    """ Asymmetric Learning Rates hard coded into r[i], U[i] must be removed
-                    and replaced with self.p.k_r, self.p.k_U """
 
                     # NOTE: self.p.k_r learning rate
                     # r[i] update
@@ -291,135 +298,156 @@ class PredictiveCodingClassifier:
                     + (k_r / self.p.sigma_sq[i+1]) * (self.f(self.U[i+1].dot(self.r[i+1]))[0] - self.r[i]) \
                     - (k_r / 2) * self.g(self.r[i],self.p.alpha[i])[1]
 
-                    # """hard coded learning rate for asymmetry experimentation"""
-                    # # r[i] update
-                    # L1_k = 0.05
-                    # self.r[i] = self.r[i] + (L1_k / self.p.sigma_sq[i]) \
-                    # * self.U[i].T.dot(self.f(self.U[i].dot(self.r[i]))[1].dot(self.r[i-1] - self.f(self.U[i].dot(self.r[i]))[0])) \
-                    # + (L1_k / self.p.sigma_sq[i+1]) * (self.f(self.U[i+1].dot(self.r[i+1]))[0] - self.r[i]) \
-                    # - (L1_k / 2) * self.g(self.r[i],self.p.alpha[i])[1]
 
-                    # print("r{} update term (image{} epoch{})".format(i, image+1, epoch+1))
-
-                    # print('\n')
-
-                    # NOTE: self.p.k_U learning rate
                     # U[i] update
                     self.U[i] = self.U[i] + (k_U / self.p.sigma_sq[i]) \
                     * (self.f(self.U[i].dot(self.r[i]))[1].dot(self.r[i-1] - self.f(self.U[i].dot(self.r[i]))[0])).dot(self.r[i].T) \
                     - (k_U / 2) * self.h(self.U[i],self.p.lam[i])[1]
 
-                    # """hard coded learning rate for asymmetry experimentation"""
-                    # # U[i] update
-                    # self.U[i] = self.U[i] + (L1_k / self.p.sigma_sq[i]) \
-                    # * (self.f(self.U[i].dot(self.r[i]))[1].dot(self.r[i-1] - self.f(self.U[i].dot(self.r[i]))[0])).dot(self.r[i].T) \
-                    # - (L1_k / 2) * self.h(self.U[i],self.p.lam[i])[1]
 
-                    # print("U{} update term (image{} epoch{})".format(i, image+1, epoch+1))
 
-                    # print('\n')
-
-                """ Asymmetric Learning Rates hard coded into r[n], U[n] must be commented out
-                when finished """
-
-                # NOTE: self.p.k_r learning rate
-                # r[n] update (C1)
-                self.r[n] = self.r[n] + (k_r / self.p.sigma_sq[n]) \
-                * self.U[n].T.dot(self.f(self.U[n].dot(self.r[n]))[1].dot(self.r[n-1] - self.f(self.U[n].dot(self.r[n]))[0])) \
-                - (k_r / 2) * self.g(self.r[n],self.p.alpha[n])[1] \
-                # classification term
-                # + (k_o / 2) * (label - softmax(self.r[n]))
-
-                # """hard coded learning rate for asymmetry experimentation"""
-                # # r[n] update (C1)
-                # L2_k = 0.05
-                # self.r[n] = self.r[n] + (L2_k / self.p.sigma_sq[n]) \
-                # * self.U[n].T.dot(self.f(self.U[n].dot(self.r[n]))[1].dot(self.r[n-1] - self.f(self.U[n].dot(self.r[n]))[0])) \
-                # - (L2_k / 2) * self.g(self.r[n],self.p.alpha[n])[1] \
-                # # classification term
-                # # + (self.p.k_o / 2) * (label - softmax(self.r[n]))
-
-                # print("r{} update term (image{} epoch{})".format(n, image+1, epoch+1))
-
-                # print('\n')
-
-                # # r(n) update (C2)
+                # """ r(n) update (C1) """
                 # self.r[n] = self.r[n] + (k_r / self.p.sigma_sq[n]) \
                 # * self.U[n].T.dot(self.f(self.U[n].dot(self.r[n]))[1].dot(self.r[n-1] - self.f(self.U[n].dot(self.r[n]))[0])) \
                 # - (k_r / 2) * self.g(self.r[n],self.p.alpha[n])[1] \
                 # # classification term
-                # + (k_o / 2) * (self.U_o.T.dot(label) - self.U_o.T.dot(softmax(self.U_o.dot(self.r[n]))))
+                # + (k_o / 2) * (label[:,None] - softmax(self.r[n]))
 
-                # NOTE: self.p.k_U learning rate
+
+                """ r(n) update (C2) """
+                self.r[n] = self.r[n] + (k_r / self.p.sigma_sq[n]) \
+                * self.U[n].T.dot(self.f(self.U[n].dot(self.r[n]))[1].dot(self.r[n-1] - self.f(self.U[n].dot(self.r[n]))[0])) \
+                - (k_r / 2) * self.g(self.r[n],self.p.alpha[n])[1] \
+                # classification term
+                + (k_r / 2) * (self.U_o.T.dot(label[:,None]) - self.U_o.T.dot(softmax(self.U_o.dot(self.r[n]))))
+
+
+
                 # U[n] update (C1, C2) (identical to U[i], except index numbers)
                 self.U[n] = self.U[n] + (k_U / self.p.sigma_sq[n]) \
                 * (self.f(self.U[n].dot(self.r[n]))[1].dot(self.r[n-1] - self.f(self.U[n].dot(self.r[n]))[0])).dot(self.r[n].T) \
                 - (k_U / 2) * self.h(self.U[n],self.p.lam[n])[1]
 
-                # """hard coded learning rate for asymmetry experimentation"""
-                # # U[n] update (C1, C2) (identical to U[i], except index numbers)
-                # self.U[n] = self.U[n] + (L2_k / self.p.sigma_sq[n]) \
-                # * (self.f(self.U[n].dot(self.r[n]))[1].dot(self.r[n-1] - self.f(self.U[n].dot(self.r[n]))[0])).dot(self.r[n].T) \
-                # - (L2_k / 2) * self.h(self.U[n],self.p.lam[n])[1]
+                self.o = np.exp(self.U_o.dot(self.r[n]))
 
-                # print("U{} update term (image{} epoch{})".format(n, image+1, epoch+1))
 
-                # print('\n')
+                """ U_o update (C2) """
+                """ debug """
+                self.U_o = self.U_o + (k_o / 2) * (label[:,None].dot(self.r[n].T) - (self.p.output_size / np.exp(self.U_o.dot(self.r[n])).sum())\
+                * self.o.dot(self.r[n].T)) - (k_o / 2) * self.h(self.U_o,self.p.lam[n])[1]
 
-                # print("After U[{}] update:".format(n))
-                # print("U{} shape is ".format(n) + str(np.shape(self.U[n])) + '\n')
 
-                # # U_o update (C2)
-                # self.U_o = self.U_o + (k_o / 2) * (label.dot(self.r[n].T) - (self.p.output_size / np.exp(self.U_o.dot(self.r[n])).sum())\
-                # * self.o.dot(self.r[n].T)) - (k_o / 2) * self.h(self.U_o,self.p.lam[n])[1]
 
-                # calculate optimization function E
+                # loss function E
+
+                class_type = 'nc'
 
                 E = self.rep_cost()
                 # print("E update (image{} epoch{})".format( image+1, epoch+1))
                 # print(E)
                 # print('\n')
 
-                # # when classifying using C1
-                # C1 = self.class_cost_1(label)
-                # E = E + C1
-                #
-                # print("C1 update")
-                # print(C1)
-                # print('\n')
 
-                # # when classifying using C2
-                # C2 = self.class_cost_2(label)
-                # E = E + C2
+                # classification cost function C
+
+                # """ classifying using C1 """
+                # C = self.class_cost_1(label)
+                # E = E + C
+                # class_type = 'C1'
                 #
-                # print("C2 update")
-                # print(C2 )
-                # print('\n')
-                #
-                # print("E total, after classifier C (image{} epoch{})".format( image+1, epoch+1))
-                # print(E)
-                # print('\n')
+                # # print("C1 update, epoch {}".format(epoch+1))
+                # # print(C)
+                # # print('\n')
 
 
-            # store average cost per epoch
+                """ classifying using C2 """
+                C = self.class_cost_2(label)
+                E = E + C
+                class_type = 'C2'
+
+                # print("C2 update, epoch {}".format(epoch+1))
+                # print(C)
+                # print('\n')
+
+
+                # Accuracy
+
+                # if index of the max value in final representation vector
+                # = index of the 1 in associated one hot label vector
+                # then the model classified the image correctly
+                # and add 1 to num_correct
+
+
+                """ C1 method """
+                # (BUG FIX: self.r[n] is 32,1 but needs to be 10,1 to match label size)
+
+                # compressed_r_n = np.reshape(np.squeeze(self.r[n]),10)
+
+                if np.argmax(softmax(self.r[n])) == np.argmax(label[:,None]):
+                    num_correct += 1
+
+
+                # """ C2 method """
+                # c2_output = self.U_o.dot(self.r[n])
+
+                # if np.argmax(softmax(c2_output)) == np.argmax(label[:,None]):
+                #     num_correct += 1
+
+
+
+                # print("argmax(softmax(self.r[n]))")
+                # print(np.argmax(softmax(self.r[n])))
+                # print("argmax(softmax(self.o))")
+                # print(np.argmax(softmax(self.o)))
+                # print("argmax(label[:,None])")
+                # print(np.argmax(label[:,None]))
+
+                # print("self.r[n] shape:")
+                # print(self.r[n].shape)
+                # print("self.o shape:")
+                # print(self.o.shape)
+                # print("c2_output")
+                # print(c2_output.shape)
+                # print("label[:,None] shape:")
+                # print(label[:,None].shape)
+
+
+            # store average costs and accuracy per epoch
             E_avg_per_epoch = E/num_images
             C_avg_per_epoch = C/num_images
+            acc_per_epoch = round((num_correct/num_images)*100)
 
             self.E_avg_per_epoch.append(E_avg_per_epoch)
             self.C_avg_per_epoch.append(C_avg_per_epoch)
+            self.acc_per_epoch.append(acc_per_epoch)
 
+
+            # E,C and Accuracty data points for plotting
+
+            # E
             round_first = round(self.E_avg_per_epoch[0],1)
             round_last = round(self.E_avg_per_epoch[-1],1)
             round_min = round(min(self.E_avg_per_epoch),1)
 
-            # print(round_first)
-            # print(round_last)
+            # C
+            C_round_first = round(self.C_avg_per_epoch[0],1)
+            C_round_last = round(self.C_avg_per_epoch[-1],1)
+            C_round_min = round(min(self.C_avg_per_epoch),1)
 
-            # kb-utils pylab_pretty_plot
-            # pylab_pretty_plot()
+            # E+C
+            Eavg_plus_Cavg_per_epoch = E_avg_per_epoch + C_avg_per_epoch
+            EC_first = round_first + C_round_first
+            EC_last = round_last + C_round_last
+            EC_min = round_min + C_round_min
+
+            # Accuracy
+            acc_first = round(self.acc_per_epoch[0],1)
+            acc_last = round(self.acc_per_epoch[-1],1)
+            acc_max = round(max(self.acc_per_epoch),1)
 
 
-            # plot results same learning rate all layers
+
+            # plot E results same learning rate all layers
             plt.plot(epoch+1, E_avg_per_epoch, '.k')
             plt.title("{}-HL Model".format(self.n_hidden_layers) + '\n' + "k_r = {}".format(k_r) \
             + '\n' + "k_U = {}".format(k_U))
@@ -432,7 +460,49 @@ class PredictiveCodingClassifier:
                 plt.xlabel("epoch ({})".format(self.p.num_epochs))
                 plt.ylabel("E avg")
 
-            # # plot results of asymmetry experiments, i.e. different learning rates for i layers and n layer
+
+            # # plot C results same learning rate all layers
+            # plt.plot(epoch+1, C_avg_per_epoch, '.k')
+            # plt.title("{}-HL {} Model".format(self.n_hidden_layers,class_type) + '\n' + "k_r = {}".format(k_r) \
+            # + '\n' + "k_U = {}".format(k_U))
+            # if epoch == self.p.num_epochs-1:
+            #     plt.annotate("C avg initial = {}".format(C_round_first) + '\n' \
+            #     + "C avg final = {}".format(C_round_last) + '\n' \
+            #     + "C avg min = {}".format(C_round_min) + '\n' \
+            #     + "C avg total descent = {}".format(round((C_round_first - C_round_last),1)), (0.58,0.67), xycoords='figure fraction')
+
+            #     plt.xlabel("epoch ({})".format(self.p.num_epochs))
+            #     plt.ylabel("C avg")
+
+
+            # # plot E + C results same learning rate all layers
+            # plt.plot(epoch+1, Eavg_plus_Cavg_per_epoch, '.k')
+            # plt.title("{}-HL {} Model".format(self.n_hidden_layers,class_type) + '\n' + "k_r = {}".format(k_r) \
+            # + '\n' + "k_U = {}".format(k_U))
+            # if epoch == self.p.num_epochs-1:
+            #     plt.annotate("E+C initial = {}".format(EC_first) + '\n' \
+            #     + "E+C final = {}".format(EC_last) + '\n' \
+            #     + "E+C min = {}".format(EC_min) + '\n' \
+            #     + "E+C total descent = {}".format(round((EC_first - EC_last),1)), (0.58,0.67), xycoords='figure fraction')
+
+            #     plt.xlabel("epoch ({})".format(self.p.num_epochs))
+            #     plt.ylabel("E+C")
+
+            # # plot Accuracy results same learning rate all layers
+            # plt.plot(epoch+1, acc_per_epoch, '.k')
+            # plt.title("{}-HL {} Model".format(self.n_hidden_layers,class_type) + '\n' + "k_r = {}".format(k_r) \
+            # + '\n' + "k_U = {}".format(k_U))
+            # if epoch == self.p.num_epochs-1:
+            #     plt.annotate("Accuracy initial = {}".format(acc_first) + '\n' \
+            #     + "Accuracy final = {}".format(acc_last) + '\n' \
+            #     + "Accuracy max = {}".format(acc_max) + '\n' \
+            #     + "Accuracy total ascent = {}".format(round((acc_last - acc_first),1)), (0.58,0.67), xycoords='figure fraction')
+
+            #     plt.xlabel("epoch ({})".format(self.p.num_epochs))
+            #     plt.ylabel("Accuracy")
+
+
+            # # plot E results of asymmetry experiments, i.e. different learning rates for i layers and n layer
             # plt.plot(epoch+1, E_avg_per_epoch, '.k')
             # plt.title("{}-HL Model".format(self.n_hidden_layers) + '\n' + "L1 k_(r,U) = {}".format(L1_k) \
             # + '\n' + "L2 k_(r,U) = {}".format(L2_k))
@@ -443,8 +513,6 @@ class PredictiveCodingClassifier:
             #     + "E avg total descent = {}".format(round((round_first - round_last),1)), (0.58,0.67), xycoords='figure fraction')
             #     plt.xlabel("epoch ({})".format(self.p.num_epochs))
             #     plt.ylabel("E avg")
-
-
 
         print("Average representation error per each epoch ({} total), in format [E_epoch1, E_epoch2...]".format(self.p.num_epochs))
         print(self.E_avg_per_epoch)
@@ -458,56 +526,111 @@ class PredictiveCodingClassifier:
         return
 
 
-    def test(self,X):
+    def predict(self,X,num_updates):
         '''
         Given one or more inputs, produce one or more outputs.
         '''
 
+
         # number of hidden layers
         n = self.n_hidden_layers
 
-        # number of testing images
-        num_images = X.shape[0]
+        print("*** Predicting ***")
+        print('\n')
 
-        # initialize cost function output
-        E = 0
 
-        # average cost per image during testing (no classification term)
-        self.E_avg_per_image = []
 
-        # initialize output dictionary
-        output_r = {}
+        # representation costs for both layers
+        E_ri = 0
+        E_rn = 0
+
+        # diff between rep costs layer 2 and layer 1
+        self.Ediff_rn_ri = []
+
+        # accuracy per epoch: how many images are correctly guessed per epoch
+        num_correct = 0
+
+        # set learning rates at the start of each epoch
+        k_r = 0.0005
+
 
         # loop through testing images
-        for image in range(0, num_images):
+        for image in range(0, 1):
+
             # copy first image into r[0]
-            self.r[0] = X[image,:]
+            self.r[0] = X[:,None]
+
 
             # initialize new r's
             for layer in range(1,self.n_non_input_layers):
+                # self state per layer
                 self.r[layer] = np.random.randn(self.p.hidden_sizes[layer-1],1)
 
-            # loop through intermediate layers
-            # r updates written symmetrically for all layers including output
-            for i in range(1,n):
-                # r[i] update
-                self.r[i] = self.r[i] + (self.p.k_r / self.p.sigma_sq[i]) \
-                * self.U[i].T.dot(self.f(self.U[i].dot(self.r[i]))[1].dot(self.r[i-1] - self.f(self.U[i].dot(self.r[i]))[0])) \
-                + (self.p.k_r / self.p.sigma_sq[i+1]) * (self.f(self.U[i+1].dot(self.r[i+1]))[0] - self.r[i]) \
-                - (self.p.k_r / 2) * self.g(self.r[i],self.p.alpha[i])[1]
 
-                # optimization function E
-                E = E + (1 / self.p.sigma_sq[i+1]) \
-                * (self.r[i] - self.f(self.U[i+1].dot(self.r[i+1]))[0]).T.dot(self.r[i] - self.f(self.U[i+1].dot(self.r[i+1]))[0])
-                + self.h(self.U[i],self.p.lam[i])[0] + self.g(np.squeeze(self.r[i]),self.p.alpha[i])[0]
+            for update in range(0,num_updates):
 
-            # r(n) update (C1, C2)
-            self.r[n] = self.r[n] + (self.p.k_r / self.p.sigma_sq[n]) \
-            * self.U[n].T.dot(self.f(self.U[n].dot(self.r[n]))[1].dot(self.r[n-1] - self.f(self.U[n].dot(self.r[n]))[0])) \
-            - (self.p.k_r / 2) * self.g(self.r[n],self.p.alpha[n])[1]
 
-            output_r[image] = self.r[n]
+                # loop through intermediate layers (will fail if number of hidden layers is 1)
+                # r,U updates written symmetrically for all layers including output
+                for i in range(1,n):
 
-            self.E_avg_per_image.append(E/n)
 
-        return output_r
+                    # r[i] update
+                    self.r[i] = self.r[i] + (k_r / self.p.sigma_sq[i]) \
+                    * self.U[i].T.dot(self.f(self.U[i].dot(self.r[i]))[1].dot(self.r[i-1] - self.f(self.U[i].dot(self.r[i]))[0])) \
+                    + (k_r / self.p.sigma_sq[i+1]) * (self.f(self.U[i+1].dot(self.r[i+1]))[0] - self.r[i]) \
+                    - (k_r / 2) * self.g(self.r[i],self.p.alpha[i])[1]
+
+                    E_ri = self.rep_cost()
+
+
+                self.r[n] = self.r[n] + (k_r / self.p.sigma_sq[n]) \
+                * self.U[n].T.dot(self.f(self.U[n].dot(self.r[n]))[1].dot(self.r[n-1] - self.f(self.U[n].dot(self.r[n]))[0])) \
+                - (k_r / 2) * self.g(self.r[n],self.p.alpha[n])[1] \
+
+
+                # loss function E
+
+                E_rn = self.rep_cost()
+
+                Ediff_rn_ri = E_rn - E_ri
+
+                self.Ediff_rn_ri.append(Ediff_rn_ri)
+
+                Ediff_first = round(self.Ediff_rn_ri[0],1)
+                Ediff_last = round(self.Ediff_rn_ri[-1],1)
+                Ediff_min = round(min(self.Ediff_rn_ri),1)
+
+
+                # plot E_diff results same learning rate all layers
+                plt.plot(update, Ediff_rn_ri, '.k')
+                plt.title("{}-HL Prediction Model".format(self.n_hidden_layers) + '\n' + "k_r = {}".format(k_r))
+                if update == num_updates-1:
+                    plt.annotate("E_diff initial = {}".format(Ediff_first) + '\n' \
+                    + "E_diff final = {}".format(Ediff_last) + '\n' \
+                    + "E_diff min = {}".format(Ediff_min) + '\n' \
+                    + "E_diff total descent = {}".format(round((Ediff_first - Ediff_last),1)), (0.58,0.67), xycoords='figure fraction')
+
+                    plt.xlabel("update ({})".format(num_updates))
+                    plt.ylabel("E_diff")
+
+
+        # # plot Accuracy results same learning rate all layers
+        # plt.plot(epoch+1, acc_per_epoch, '.k')
+        # plt.title("{}-HL Prediction Model".format(self.n_hidden_layers) + '\n' + "k_r = {}".format(k_r))
+        # if epoch == self.p.num_epochs-1:
+        #     plt.annotate("Accuracy initial = {}".format(acc_first) + '\n' \
+        #     + "Accuracy final = {}".format(acc_last) + '\n' \
+        #     + "Accuracy max = {}".format(acc_max) + '\n' \
+        #     + "Accuracy total ascent = {}".format(round((acc_last - acc_first),1)), (0.58,0.67), xycoords='figure fraction')
+
+        #     plt.xlabel("epoch ({})".format(self.p.num_epochs))
+        #     plt.ylabel("Accuracy")
+
+
+
+
+        print("Prediction finished.")
+        print('\n')
+
+        return
