@@ -55,17 +55,17 @@ def main():
 
 
     # load preprocessed data saved by preprocessing.py
-    # for a linear model training on a linear-optimized training set of 10digs x 10imgs open "linear-10x10.pydb"
+    # for a linear model training on a linear-optimized training set of 10digs x 10imgs open "linear_10x10.pydb"
     # comment out the below three lines if using tanh model
 
-    linear_data_in = open('linear-10x10.pydb','rb')
+    linear_data_in = open('linear_10x10.pydb','rb')
     X_train, y_train = pickle.load(linear_data_in)
     linear_data_in.close()
 
-    # for a tanh model training on a tanh-optimized training set of 10digs x 10imgs open "tanh-10x10.pydb"
+    # for a tanh model training on a tanh-optimized training set of 10digs x 10imgs open "tanh_10x10.pydb"
     # comment out the below three lines if using linear model
 
-    # tanh_data_in = open('tanh-10x10.pydb','rb')
+    # tanh_data_in = open('tanh_10x10.pydb','rb')
     # X_train, y_train = pickle.load(tanh_data_in)
     # tanh_data_in.close()
 
@@ -74,19 +74,20 @@ def main():
 
     pcmod.train(X_train, y_train)
 
-    # display total number of model parameters after training
 
-    print('Total number of model parameters')
-    print(pcmod.n_model_parameters)
-    print('\n')
-    
     # predict
-    
+
     # test_image = X_train[0,:]
-    # test_label = y_train[0]
-    
     # pcmod.predict(test_image ,test_label, 1000)
 
+
+    # pickle trained model
+
+    pcmod_out = open('pcmod_trained.pydb','wb')
+    pickle.dump(pcmod, pcmod_out)
+    pcmod_out.close()
+
+    
 
 if __name__ == '__main__':
     # for unabridged cProfile readout in bash shell type: 'python -m cProfile main.py'

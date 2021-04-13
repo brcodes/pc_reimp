@@ -83,15 +83,15 @@ y_dist = y_dist[1:,:]
 # NOTE: comment out the 8 lines of code below when pickling the Tanh dataset
 
 
-# # do any rescaling, normalization here
-# X_stdized = standardization_filter(X_dist)
-# # flatten
-# X_flat = flatten_images(X_stdized)
-#
-# # pickle the flattened input images and the output vectors as a tuple
-# linear_data_out = open('linear-10x10.pydb','wb')
-# pickle.dump((X_flat, y_dist), linear_data_out)
-# linear_data_out.close()
+# do any rescaling, normalization here
+X_stdized = standardization_filter(X_dist)
+# flatten
+X_flat = flatten_images(X_stdized)
+
+# pickle the flattened input images and the output vectors as a tuple
+linear_data_out = open('linear_10x10.pydb','wb')
+pickle.dump((X_flat, y_dist), linear_data_out)
+linear_data_out.close()
 
 
 # NOTE: comment out the 8 lines of code above when pickling the Tanh dataset
@@ -104,16 +104,16 @@ Data for Tanh Model
 # NOTE: comment out code between these NOTES when pickling the Linear dataset
 
 
-# scaling data to [-1,1]
-X_tanh_scaled = rescaling_filter(X_dist, scaling_range=[-1,1])
-
-# flatten
-X_flat_tanh = flatten_images(X_tanh_scaled)
-
-# pickle the flattened input images and the output vectors as a tuple
-tanh_data_out = open('tanh-10x10.pydb', 'wb')
-pickle.dump((X_flat_tanh, y_dist), tanh_data_out)
-tanh_data_out.close()
+# # scaling data to [-1,1]
+# X_tanh_scaled = rescaling_filter(X_dist, scaling_range=[-1,1])
+#
+# # flatten
+# X_flat_tanh = flatten_images(X_tanh_scaled)
+#
+# # pickle the flattened input images and the output vectors as a tuple
+# tanh_data_out = open('tanh_10x10.pydb', 'wb')
+# pickle.dump((X_flat_tanh, y_dist), tanh_data_out)
+# tanh_data_out.close()
 
 
 # NOTE: comment out code between these NOTES when pickling the Linear dataset

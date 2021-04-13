@@ -15,12 +15,14 @@ def linear_trans(U_dot_r):
     return (f, F)
 
 
+
 def tanh_trans(U_dot_r):
     """ Though intended to operate on some U.dot(r), will take any numerical
     argument x and return the tuple (f(x), F(x)). Tanh transformation. """
     f = np.tanh(U_dot_r)
     F = np.diag(1 - f.flatten()**2)
     return (f, F)
+
 
 
 # r, U prior functions
@@ -32,6 +34,7 @@ def gauss_prior(r_or_U, alph_or_lam):
     return (g_or_h, gprime_or_hprime)
 
 
+
 def kurt_prior(r_or_U, alph_or_lam):
     """ Takes an argument pair of either r & alpha, or U & lambda, and returns
     a tuple of (g(r), g'(r)), or (h(U), h'(U)), respectively. Sparse kurtotic prior. """
@@ -40,9 +43,11 @@ def kurt_prior(r_or_U, alph_or_lam):
     return (g_or_h, gprime_or_hprime)
 
 
+
 # softmax function
 def softmax(r):
     return np.exp(r) / np.exp(r).sum()
+
 
 
 class PredictiveCodingClassifier:
@@ -175,6 +180,7 @@ class PredictiveCodingClassifier:
         return
 
 
+
     def rep_cost(self):
         '''
         Uses current r/U states to compute the least squares portion of the error
@@ -191,6 +197,7 @@ class PredictiveCodingClassifier:
         return E
 
 
+
     def class_cost_1(self,label):
         """ Calculates the classification portion of the cost function output of a training
         image using classification method C1. """
@@ -199,12 +206,14 @@ class PredictiveCodingClassifier:
         return C1
 
 
+
     def class_cost_2(self,label):
         """ Calculates the classification portion of the cost function output of a training
         image using classification method C2, uninclusive of the prior term. """
         n = self.n_hidden_layers
         C2 = -1*label[None,:].dot(np.log(softmax((self.U_o.dot(self.r[n])))))[0,0]
         return C2
+
 
 
     def train(self,X,Y):
@@ -322,55 +331,41 @@ class PredictiveCodingClassifier:
                 + (k_r / 2) * (self.U_o.T.dot(label[:,None]) - self.U_o.T.dot(softmax(self.U_o.dot(self.r[n]))))
 
 
-
                 # U[n] update (C1, C2) (identical to U[i], except index numbers)
                 self.U[n] = self.U[n] + (k_U / self.p.sigma_sq[n]) \
                 * (self.f(self.U[n].dot(self.r[n]))[1].dot(self.r[n-1] - self.f(self.U[n].dot(self.r[n]))[0])).dot(self.r[n].T) \
                 - (k_U / 2) * self.h(self.U[n],self.p.lam[n])[1]
 
-                self.o = np.exp(self.U_o.dot(self.r[n]))
-
 
                 """ U_o update (C2) """
-                """ debug """
-                self.U_o = self.U_o + (k_o / 2) * (label[:,None].dot(self.r[n].T) - (self.p.output_size / np.exp(self.U_o.dot(self.r[n])).sum())\
-                * self.o.dot(self.r[n].T)) - (k_o / 2) * self.h(self.U_o,self.p.lam[n])[1]
+                self.o = np.exp(self.U_o.dot(self.r[n]))
+                self.U_o = self.U_o + label[:,None].dot(self.r[n].T) - len(label)*softmax((self.U_o.dot(self.r[n])).dot(self.r[n].T))
 
 
 
-                # loss function E
-
-                class_type = 'nc'
+                # Loss function E
 
                 E = self.rep_cost()
-                # print("E update (image{} epoch{})".format( image+1, epoch+1))
-                # print(E)
-                # print('\n')
 
 
-                # classification cost function C
+                # Classification cost function C
 
-                # """ classifying using C1 """
+                # if not classifying, default classification type is "NC"
+                self.class_type = 'NC'
+
+                # """ Classifying using C1 """
                 # C = self.class_cost_1(label)
                 # E = E + C
-                # class_type = 'C1'
-                #
-                # # print("C1 update, epoch {}".format(epoch+1))
-                # # print(C)
-                # # print('\n')
+                # self.class_type = 'C1'
 
 
-                """ classifying using C2 """
+                """ Classifying using C2 """
                 C = self.class_cost_2(label)
                 E = E + C
-                class_type = 'C2'
-
-                # print("C2 update, epoch {}".format(epoch+1))
-                # print(C)
-                # print('\n')
+                self.class_type = 'C2'
 
 
-                # Accuracy
+                # Classification Accuracy
 
                 # if index of the max value in final representation vector
                 # = index of the 1 in associated one hot label vector
@@ -378,38 +373,16 @@ class PredictiveCodingClassifier:
                 # and add 1 to num_correct
 
 
-                """ C1 method """
-                # (BUG FIX: self.r[n] is 32,1 but needs to be 10,1 to match label size)
-
-                # compressed_r_n = np.reshape(np.squeeze(self.r[n]),10)
-
-                if np.argmax(softmax(self.r[n])) == np.argmax(label[:,None]):
-                    num_correct += 1
-
-
-                # """ C2 method """
-                # c2_output = self.U_o.dot(self.r[n])
-
-                # if np.argmax(softmax(c2_output)) == np.argmax(label[:,None]):
+                # """ C1 method """
+                # if np.argmax(softmax(self.r[n])) == np.argmax(label[:,None]):
                 #     num_correct += 1
 
 
+                """ C2 method """
+                c2_output = self.U_o.dot(self.r[n])
 
-                # print("argmax(softmax(self.r[n]))")
-                # print(np.argmax(softmax(self.r[n])))
-                # print("argmax(softmax(self.o))")
-                # print(np.argmax(softmax(self.o)))
-                # print("argmax(label[:,None])")
-                # print(np.argmax(label[:,None]))
-
-                # print("self.r[n] shape:")
-                # print(self.r[n].shape)
-                # print("self.o shape:")
-                # print(self.o.shape)
-                # print("c2_output")
-                # print(c2_output.shape)
-                # print("label[:,None] shape:")
-                # print(label[:,None].shape)
+                if np.argmax(softmax(c2_output)) == np.argmax(label[:,None]):
+                    num_correct += 1
 
 
             # store average costs and accuracy per epoch
@@ -422,108 +395,8 @@ class PredictiveCodingClassifier:
             self.acc_per_epoch.append(acc_per_epoch)
 
 
-            # E,C and Accuracty data points for plotting
-
-            # E
-            round_first = round(self.E_avg_per_epoch[0],1)
-            round_last = round(self.E_avg_per_epoch[-1],1)
-            round_min = round(min(self.E_avg_per_epoch),1)
-
-            # C
-            C_round_first = round(self.C_avg_per_epoch[0],1)
-            C_round_last = round(self.C_avg_per_epoch[-1],1)
-            C_round_min = round(min(self.C_avg_per_epoch),1)
-
-            # E+C
-            Eavg_plus_Cavg_per_epoch = E_avg_per_epoch + C_avg_per_epoch
-            EC_first = round_first + C_round_first
-            EC_last = round_last + C_round_last
-            EC_min = round_min + C_round_min
-
-            # Accuracy
-            acc_first = round(self.acc_per_epoch[0],1)
-            acc_last = round(self.acc_per_epoch[-1],1)
-            acc_max = round(max(self.acc_per_epoch),1)
-
-
-
-            # plot E results same learning rate all layers
-            plt.plot(epoch+1, E_avg_per_epoch, '.k')
-            plt.title("{}-HL Model".format(self.n_hidden_layers) + '\n' + "k_r = {}".format(k_r) \
-            + '\n' + "k_U = {}".format(k_U))
-            if epoch == self.p.num_epochs-1:
-                plt.annotate("E avg initial = {}".format(round_first) + '\n' \
-                + "E avg final = {}".format(round_last) + '\n' \
-                + "E avg min = {}".format(round_min) + '\n' \
-                + "E avg total descent = {}".format(round((round_first - round_last),1)), (0.58,0.67), xycoords='figure fraction')
-
-                plt.xlabel("epoch ({})".format(self.p.num_epochs))
-                plt.ylabel("E avg")
-
-
-            # # plot C results same learning rate all layers
-            # plt.plot(epoch+1, C_avg_per_epoch, '.k')
-            # plt.title("{}-HL {} Model".format(self.n_hidden_layers,class_type) + '\n' + "k_r = {}".format(k_r) \
-            # + '\n' + "k_U = {}".format(k_U))
-            # if epoch == self.p.num_epochs-1:
-            #     plt.annotate("C avg initial = {}".format(C_round_first) + '\n' \
-            #     + "C avg final = {}".format(C_round_last) + '\n' \
-            #     + "C avg min = {}".format(C_round_min) + '\n' \
-            #     + "C avg total descent = {}".format(round((C_round_first - C_round_last),1)), (0.58,0.67), xycoords='figure fraction')
-
-            #     plt.xlabel("epoch ({})".format(self.p.num_epochs))
-            #     plt.ylabel("C avg")
-
-
-            # # plot E + C results same learning rate all layers
-            # plt.plot(epoch+1, Eavg_plus_Cavg_per_epoch, '.k')
-            # plt.title("{}-HL {} Model".format(self.n_hidden_layers,class_type) + '\n' + "k_r = {}".format(k_r) \
-            # + '\n' + "k_U = {}".format(k_U))
-            # if epoch == self.p.num_epochs-1:
-            #     plt.annotate("E+C initial = {}".format(EC_first) + '\n' \
-            #     + "E+C final = {}".format(EC_last) + '\n' \
-            #     + "E+C min = {}".format(EC_min) + '\n' \
-            #     + "E+C total descent = {}".format(round((EC_first - EC_last),1)), (0.58,0.67), xycoords='figure fraction')
-
-            #     plt.xlabel("epoch ({})".format(self.p.num_epochs))
-            #     plt.ylabel("E+C")
-
-            # # plot Accuracy results same learning rate all layers
-            # plt.plot(epoch+1, acc_per_epoch, '.k')
-            # plt.title("{}-HL {} Model".format(self.n_hidden_layers,class_type) + '\n' + "k_r = {}".format(k_r) \
-            # + '\n' + "k_U = {}".format(k_U))
-            # if epoch == self.p.num_epochs-1:
-            #     plt.annotate("Accuracy initial = {}".format(acc_first) + '\n' \
-            #     + "Accuracy final = {}".format(acc_last) + '\n' \
-            #     + "Accuracy max = {}".format(acc_max) + '\n' \
-            #     + "Accuracy total ascent = {}".format(round((acc_last - acc_first),1)), (0.58,0.67), xycoords='figure fraction')
-
-            #     plt.xlabel("epoch ({})".format(self.p.num_epochs))
-            #     plt.ylabel("Accuracy")
-
-
-            # # plot E results of asymmetry experiments, i.e. different learning rates for i layers and n layer
-            # plt.plot(epoch+1, E_avg_per_epoch, '.k')
-            # plt.title("{}-HL Model".format(self.n_hidden_layers) + '\n' + "L1 k_(r,U) = {}".format(L1_k) \
-            # + '\n' + "L2 k_(r,U) = {}".format(L2_k))
-            # if epoch == self.p.num_epochs-1:
-            #     plt.annotate("E avg initial = {}".format(round_first) + '\n' \
-            #     + "E avg final = {}".format(round_last) + '\n' \
-            #     + "E avg min = {}".format(round_min) + '\n' \
-            #     + "E avg total descent = {}".format(round((round_first - round_last),1)), (0.58,0.67), xycoords='figure fraction')
-            #     plt.xlabel("epoch ({})".format(self.p.num_epochs))
-            #     plt.ylabel("E avg")
-
-        print("Average representation error per each epoch ({} total), in format [E_epoch1, E_epoch2...]".format(self.p.num_epochs))
-        print(self.E_avg_per_epoch)
-        print('\n')
-        print("Average classification error per each epoch ({} total), in format [C_epoch1, C_epoch2...]".format(self.p.num_epochs))
-        print(self.C_avg_per_epoch)
-        print('\n')
-        print("Model trained.")
-        print('\n')
-
         return
+
 
 
     def predict(self,X,num_updates):
