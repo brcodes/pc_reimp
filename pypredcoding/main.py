@@ -13,16 +13,16 @@ def main():
 
     # create and modify model parameters
 
-    #constant learning rates, optimal for linear model without classification
-    #r 0.0005, U 0.005, o 0.0005; (these values are ModelParameters() default values)
-    p = ModelParameters(unit_act='linear',hidden_sizes = [32,10], num_epochs = 100)
+    # #constant learning rates, optimal for linear model without classification
+    # #r 0.0005, U 0.005, o 0.0005; (these values are ModelParameters() default values)
+    # p = ModelParameters(unit_act='linear',hidden_sizes = [32,10], num_epochs = 100)
 
-    # #constant learning rates, optimal for tanh model without classification
-    # #r 0.05, U 0.05 o 0.05
-    # p = ModelParameters(unit_act='tanh',hidden_sizes = [32,32], num_epochs = 30,
-    #     k_r_sched = {'constant':{'initial':0.05}},
-    #     k_U_sched = {'constant':{'initial':0.05}},
-    #     k_o_sched = {'constant':{'initial':0.05}})
+    #constant learning rates, optimal for tanh model without classification
+    #r 0.05, U 0.05 o 0.05
+    p = ModelParameters(unit_act='tanh',hidden_sizes = [32,10], num_epochs = 1000,
+        k_r_sched = {'constant':{'initial':0.05}},
+        k_U_sched = {'constant':{'initial':0.05}},
+        k_o_sched = {'constant':{'initial':0.0005}})
 
     # #step decay learning rates for tanh model (has not been optimized)
     # p = ModelParameters(unit_act='tanh',hidden_sizes = [32,32], num_epochs = 400,
@@ -58,27 +58,23 @@ def main():
     # for a linear model training on a linear-optimized training set of 10digs x 10imgs open "linear_10x10.pydb"
     # comment out the below three lines if using tanh model
 
-    linear_data_in = open('linear_10x10.pydb','rb')
-    X_train, y_train = pickle.load(linear_data_in)
-    linear_data_in.close()
+    # linear_data_in = open('linear_10x10.pydb','rb')
+    # X_train, y_train, training_img, non_training_img, scrm_training_img, lena_pw, lena_zoom = pickle.load(linear_data_in)
+    # linear_data_in.close()
+
+    
 
     # for a tanh model training on a tanh-optimized training set of 10digs x 10imgs open "tanh_10x10.pydb"
     # comment out the below three lines if using linear model
 
-    # tanh_data_in = open('tanh_10x10.pydb','rb')
-    # X_train, y_train = pickle.load(tanh_data_in)
-    # tanh_data_in.close()
+    tanh_data_in = open('tanh_10x10.pydb','rb')
+    X_train, y_train, training_img, non_training_img, scrm_training_img, lena_pw, lena_zoom = pickle.load(tanh_data_in)
+    tanh_data_in.close()
 
 
-    # train
+    # train on training set
 
     pcmod.train(X_train, y_train)
-
-
-    # predict
-
-    # test_image = X_train[0,:]
-    # pcmod.predict(test_image ,test_label, 1000)
 
 
     # pickle trained model
@@ -87,7 +83,7 @@ def main():
     pickle.dump(pcmod, pcmod_out)
     pcmod_out.close()
 
-    
+
 
 if __name__ == '__main__':
     # for unabridged cProfile readout in bash shell type: 'python -m cProfile main.py'

@@ -23,6 +23,7 @@ print('\n')
 
 # E
 round_first = round(pcmod.E_avg_per_epoch[0],1)
+round_epoch1 = round(pcmod.E_avg_per_epoch[1],1)
 round_last = round(pcmod.E_avg_per_epoch[-1],1)
 round_min = round(min(pcmod.E_avg_per_epoch),1)
 
@@ -30,6 +31,7 @@ round_min = round(min(pcmod.E_avg_per_epoch),1)
 C_round_first = round(pcmod.C_avg_per_epoch[0],1)
 C_round_last = round(pcmod.C_avg_per_epoch[-1],1)
 C_round_min = round(min(pcmod.C_avg_per_epoch),1)
+C_round_max = round(max(pcmod.C_avg_per_epoch),1)
 
 # E+C
 Eavg_plus_Cavg_per_epoch = pcmod.E_avg_per_epoch + pcmod.C_avg_per_epoch
@@ -43,17 +45,27 @@ acc_last = round(pcmod.acc_per_epoch[-1],1)
 acc_max = round(max(pcmod.acc_per_epoch),1)
 
 
-# plot E/Acc vs epoch; plot C/Acc vs epoch
-
+# general variables
 num_epochs = range(1, pcmod.p.num_epochs+1)
 representation_cost = pcmod.E_avg_per_epoch
 classification_cost = pcmod.C_avg_per_epoch
 accuracy = pcmod.acc_per_epoch
+class_type = pcmod.class_type
+
+
+
+"""
+Classification Data Plotting
+"""
+
+# plot E/Acc vs epoch; plot C/Acc vs epoch
 
 # split into vertically-stacked subplots
 
 fig, (axE, axC) = plt.subplots(2)
-fig.suptitle("Representation and Classification Costs versus Accuracy")
+fig.suptitle("{}  {}      ".format(pcmod.p.unit_act,class_type)+"lr_r={} ".format(pcmod.lr_r)+"lr_U={} ".format(pcmod.lr_U)+"lr_o={}".format(pcmod.lr_o)+'\n'\
++'E1={} '.format(round_epoch1)+'Emin={} '.format(round_min)\
++'Cmax={} '.format(C_round_max)+'Cmin={} '.format(C_round_min) + 'Amax={} '.format(acc_max))
 
 # create a second y-axis (Accuracy) for each subplot
 
@@ -93,25 +105,35 @@ plt.show()
 
 
 
-# annotate with pcmod.class_type "NC", "C1", or "C2"
-# maybe with min E, min C, max E, max C, min max A
+"""
+Plotting When No Classification (e.g. Training Model for Prediction)
+"""
+
+
+
+# fig, ax = plt.subplots(1)
+# fig.suptitle("{}  {}      ".format(pcmod.p.unit_act,class_type)+"lr_r={} ".format(pcmod.lr_r)+"lr_U={} ".format(pcmod.lr_U)+"lr_o={}".format(pcmod.lr_o)+'\n'\
+# +'E1={} '.format(round_epoch1)+'Emin={} '.format(round_min)\
+# + 'Amax={} '.format(acc_max))
+
+# twinA = ax.twinx()
+
+
+# plotE = ax.plot(num_epochs, representation_cost, "r-", label="Avg E")
+# plotA = twinA.plot(num_epochs, accuracy, "g-", label="Accuracy")
+
+# twinA.set_ylim(0, 100)
+
+# ax.set_xlabel("Epoch")
+# ax.set_ylabel("Avg E")
+# twinA.set_ylabel("Accuracy")
+
+
+# plt.show()
 
 
 
 
-
-# # plot E results same learning rate all layers
-# plt.plot(epoch+1, E_avg_per_epoch, '.k')
-# plt.title("{}-HL Model".format(pcmod.n_hidden_layers) + '\n' + "k_r = {}".format(k_r) \
-# + '\n' + "k_U = {}".format(k_U))
-# if epoch == pcmod.p.num_epochs-1:
-#     plt.annotate("E avg initial = {}".format(round_first) + '\n' \
-#     + "E avg final = {}".format(round_last) + '\n' \
-#     + "E avg min = {}".format(round_min) + '\n' \
-#     + "E avg total descent = {}".format(round((round_first - round_last),1)), (0.58,0.67), xycoords='figure fraction')
-#
-#     plt.xlabel("epoch ({})".format(pcmod.p.num_epochs))
-#     plt.ylabel("E avg")
 
 
 
@@ -169,18 +191,18 @@ plt.show()
 #     plt.xlabel("epoch ({})".format(pcmod.p.num_epochs))
 #     plt.ylabel("E+C")
 
-# plot Accuracy results same learning rate all layers
-plt.plot(epoch+1, acc_per_epoch, '.k')
-plt.title("{}-HL {} Model".format(pcmod.n_hidden_layers,class_type) + '\n' + "k_r = {}".format(k_r) \
-+ '\n' + "k_U = {}".format(k_U))
-if epoch == pcmod.p.num_epochs-1:
-    plt.annotate("Accuracy initial = {}".format(acc_first) + '\n' \
-    + "Accuracy final = {}".format(acc_last) + '\n' \
-    + "Accuracy max = {}".format(acc_max) + '\n' \
-    + "Accuracy total ascent = {}".format(round((acc_last - acc_first),1)), (0.58,0.67), xycoords='figure fraction')
+# # plot Accuracy results same learning rate all layers
+# plt.plot(epoch+1, acc_per_epoch, '.k')
+# plt.title("{}-HL {} Model".format(pcmod.n_hidden_layers,class_type) + '\n' + "k_r = {}".format(k_r) \
+# + '\n' + "k_U = {}".format(k_U))
+# if epoch == pcmod.p.num_epochs-1:
+#     plt.annotate("Accuracy initial = {}".format(acc_first) + '\n' \
+#     + "Accuracy final = {}".format(acc_last) + '\n' \
+#     + "Accuracy max = {}".format(acc_max) + '\n' \
+#     + "Accuracy total ascent = {}".format(round((acc_last - acc_first),1)), (0.58,0.67), xycoords='figure fraction')
 
-    plt.xlabel("epoch ({})".format(pcmod.p.num_epochs))
-    plt.ylabel("Accuracy")
+#     plt.xlabel("epoch ({})".format(pcmod.p.num_epochs))
+#     plt.ylabel("Accuracy")
 
 
 # # plot E results of asymmetry experiments, i.e. different learning rates for i layers and n layer
@@ -195,11 +217,11 @@ if epoch == pcmod.p.num_epochs-1:
 #     plt.xlabel("epoch ({})".format(pcmod.p.num_epochs))
 #     plt.ylabel("E avg")
 
-print("Average representation error per each epoch ({} total), in format [E_epoch1, E_epoch2...]".format(pcmod.p.num_epochs))
-print(pcmod.E_avg_per_epoch)
-print('\n')
-print("Average classification error per each epoch ({} total), in format [C_epoch1, C_epoch2...]".format(pcmod.p.num_epochs))
-print(pcmod.C_avg_per_epoch)
-print('\n')
-print("Model trained.")
-print('\n')
+# print("Average representation error per each epoch ({} total), in format [E_epoch1, E_epoch2...]".format(pcmod.p.num_epochs))
+# print(pcmod.E_avg_per_epoch)
+# print('\n')
+# print("Average classification error per each epoch ({} total), in format [C_epoch1, C_epoch2...]".format(pcmod.p.num_epochs))
+# print(pcmod.C_avg_per_epoch)
+# print('\n')
+# print("Model trained.")
+# print('\n')

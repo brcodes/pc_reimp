@@ -1,6 +1,9 @@
-from data import get_mnist_data,flatten_images,standardization_filter,rescaling_filter
+from data import get_mnist_data,flatten_images,standardization_filter,rescaling_filter, inflate_vectors
 import numpy as np
 import pickle
+import cv2
+from matplotlib import pyplot as plt
+import random
 
 
 """
@@ -9,12 +12,12 @@ PredictiveCodingClassifier.train() or .test()
 """
 
 """
-Data for Linear Model
+Load MNIST images and prepare 100 images, 10 of each digit (0-9)
 """
 
 # load data
 # frac_samp 0.000166 = 10 images
-X_train, y_train = get_mnist_data(frac_samp=0.0166,return_test=False)
+(X_train, y_train),(X_test,y_test) = get_mnist_data(frac_samp=0.0166,return_test=True)
 
 # number of initial training images
 num_imgs = y_train.shape[0]
@@ -75,44 +78,189 @@ y_dist = y_dist[1:,:]
 
 # visually verify full 10 dig by 10 imgs practice set by printing each img
 
-# for i in range(0,X_dist.shape[0]):
+# for i in range(88,X_dist.shape[0]):
 #     plt.imshow(X_dist[i,:,:])
 #     plt.show()
 
+"""
+"Out of bag" (non-training) image, and "In bag" normal , "In bag" scrambled images
+"""
 
-# NOTE: comment out the 8 lines of code below when pickling the Tanh dataset
+# out of bag image
+non_training_img = np.copy(X_test[0,:,:])
 
-
-# do any rescaling, normalization here
-X_stdized = standardization_filter(X_dist)
-# flatten
-X_flat = flatten_images(X_stdized)
-
-# pickle the flattened input images and the output vectors as a tuple
-linear_data_out = open('linear_10x10.pydb','wb')
-pickle.dump((X_flat, y_dist), linear_data_out)
-linear_data_out.close()
+# # verify image
+# plt.imshow(non_training_img, cmap='Greys'),plt.title('out of bag mnist image')
+# plt.show()
 
 
-# NOTE: comment out the 8 lines of code above when pickling the Tanh dataset
+# in bag image
+training_img = np.copy(X_dist[0,:,:])
+# in bag scrambled
+scrambled = np.copy(X_dist[0,:,:])
+np.random.shuffle(scrambled)
+
+# # verify in bag normal and scrambled images
+# plt.subplot(121), plt.imshow(training_img, cmap='Greys'),plt.title('in bag mnist normal')
+# plt.subplot(122), plt.imshow(scrambled, cmap='Greys'),plt.title('in bag mnist scrambled')
+
+
+
+# why not full shuffling? debug here
+
+# non_training_scrm_flat = flatten_images(non_training_scrm[None,:,:])
+# np.random.shuffle(non_training_scrm_flat)
+# non_training_scrm_inf = inflate_vectors(non_training_scrm_flat)
+# print(non_training_scrm_inf.shape)
+# non_training_squeezed = np.squeeze(non_training_scrm_inf)
+# print(non_training_squeezed.shape)
+
 
 
 """
-Data for Tanh Model
+Lena loading and pre-processing
+"""
+
+
+lena_pw_path = 'non_mnist_images/lena_128x128_grey_prewhitened.png'
+lena_zoom_path = 'non_mnist_images/lena_128x128_grey_zoomed.png'
+
+# second arg of imread is 0 to denote reading in greyscale mode
+lena_pw = cv2.imread(lena_pw_path, 0)
+lena_zoom = cv2.imread(lena_zoom_path, 0)
+
+
+print(lena_pw.shape)
+print(lena_zoom.shape)
+
+
+# # verify images
+# plt.subplot(121), plt.imshow(lena_pw, cmap='Greys'),plt.title('prewhitened')
+# plt.subplot(122), plt.imshow(lena_zoom, cmap='Greys'),plt.title('zoom')
+# plt.show()
+
+
+"""
+Scaling and Pickling for Linear Model
+"""
+
+# NOTE: comment out code between these NOTES when pickling the Tanh dataset
+
+
+# # standardize and flatten main database
+# X_stdized = standardization_filter(X_dist)
+# X_flat = flatten_images(X_stdized)
+# # #verify stdization
+# # plt.imshow(X_stdized[0,:,:], cmap='Greys'),plt.title('in bag standardized database')
+# # plt.show()
+
+# # stdize and flatten one (the first, [0,:,:]) image from main database
+# training_img_std = standardization_filter(training_img[None,:,:])
+# training_img_flat = flatten_images(training_img_std)
+# # #verify stdization
+# # training_img_sq = np.squeeze(training_img_std)
+# # plt.imshow(training_img_sq, cmap='Greys'),plt.title('in bag standardized')
+# # plt.show()
+
+# # stdize/flatten out of bag image
+# non_training_img_std = standardization_filter(non_training_img[None,:,:])
+# non_training_img_flat = flatten_images(non_training_img_std)
+# # #verify stdization
+# # non_training_img_sq = np.squeeze(non_training_img_std)
+# # plt.imshow(non_training_img_sq, cmap='Greys'),plt.title('out of bag standardized')
+# # plt.show()
+
+# # stdize/flatten in bag scrambled image
+# scrambled_std = standardization_filter(scrambled[None,:,:])
+# scrambled_flat = flatten_images(scrambled_std)
+# # # verify stdization
+# # scrambled_sq = np.squeeze(scrambled_std)
+# # plt.imshow(scrambled_sq, cmap='Greys'),plt.title('scrambled standardized')
+# # plt.show()
+
+# # stdize/flatten lena prewhitened
+# lena_pw_std = standardization_filter(lena_pw[None,:,:])
+# lena_pw_flat = flatten_images(lena_pw_std)
+# # # verify stdization
+# # lena_pw_sq = np.squeeze(lena_pw_std)
+# # plt.imshow(lena_pw_sq, cmap='Greys'),plt.title('lena_pw standardized')
+# # plt.show()
+
+# # stdize/flatten lena zoomed
+# lena_zoom_std = standardization_filter(lena_zoom[None,:,:])
+# lena_zoom_flat = flatten_images(lena_zoom_std)
+# # # verify stdization
+# # lena_zoom_sq = np.squeeze(lena_zoom_std)
+# # plt.imshow(lena_zoom_sq, cmap='Greys'),plt.title('lena_zoom standardized')
+# # plt.show()
+
+
+
+# # pickle the flattened input images and the output vectors as a tuple
+# linear_data_out = open('linear_10x10.pydb','wb')
+# pickle.dump((X_flat, y_dist, training_img_flat, non_training_img_flat, scrambled_flat, lena_pw_flat, lena_zoom_flat), linear_data_out)
+# linear_data_out.close()
+
+
+# NOTE: comment out code between these NOTES when pickling the Tanh dataset
+
+
+"""
+Scaling and Pickling for Tanh Model
 """
 
 # NOTE: comment out code between these NOTES when pickling the Linear dataset
 
 
-# # scaling data to [-1,1]
-# X_tanh_scaled = rescaling_filter(X_dist, scaling_range=[-1,1])
-#
-# # flatten
-# X_flat_tanh = flatten_images(X_tanh_scaled)
-#
+# # scale main database to [-1,1] and flatten
+# X_tanh = rescaling_filter(X_dist, scaling_range=[-1,1])
+# X_flat_tanh = flatten_images(X_tanh)
+# # # verify tanh scaling
+# # plt.imshow(X_tanh[0,:,:], cmap='Greys'),plt.title('in bag tanh database')
+# # plt.show()
+
+# # scale in bag image to [-1,1] and flatten
+# training_img_tanh = rescaling_filter(training_img, scaling_range=[-1,1])
+# training_img_tanh_flat = flatten_images(training_img_tanh[None,:,:])
+# # # verify tanh scaling
+# # plt.imshow(training_img_tanh, cmap='Greys'),plt.title('in bag tanh')
+# # plt.show()
+
+# # scale out of bag image to [-1,1] and flatten
+# non_training_img_tanh = rescaling_filter(non_training_img, scaling_range=[-1,1])
+# non_training_img_tanh_flat = flatten_images(non_training_img_tanh[None,:,:])
+# # # verify tanh scaling
+# # plt.imshow(non_training_img_tanh, cmap='Greys'),plt.title('out of bag tanh')
+# # plt.show()
+
+# # scale in bag scrambled to [-1,1] and flatten
+# scrambled_tanh = rescaling_filter(scrambled, scaling_range=[-1,1])
+# scrambled_tanh_flat = flatten_images(scrambled_tanh[None,:,:])
+# # # verify tanh scaling
+# # plt.imshow(scrambled_tanh, cmap='Greys'),plt.title('in bag scrambled tanh')
+# # plt.show()
+
+
+# # scale lena pw to [-1,1] and flatten
+# lena_pw_tanh = rescaling_filter(lena_pw, scaling_range=[-1,1])
+# lena_pw_tanh_flat = flatten_images(lena_pw[None,:,:])
+# # # verify tanh scaling
+# # plt.imshow(lena_pw_tanh, cmap='Greys'),plt.title('lena pw tanh')
+# # plt.show()
+
+
+# # scale lena zoom to [-1,1] and flatten
+# lena_zoom_tanh = rescaling_filter(lena_zoom, scaling_range=[-1,1])
+# lena_zoom_tanh_flat = flatten_images(lena_zoom_tanh[None,:,:])
+# # # verify tanh scaling
+# # plt.imshow(lena_zoom_tanh, cmap='Greys'),plt.title('lena zoom tanh')
+# # plt.show()
+
+
+
 # # pickle the flattened input images and the output vectors as a tuple
 # tanh_data_out = open('tanh_10x10.pydb', 'wb')
-# pickle.dump((X_flat_tanh, y_dist), tanh_data_out)
+# pickle.dump((X_flat_tanh, y_dist, training_img_tanh_flat, non_training_img_tanh_flat, scrambled_tanh_flat, lena_pw_tanh_flat, lena_zoom_tanh_flat), tanh_data_out)
 # tanh_data_out.close()
 
 
