@@ -220,6 +220,13 @@ class PredictiveCodingClassifier:
         C2 = -1*label[None,:].dot(np.log(softmax((self.U_o.dot(self.r[n])))))[0,0]
         return C2
 
+    def prediction_error(self,layer_number):
+        """ Calculates the normed prediction error of a layer (in [i,n]), i.e. the difference between a
+        the layer's image prediction ("r^td") and the image representation from the layer below ("r"). """
+        pe = math.sqrt((self.r[layer_number-1]-self.f(self.U[layer_number].dot(self.r[layer_number]))[0]).T\
+        .dot(self.r[layer_number-1]-self.f(self.U[layer_number].dot(self.r[layer_number]))[0]))
+        return pe
+
 
 
     def train(self,X,Y):
@@ -320,14 +327,12 @@ class PredictiveCodingClassifier:
                     - (k_U / 2) * self.h(self.U[i],self.p.lam[i])[1]
 
 
-
                 """ r(n) update (C1) """
                 self.r[n] = self.r[n] + (k_r / self.p.sigma_sq[n]) \
                 * self.U[n].T.dot(self.f(self.U[n].dot(self.r[n]))[1].dot(self.r[n-1] - self.f(self.U[n].dot(self.r[n]))[0])) \
                 - (k_r / 2) * self.g(self.r[n],self.p.alpha[n])[1] \
-                # classification term
-                + (k_o / 2) * (label[:,None] - softmax(self.r[n]))
-
+                # #classification term
+                # + (k_o / 2) * (label[:,None] - softmax(self.r[n]))
 
                 # """ r(n) update (C2) """
                 # self.r[n] = self.r[n] + (k_r / self.p.sigma_sq[n]) \
@@ -359,10 +364,10 @@ class PredictiveCodingClassifier:
                 # if not classifying, default classification type is "NC"
                 self.class_type = 'NC'
 
-                """ Classifying using C1 """
-                C = self.class_cost_1(label)
-                E = E + C
-                self.class_type = 'C1'
+                # """ Classifying using C1 """
+                # C = self.class_cost_1(label)
+                # E = E + C
+                # self.class_type = 'C1'
 
 
                 # """ Classifying using C2 """
@@ -379,9 +384,9 @@ class PredictiveCodingClassifier:
                 # and add 1 to num_correct
 
 
-                """ C1 method """
-                if np.argmax(softmax(self.r[n])) == np.argmax(label[:,None]):
-                    num_correct += 1
+                # """ C1 method """
+                # if np.argmax(softmax(self.r[n])) == np.argmax(label[:,None]):
+                #     num_correct += 1
 
 
                 # """ C2 method """
@@ -405,7 +410,7 @@ class PredictiveCodingClassifier:
 
 
 
-    def predict(self,X,classif_type,X_name,num_updates):
+    def predict(self,X,X_name,prior_type,classif_type,num_updates):
         '''
         Given one or more inputs, produce one or more outputs.
         '''
@@ -418,16 +423,14 @@ class PredictiveCodingClassifier:
         print('\n')
 
 
-
         # representation costs for zeroth and nth layers
-        self.r_init_costs = []
-        self.r_final_costs = []
-        self.r_costs_diffs = []
+        self.pe_1 = []
+        self.pe_2 = []
 
         # accuracy per epoch: how many images are correctly guessed per epoch
         num_correct = 0
 
-        # set learning rates at the start of each epoch
+        # set learning rate for r
         k_r = 0.05
 
 
@@ -435,10 +438,10 @@ class PredictiveCodingClassifier:
         for image in range(0, 1):
 
             # copy first image into r[0]
-            
+
             # print(X[image].shape)
             self.r[0] = X[image][:,None]
-            
+
             # print(X[image].shape)
             # print(X[image][:,None].shape)
             # print(self.r[0].shape)
@@ -452,28 +455,18 @@ class PredictiveCodingClassifier:
                 self.r[layer] = np.random.randn(self.p.hidden_sizes[layer-1],1)
                 # print('rlayer')
                 # print(self.r[layer].shape)
-            
-            
+
 
 
             for update in range(0,num_updates):
-                
-                # magnitude (normed) prediction error before update
-                
-                layer_0_cost = math.sqrt((self.r[0]-self.f(self.U[1].dot(self.r[1]))[0]).T\
-                .dot(self.r[0]-self.f(self.U[1].dot(self.r[1]))[0]))
-                
-                # print('rinitcost')
-                # print(r_init_cost)
-                
-                 # magnitude (normed) prediction error after update
 
-                layer_1_cost = math.sqrt((self.r[1]-self.f(self.U[2].dot(self.r[2]))[0]).T\
-                .dot(self.r[1]-self.f(self.U[2].dot(self.r[2]))[0]))
-                
-                
-                self.r_init_costs.append(r_init_cost)
+                # magnitude (normed) prediction errors each "layer" (i.e. error between r0,r1, and r1,r2)
 
+                pe_1 = self.prediction_error(1)
+                pe_2 = self.prediction_error(2)
+
+                self.pe_1.append(pe_1)
+                self.pe_2.append(pe_2)
 
                 # loop through intermediate layers (will fail if number of hidden layers is 1)
                 # r,U updates written symmetrically for all layers including output
@@ -491,78 +484,63 @@ class PredictiveCodingClassifier:
                 * self.U[n].T.dot(self.f(self.U[n].dot(self.r[n]))[1].dot(self.r[n-1] - self.f(self.U[n].dot(self.r[n]))[0])) \
                 - (k_r / 2) * self.g(self.r[n],self.p.alpha[n])[1]
 
-                
-                
-               
-                    
-                self.r_final_costs.append(r_final_cost)
-                
 
-                r_cost_diff = abs(r_final_cost - r_init_cost)
-                self.r_costs_diffs.append(r_cost_diff)
-                
-            
             # for plotting: move out of predict() later
 
-            rdiff_first = round(self.r_costs_diffs[0],1)
-            rdiff_last = round(self.r_costs_diffs[-1],1)
-            rdiff_min = round(min(self.r_costs_diffs),1)
-            rdiff_max = round(max(self.r_costs_diffs),1)
+            pe_1_first = round(self.pe_1[0],1)
+            pe_1_last = round(self.pe_1[-1],1)
+            pe_2_first = round(self.pe_2[0],1)
+            pe_2_last = round(self.pe_2[-1],1)
 
             num_updates = range(1, num_updates+1)
-            
+
             fig, ax = plt.subplots(1)
-            fig.suptitle("{}  {}  {}    ".format(self.p.unit_act,classif_type,X_name)+"lr_r={} ".format(self.lr_r)+'\n'\
-            +'PE_diff_first={} '.format(rdiff_first)+'PE_diff_last={} '.format(rdiff_last)\
-            + 'PE_diff_max={} '.format(rdiff_max) + 'PE_diff_min={} '.format(rdiff_min))
+            fig.suptitle("{}  {}  {}  {}  ".format(self.p.unit_act,classif_type,prior_type,X_name)+"lr_r={} ".format(self.lr_r)+'\n'\
+            +'pe_1_first={} '.format(pe_1_first)+'pe_1_last={} '.format(pe_1_last)\
+            + 'pe_2_first={} '.format(pe_2_first) + 'pe_2_last={} '.format(pe_2_last))
+
+            # lime_green:'#3cb44b'
+            # magenta_red:'#e6194b'
+            # sky_blue:'#4363d8'
+            # light_orange:'#f58231'
+            # bright_purple:'#911eb4'
+            # turquoise:'#46f0f0'
+            # magenta_pink:'#f032e6'
+            # neon_yellow_green:'#bcf60c'
+            # pink_skin:'#fabebe'
+            # dark_lakefoam_green:'#008080'
+            # powder_pink:'#e6beff'
+            # popcorn_yellow:'#fffac8'
+            # carmel_brown:'#9a6324'
+            # dark_chocolate:'#800000'
+            # keylime_pie:'#aaffc3'
+            # camo_green:'#808000'
+            # cooked_salmon:'#ffd8b1'
+            # navy_blue:'#000075'
+            # dark_grey:'#808080'
+            # white:'#ffffff'
+            # black:'#000000'
+            # gold_yellow:'#ffe119'
             
             
-            plotE = ax.plot(num_updates, self.r_costs_diffs, "r-", label="r_costs_diff")
-            
+            # black and navy
+            plotE = ax.plot(num_updates, self.pe_1, '#000000', label="pe_1")
+            plotE = ax.plot(num_updates, self.pe_2, '#000075', label="pe_2")
+            # ax.set_ylim(0, 50)
+            ax.legend()
+
             ax.set_xlabel("Update")
-            ax.set_ylabel("|nth PE - 0th PE|")
-            
-            
+            ax.set_ylabel("L1, L2 PE")
+
+
             plt.show()
-            
+
             # return final prediction
             # i.e. r[n]
-            
+
             self.prediction = self.r[2]
-            
+
             return
-        
-        return
-
-
-
-        # # plot E_diff results same learning rate all layers
-        # plt.plot(num_updates, self.r_costs_diffs, '.k')
-        # plt.title("{}-HL Prediction Model".format(self.n_hidden_layers) + '\n' + "k_r = {}".format(k_r))
-        # if update == num_updates-1:
-        #     plt.annotate("E_diff initial = {}".format(Ediff_first) + '\n' \
-        #     + " final = {}".format(Ediff_last) + '\n' \
-        #     + "E_diff min = {}".format(Ediff_min) + '\n' \
-        #     + "E_diff total descent = {}".format(round((Ediff_first - Ediff_last),1)), (0.58,0.67), xycoords='figure fraction')
-
-        #     plt.xlabel("update ({})".format(num_updates))
-        #     plt.ylabel("E_diff")
-
-
-        # # plot Accuracy results same learning rate all layers
-        # plt.plot(epoch+1, acc_per_epoch, '.k')
-        # plt.title("{}-HL Prediction Model".format(self.n_hidden_layers) + '\n' + "k_r = {}".format(k_r))
-        # if epoch == self.p.num_epochs-1:
-        #     plt.annotate("Accuracy initial = {}".format(acc_first) + '\n' \
-        #     + "Accuracy final = {}".format(acc_last) + '\n' \
-        #     + "Accuracy max = {}".format(acc_max) + '\n' \
-        #     + "Accuracy total ascent = {}".format(round((acc_last - acc_first),1)), (0.58,0.67), xycoords='figure fraction')
-
-        #     plt.xlabel("epoch ({})".format(self.p.num_epochs))
-        #     plt.ylabel("Accuracy")
-
-
-
 
         print("Prediction finished.")
         print('\n')

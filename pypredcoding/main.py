@@ -19,10 +19,19 @@ def main():
 
     #constant learning rates, optimal for tanh model without classification
     #r 0.05, U 0.05 o 0.05
-    p = ModelParameters(unit_act='tanh',hidden_sizes = [32,10], num_epochs = 1000,
+    p = ModelParameters(unit_act='tanh', 
+        hidden_sizes = [32,10], num_epochs = 1000,
         k_r_sched = {'constant':{'initial':0.05}},
         k_U_sched = {'constant':{'initial':0.05}},
         k_o_sched = {'constant':{'initial':0.0005}})
+    
+    # #constant learning rates, optimal for tanh model without classification
+    # #r 0.05, U 0.05 o 0.05
+    # p = ModelParameters(unit_act='tanh',r_prior = 'kurtotic', U_prior = 'kurtotic', 
+    #     hidden_sizes = [32,10], num_epochs = 1000,
+    #     k_r_sched = {'constant':{'initial':0.05}},
+    #     k_U_sched = {'constant':{'initial':0.05}},
+    #     k_o_sched = {'constant':{'initial':0.0005}})
 
     # #step decay learning rates for tanh model (has not been optimized)
     # p = ModelParameters(unit_act='tanh',hidden_sizes = [32,32], num_epochs = 400,
@@ -54,6 +63,7 @@ def main():
     pcmod = PredictiveCodingClassifier(p)
 
 
+
     # load preprocessed data saved by preprocessing.py
     # for a linear model training on a linear-optimized training set of 10digs x 10imgs open "linear_10x10.pydb"
     # comment out the below three lines if using tanh model
@@ -62,7 +72,7 @@ def main():
     # X_train, y_train, training_img, non_training_img, scrm_training_img, lena_pw, lena_zoom = pickle.load(linear_data_in)
     # linear_data_in.close()
 
-    
+
 
     # for a tanh model training on a tanh-optimized training set of 10digs x 10imgs open "tanh_10x10.pydb"
     # comment out the below three lines if using linear model
@@ -79,7 +89,14 @@ def main():
 
     # pickle trained model
 
-    pcmod_out = open('pcmod_trained.pydb','wb')
+    prior_type = 'gauss'
+    # prior_type = 'kurt'
+
+    class_type = 'NC'
+    # class_type = 'C1'
+    # class_type = 'C2'
+
+    pcmod_out = open('pcmod_trained_{}_{}.pydb'.format(prior_type,class_type),'wb')
     pickle.dump(pcmod, pcmod_out)
     pcmod_out.close()
 

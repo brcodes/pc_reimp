@@ -9,7 +9,14 @@ import pickle
 
 # load trained model as a pickle
 
-pcmod_in = open('pcmod_trained.pydb','rb')
+# prior_type = 'gauss'
+prior_type = 'kurt'
+
+# class_type = 'NC'
+# class_type = 'C1'
+class_type = 'C2'
+
+pcmod_in = open('pcmod_trained_{}_{}.pydb'.format(prior_type,class_type),'rb')
 pcmod = pickle.load(pcmod_in)
 pcmod_in.close()
 
@@ -51,6 +58,7 @@ representation_cost = pcmod.E_avg_per_epoch
 classification_cost = pcmod.C_avg_per_epoch
 accuracy = pcmod.acc_per_epoch
 class_type = pcmod.class_type
+prior_type = pcmod.p.r_prior
 
 
 
@@ -63,7 +71,7 @@ Classification Data Plotting
 # split into vertically-stacked subplots
 
 fig, (axE, axC) = plt.subplots(2)
-fig.suptitle("{}  {}      ".format(pcmod.p.unit_act,class_type)+"lr_r={} ".format(pcmod.lr_r)+"lr_U={} ".format(pcmod.lr_U)+"lr_o={}".format(pcmod.lr_o)+'\n'\
+fig.suptitle("{}  {}  {}     ".format(pcmod.p.unit_act,prior_type,class_type)+"lr_r={} ".format(pcmod.lr_r)+"lr_U={} ".format(pcmod.lr_U)+"lr_o={}".format(pcmod.lr_o)+'\n'\
 +'E1={} '.format(round_epoch1)+'Emin={} '.format(round_min)\
 +'Cmax={} '.format(C_round_max)+'Cmin={} '.format(C_round_min) + 'Amax={} '.format(acc_max))
 
@@ -73,16 +81,17 @@ twinEA = axE.twinx()
 twinCA = axC.twinx()
 
 # create labeled plot objects
-
-plotE = axE.plot(num_epochs, representation_cost, "r-", label="Avg E")
-plotC = axC.plot(num_epochs, classification_cost, "b-", label="Avg C")
-plotEA = twinEA.plot(num_epochs, accuracy, "g-", label="Accuracy")
-plotCA = twinCA.plot(num_epochs, accuracy, "g-", label="Accuracy")
+# black, sky,
+plotE = axE.plot(num_epochs, representation_cost, '#000000', label="Avg E")
+plotC = axC.plot(num_epochs, classification_cost, '#4363d8', label="Avg C")
+plotEA = twinEA.plot(num_epochs, accuracy, 'darkgreen', label="Accuracy")
+plotCA = twinCA.plot(num_epochs, accuracy, 'darkgreen', label="Accuracy")
 
 # set limits for and label x,y-axes for both subplots
 
 # axE.set_xlim(0, 2)
-axC.set_ylim(0, 0.3)
+axC.set_ylim(0, 0.15)
+axE.set_ylim(0, 20)
 twinEA.set_ylim(0, 100)
 twinCA.set_ylim(0, 100)
 
@@ -94,10 +103,11 @@ axC.set_xlabel("Epoch")
 axC.set_ylabel("Avg C")
 twinCA.set_ylabel("Accuracy")
 
-# pass labeled plot objects legend method
 
-axE.legend(handles=[plotE, plotEA])
-axC.legend(handles=[plotC, plotCA])
+# axE.legend()
+# # twinEA.legend()
+# axC.legend()
+
 
 # show plot
 
@@ -112,32 +122,60 @@ Plotting When No Classification (e.g. Training Model for Prediction)
 
 
 # fig, ax = plt.subplots(1)
-# fig.suptitle("{}  {}      ".format(pcmod.p.unit_act,class_type)+"lr_r={} ".format(pcmod.lr_r)+"lr_U={} ".format(pcmod.lr_U)+"lr_o={}".format(pcmod.lr_o)+'\n'\
-# +'E1={} '.format(round_epoch1)+'Emin={} '.format(round_min)\
-# + 'Amax={} '.format(acc_max))
-
-# twinA = ax.twinx()
+# fig.suptitle("{}  {}  {}     ".format(pcmod.p.unit_act,prior_type,class_type)+\
+# "lr_r={} ".format(pcmod.lr_r)+"lr_U={} ".format(pcmod.lr_U)+'\n'\
+# +'E1={} '.format(round_epoch1)+'Emin={} '.format(round_min))
 
 
-# plotE = ax.plot(num_epochs, representation_cost, "r-", label="Avg E")
-# plotA = twinA.plot(num_epochs, accuracy, "g-", label="Accuracy")
+# # black and keylime
+# plotE = ax.plot(num_epochs, representation_cost, '#000000', label="Avg E")
 
-# twinA.set_ylim(0, 100)
+# ax.set_ylim(0, 20)
 
 # ax.set_xlabel("Epoch")
 # ax.set_ylabel("Avg E")
-# twinA.set_ylabel("Accuracy")
 
 
 # plt.show()
 
 
+"""
+Colors from kbutil
+"""
 
+# matplotlib default colors
+_colors = ('k','r','orange','gold','g','b','purple','magenta',
+           'firebrick','coral','limegreen','dodgerblue','indigo','orchid',
+           'tomato','darkorange','greenyellow','darkgreen','yellow','deepskyblue','indigo','deeppink')
 
+# colorwheel colors
+_colors = ('#e6194b', '#3cb44b', '#4363d8', '#f58231', '#911eb4', '#46f0f0',
+            '#f032e6', '#bcf60c','#fabebe', '#008080', '#e6beff', '#9a6324', '#fffac8',
+            '#800000', '#aaffc3', '#808000', '#ffd8b1', '#000075', '#808080', '#ffffff', '#000000','#ffe119')
 
-
-
-
+# br's unofficial names
+lime_green='#3cb44b'
+magenta_red='#e6194b'
+sky_blue='#4363d8'
+light_orange='#f58231'
+bright_purple='#911eb4'
+turquoise='#46f0f0'
+magenta_pink='#f032e6'
+neon_yellow_green='#bcf60c'
+pink_skin='#fabebe'
+dark_lakefoam_green='#008080'
+powder_pink='#e6beff'
+popcorn_yellow='#fffac8'
+carmel_brown='#9a6324'
+dark_chocolate='#800000'
+keylime_pie='#aaffc3'
+camo_green='#808000'
+cooked_salmon='#ffd8b1'
+navy_blue='#000075'
+dark_grey='#808080'
+white='#ffffff'
+black='#000000'
+gold_yellow:'#ffe119'
 
 
 

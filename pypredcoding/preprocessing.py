@@ -98,7 +98,9 @@ non_training_img = np.copy(X_test[0,:,:])
 training_img = np.copy(X_dist[0,:,:])
 # in bag scrambled
 scrambled = np.copy(X_dist[0,:,:])
+scrambled = scrambled.ravel()
 np.random.shuffle(scrambled)
+scrambled = scrambled.reshape(28,28)
 
 # # verify in bag normal and scrambled images
 # plt.subplot(121), plt.imshow(training_img, cmap='Greys'),plt.title('in bag mnist normal')
@@ -126,8 +128,12 @@ lena_pw_path = 'non_mnist_images/lena_128x128_grey_prewhitened.png'
 lena_zoom_path = 'non_mnist_images/lena_128x128_grey_zoomed.png'
 
 # second arg of imread is 0 to denote reading in greyscale mode
-lena_pw = cv2.imread(lena_pw_path, 0)
-lena_zoom = cv2.imread(lena_zoom_path, 0)
+lena_pw_read = cv2.imread(lena_pw_path, 0)
+lena_zoom_read = cv2.imread(lena_zoom_path, 0)
+
+lena_pw = cv2.resize(lena_pw_read,(28,28))
+lena_zoom = cv2.resize(lena_zoom_read,(28,28))
+
 
 
 print(lena_pw.shape)
@@ -183,15 +189,15 @@ Scaling and Pickling for Linear Model
 # lena_pw_flat = flatten_images(lena_pw_std)
 # # # verify stdization
 # # lena_pw_sq = np.squeeze(lena_pw_std)
-# # plt.imshow(lena_pw_sq, cmap='Greys'),plt.title('lena_pw standardized')
+# # plt.imshow(lena_pw_sq, cmap='Greys'),plt.title('lena prewhitened')
 # # plt.show()
 
-# # stdize/flatten lena zoomed
+# # flatten lena zoomed for pickle output
 # lena_zoom_std = standardization_filter(lena_zoom[None,:,:])
 # lena_zoom_flat = flatten_images(lena_zoom_std)
 # # # verify stdization
 # # lena_zoom_sq = np.squeeze(lena_zoom_std)
-# # plt.imshow(lena_zoom_sq, cmap='Greys'),plt.title('lena_zoom standardized')
+# # plt.imshow(lena_zoom_sq, cmap='Greys'),plt.title('lena zoom')
 # # plt.show()
 
 
