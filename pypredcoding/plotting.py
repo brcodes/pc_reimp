@@ -9,14 +9,14 @@ import pickle
 
 # load trained model as a pickle
 
-# prior_type = 'gauss'
-prior_type = 'kurt'
+prior_type = 'gauss'
+# prior_type = 'kurt'
 
 # class_type = 'NC'
 # class_type = 'C1'
 class_type = 'C2'
 
-pcmod_in = open('pcmod_trained_{}_{}.pydb'.format(prior_type,class_type),'rb')
+pcmod_in = open('pcmod_trained_1000imgs_{}_{}.pydb'.format(prior_type,class_type),'rb')
 pcmod = pickle.load(pcmod_in)
 pcmod_in.close()
 

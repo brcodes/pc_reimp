@@ -77,7 +77,7 @@ def main():
     # for a tanh model training on a tanh-optimized training set of 10digs x 10imgs open "tanh_10x10.pydb"
     # comment out the below three lines if using linear model
 
-    tanh_data_in = open('tanh_10x10.pydb','rb')
+    tanh_data_in = open('tanh_100x10.pydb','rb')
     X_train, y_train, training_img, non_training_img, scrm_training_img, lena_pw, lena_zoom = pickle.load(tanh_data_in)
     tanh_data_in.close()
 
@@ -92,11 +92,11 @@ def main():
     prior_type = 'gauss'
     # prior_type = 'kurt'
 
-    class_type = 'NC'
+    # class_type = 'NC'
     # class_type = 'C1'
-    # class_type = 'C2'
+    class_type = 'C2'
 
-    pcmod_out = open('pcmod_trained_{}_{}.pydb'.format(prior_type,class_type),'wb')
+    pcmod_out = open('pcmod_trained_1000imgs_{}_{}.pydb'.format(prior_type,class_type),'wb')
     pickle.dump(pcmod, pcmod_out)
     pcmod_out.close()
 
