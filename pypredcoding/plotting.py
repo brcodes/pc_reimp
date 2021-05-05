@@ -140,6 +140,39 @@ Plotting When No Classification (e.g. Training Model for Prediction)
 
 
 """
+Plotting L1,L2 Prediction Errors as a function of number of updates in predict()
+"""
+
+# for plotting: move out of predict() later
+
+pe_1_first = round(self.pe_1[0],1)
+pe_1_last = round(self.pe_1[-1],1)
+pe_2_first = round(self.pe_2[0],1)
+pe_2_last = round(self.pe_2[-1],1)
+
+num_updates = range(1, num_updates+1)
+
+fig, ax = plt.subplots(1)
+fig.suptitle("{}  {}  {}  {}  ".format(self.p.unit_act,classif_type,prior_type,X_name)+"lr_r={} ".format(self.lr_r)+'\n'\
++'pe_1_first={} '.format(pe_1_first)+'pe_1_last={} '.format(pe_1_last)\
++ 'pe_2_first={} '.format(pe_2_first) + 'pe_2_last={} '.format(pe_2_last))
+
+
+# black and navy
+plotE = ax.plot(num_updates, self.pe_1, '#000000', label="pe_1")
+plotE = ax.plot(num_updates, self.pe_2, '#000075', label="pe_2")
+ax.set_ylim(0, 50)
+ax.legend()
+
+ax.set_xlabel("Update")
+ax.set_ylabel("L1, L2 PE")
+
+
+plt.show()
+
+
+
+"""
 Colors from kbutil
 """
 

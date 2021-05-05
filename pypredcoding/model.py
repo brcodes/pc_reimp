@@ -183,6 +183,23 @@ class PredictiveCodingClassifier:
         print("total number of hidden layer parameters: {}".format(self.n_model_parameters))
         print('\n')
 
+        # initialize number of training images, prediction images, and prediction updates
+        # will stay 0 if model untrained, or if predict() has not yet been used on it, respectively
+        self.n_training_images = 0
+        self.n_pred_images = 0
+        self.n_pred_updates = 0
+
+        # all below will stay empty lists if model has not been trained,
+        # or if predict() has not yet been used on it, respectively
+        # average cost per epoch during training; just representation terms
+        self.E_avg_per_epoch = []
+        # average cost per epoch during training; just classification term
+        self.C_avg_per_epoch = []
+        # accuracy per epoch during training
+        self.acc_per_epoch = []
+        # actual prediction vectors (r[n]'s)
+        self.predictions = []
+
         return
 
 
@@ -238,13 +255,6 @@ class PredictiveCodingClassifier:
         we have to fit the r's to each individual image and they are ephemeral.
         '''
 
-        # average cost per epoch during training; just representation terms
-        self.E_avg_per_epoch = []
-        # average cost per epoch during training; just classification term
-        self.C_avg_per_epoch = []
-        # accuracy per epoch during training
-        self.acc_per_epoch = []
-
         # number of hidden layers
         n = self.n_hidden_layers
 
@@ -261,7 +271,7 @@ class PredictiveCodingClassifier:
             # print("y_shuffled shape is: " + '\n' + str(Y_shuffled.shape))
 
             # number of training images
-            num_images = X_shuffled.shape[0]
+            self.n_training_images = X_shuffled.shape[0]
 
             # we compute average cost per epoch (batch size = 1); separate classification
             #   and representation costs so we can compare OOM sizes
@@ -280,15 +290,9 @@ class PredictiveCodingClassifier:
             # print("Number of training images is {}".format(num_images) + '\n')
 
             print("epoch {}".format(epoch+1))
-            # XXX DEBUG
-            # print(k_r,k_U,k_o)
-            # print('\n')
 
             # loop through training images
-            for image in range(0, num_images):
-
-                # print("image {}".format(image+1))
-                # print('\n')
+            for image in range(0, self.n_training_images):
 
 
                 # copy first image into r[0]
@@ -353,11 +357,9 @@ class PredictiveCodingClassifier:
                 self.U_o = self.U_o + label[:,None].dot(self.r[n].T) - len(label)*softmax((self.U_o.dot(self.r[n])).dot(self.r[n].T))
 
 
-
                 # Loss function E
 
                 E = self.rep_cost()
-
 
                 # Classification cost function C
 
@@ -376,26 +378,6 @@ class PredictiveCodingClassifier:
                 self.class_type = 'C2'
 
 
-                # Classification Accuracy
-
-                # if index of the max value in final representation vector
-                # = index of the 1 in associated one hot label vector
-                # then the model classified the image correctly
-                # and add 1 to num_correct
-
-
-                # """ C1 method """
-                # if np.argmax(softmax(self.r[n])) == np.argmax(label[:,None]):
-                #     num_correct += 1
-
-
-                """ C2 method """
-                c2_output = self.U_o.dot(self.r[n])
-
-                if np.argmax(softmax(c2_output)) == np.argmax(label[:,None]):
-                    num_correct += 1
-
-
             # store average costs and accuracy per epoch
             E_avg_per_epoch = E/num_images
             C_avg_per_epoch = C/num_images
@@ -405,144 +387,265 @@ class PredictiveCodingClassifier:
             self.C_avg_per_epoch.append(C_avg_per_epoch)
             self.acc_per_epoch.append(acc_per_epoch)
 
-
         return
 
 
-
-    def predict(self,X,X_name,prior_type,classif_type,num_updates):
+    def predict(self,X):
         '''
-        Given one or more inputs, produce one or more outputs.
+        Given one or more inputs, produce one or more outputs. X should be a matrix of shape [n_pred_images,:,:]
+        or a single image of size [:,:]
         '''
-
 
         # number of hidden layers
         n = self.n_hidden_layers
 
-        print("*** Predicting ***")
-        print('\n')
+        # number of r updates before r's "relax" into a stable representation of the image
+        # empirically, between 50-100 seem to work, so we'll stick with 100.
 
+        self.n_pred_updates = 100
+
+        # set learning rate for r
+        k_r = 0.05
 
         # representation costs for zeroth and nth layers
         self.pe_1 = []
         self.pe_2 = []
 
-        # accuracy per epoch: how many images are correctly guessed per epoch
-        num_correct = 0
+        # if X is a matrix of shape [n_pred_images,:,:].
+        if X.shape[2]:
 
-        # set learning rate for r
-        k_r = 0.05
+            self.n_pred_images = X.shape[0]
 
+            # re-initialize list of actual prediction outputs
+            self.predictions = []
 
-        # loop through testing images
-        for image in range(0, 1):
+            print("*** Predicting ***")
+            print('\n')
 
-            # copy first image into r[0]
+            # loop through testing images
+            for image in range(0, self.n_pred_images):
 
-            # print(X[image].shape)
-            self.r[0] = X[image][:,None]
+                # copy first image into r[0]
 
-            # print(X[image].shape)
-            # print(X[image][:,None].shape)
-            # print(self.r[0].shape)
-            # print("fUr shape")
-            # print((self.f(self.U[1].dot(self.r[1]))[0]).shape)
+                # print(X[image].shape)
+                self.r[0] = X[image][:,None]
 
-
-            # initialize new r's
-            for layer in range(1,self.n_non_input_layers):
-                # self state per layer
-                self.r[layer] = np.random.randn(self.p.hidden_sizes[layer-1],1)
-                # print('rlayer')
-                # print(self.r[layer].shape)
+                # print(X[image].shape)
+                # print(X[image][:,None].shape)
+                # print(self.r[0].shape)
+                # print("fUr shape")
+                # print((self.f(self.U[1].dot(self.r[1]))[0]).shape)
 
 
-
-            for update in range(0,num_updates):
-
-                # magnitude (normed) prediction errors each "layer" (i.e. error between r0,r1, and r1,r2)
-
-                pe_1 = self.prediction_error(1)
-                pe_2 = self.prediction_error(2)
-
-                self.pe_1.append(pe_1)
-                self.pe_2.append(pe_2)
-
-                # loop through intermediate layers (will fail if number of hidden layers is 1)
-                # r,U updates written symmetrically for all layers including output
-                for i in range(1,n):
+                # initialize new r's
+                for layer in range(1,self.n_non_input_layers):
+                    # self state per layer
+                    self.r[layer] = np.random.randn(self.p.hidden_sizes[layer-1],1)
+                    # print('rlayer')
+                    # print(self.r[layer].shape)
 
 
-                    # r[i] update
-                    self.r[i] = self.r[i] + (k_r / self.p.sigma_sq[i]) \
-                    * self.U[i].T.dot(self.f(self.U[i].dot(self.r[i]))[1].dot(self.r[i-1] - self.f(self.U[i].dot(self.r[i]))[0])) \
-                    + (k_r / self.p.sigma_sq[i+1]) * (self.f(self.U[i+1].dot(self.r[i+1]))[0] - self.r[i]) \
-                    - (k_r / 2) * self.g(self.r[i],self.p.alpha[i])[1]
+                for update in range(0,self.n_pred_updates):
+
+                    # magnitude (normed) prediction errors each "layer" (i.e. error between r0,r1, and r1,r2)
+
+                    pe_1 = self.prediction_error(1)
+                    pe_2 = self.prediction_error(2)
+
+                    self.pe_1.append(pe_1)
+                    self.pe_2.append(pe_2)
+
+                    # loop through intermediate layers (will fail if number of hidden layers is 1)
+                    # r,U updates written symmetrically for all layers including output
+                    for i in range(1,n):
 
 
-                self.r[n] = self.r[n] + (k_r / self.p.sigma_sq[n]) \
-                * self.U[n].T.dot(self.f(self.U[n].dot(self.r[n]))[1].dot(self.r[n-1] - self.f(self.U[n].dot(self.r[n]))[0])) \
-                - (k_r / 2) * self.g(self.r[n],self.p.alpha[n])[1]
+                        # r[i] update
+                        self.r[i] = self.r[i] + (k_r / self.p.sigma_sq[i]) \
+                        * self.U[i].T.dot(self.f(self.U[i].dot(self.r[i]))[1].dot(self.r[i-1] - self.f(self.U[i].dot(self.r[i]))[0])) \
+                        + (k_r / self.p.sigma_sq[i+1]) * (self.f(self.U[i+1].dot(self.r[i+1]))[0] - self.r[i]) \
+                        - (k_r / 2) * self.g(self.r[i],self.p.alpha[i])[1]
 
 
-            # for plotting: move out of predict() later
+                    self.r[n] = self.r[n] + (k_r / self.p.sigma_sq[n]) \
+                    * self.U[n].T.dot(self.f(self.U[n].dot(self.r[n]))[1].dot(self.r[n-1] - self.f(self.U[n].dot(self.r[n]))[0])) \
+                    - (k_r / 2) * self.g(self.r[n],self.p.alpha[n])[1]
 
-            pe_1_first = round(self.pe_1[0],1)
-            pe_1_last = round(self.pe_1[-1],1)
-            pe_2_first = round(self.pe_2[0],1)
-            pe_2_last = round(self.pe_2[-1],1)
-
-            num_updates = range(1, num_updates+1)
-
-            fig, ax = plt.subplots(1)
-            fig.suptitle("{}  {}  {}  {}  ".format(self.p.unit_act,classif_type,prior_type,X_name)+"lr_r={} ".format(self.lr_r)+'\n'\
-            +'pe_1_first={} '.format(pe_1_first)+'pe_1_last={} '.format(pe_1_last)\
-            + 'pe_2_first={} '.format(pe_2_first) + 'pe_2_last={} '.format(pe_2_last))
-
-            # lime_green:'#3cb44b'
-            # magenta_red:'#e6194b'
-            # sky_blue:'#4363d8'
-            # light_orange:'#f58231'
-            # bright_purple:'#911eb4'
-            # turquoise:'#46f0f0'
-            # magenta_pink:'#f032e6'
-            # neon_yellow_green:'#bcf60c'
-            # pink_skin:'#fabebe'
-            # dark_lakefoam_green:'#008080'
-            # powder_pink:'#e6beff'
-            # popcorn_yellow:'#fffac8'
-            # carmel_brown:'#9a6324'
-            # dark_chocolate:'#800000'
-            # keylime_pie:'#aaffc3'
-            # camo_green:'#808000'
-            # cooked_salmon:'#ffd8b1'
-            # navy_blue:'#000075'
-            # dark_grey:'#808080'
-            # white:'#ffffff'
-            # black:'#000000'
-            # gold_yellow:'#ffe119'
-            
-            
-            # black and navy
-            plotE = ax.plot(num_updates, self.pe_1, '#000000', label="pe_1")
-            plotE = ax.plot(num_updates, self.pe_2, '#000075', label="pe_2")
-            ax.set_ylim(0, 50)
-            ax.legend()
-
-            ax.set_xlabel("Update")
-            ax.set_ylabel("L1, L2 PE")
-
-
-            plt.show()
 
             # return final prediction
             # i.e. r[n]
 
-            self.prediction = self.r[2]
+            prediction = self.r[n]
+
+            self.predictions.append(prediction)
 
             return
 
-        print("Prediction finished.")
-        print('\n')
+        # if X is a single image of shape [:,:]
+        else:
+
+            self.n_pred_images = 1
+
+            # re-initialize list of actual prediction outputs
+            self.predictions = []
+
+            print("*** Predicting ***")
+            print('\n')
+
+            # loop through testing images
+            for image in range(0, self.n_pred_images):
+
+                # copy first image into r[0]
+
+                # print(X[image].shape)
+                self.r[0] = X[image][:,None]
+
+                # print(X[image].shape)
+                # print(X[image][:,None].shape)
+                # print(self.r[0].shape)
+                # print("fUr shape")
+                # print((self.f(self.U[1].dot(self.r[1]))[0]).shape)
+
+
+                # initialize new r's
+                for layer in range(1,self.n_non_input_layers):
+                    # self state per layer
+                    self.r[layer] = np.random.randn(self.p.hidden_sizes[layer-1],1)
+                    # print('rlayer')
+                    # print(self.r[layer].shape)
+
+
+                for update in range(0,self.n_pred_updates):
+
+                    # magnitude (normed) prediction errors each "layer" (i.e. error between r0,r1, and r1,r2)
+
+                    pe_1 = self.prediction_error(1)
+                    pe_2 = self.prediction_error(2)
+
+                    self.pe_1.append(pe_1)
+                    self.pe_2.append(pe_2)
+
+                    # loop through intermediate layers (will fail if number of hidden layers is 1)
+                    # r,U updates written symmetrically for all layers including output
+                    for i in range(1,n):
+
+
+                        # r[i] update
+                        self.r[i] = self.r[i] + (k_r / self.p.sigma_sq[i]) \
+                        * self.U[i].T.dot(self.f(self.U[i].dot(self.r[i]))[1].dot(self.r[i-1] - self.f(self.U[i].dot(self.r[i]))[0])) \
+                        + (k_r / self.p.sigma_sq[i+1]) * (self.f(self.U[i+1].dot(self.r[i+1]))[0] - self.r[i]) \
+                        - (k_r / 2) * self.g(self.r[i],self.p.alpha[i])[1]
+
+
+                    self.r[n] = self.r[n] + (k_r / self.p.sigma_sq[n]) \
+                    * self.U[n].T.dot(self.f(self.U[n].dot(self.r[n]))[1].dot(self.r[n-1] - self.f(self.U[n].dot(self.r[n]))[0])) \
+                    - (k_r / 2) * self.g(self.r[n],self.p.alpha[n])[1]
+
+
+            # return final prediction
+            # i.e. r[n]
+
+            prediction = self.r[n]
+
+            self.predictions.append(prediction)
+
+            return
 
         return
+
+    def evaluate(self,X,Y,classification_type='C2'):
+
+        """ evaluates model's E, C and classification accuracy in any state (trained, untrained)
+        using any input data. X should be a matrix of shape [n_pred_images,:,:] or a single image of size [:,:] """
+
+        E = []
+        C = []
+        Hits_by_image = []
+        Acc = 0
+
+        # if X is a matrix of shape [n_eval_images,:,:].
+        if X.shape[2]:
+
+            n_eval_images = X.shape[0]
+
+            if classification_type == 'C2':
+                for i in range(0,n_eval_images):
+                    image = X[i,:,:]
+                    self.predict(image)
+                    predicted_img = self.predictions[0]
+                    label = Y[i,:]
+                    E = self.rep_cost()
+                    C = self.class_cost_2(label)
+                    E = E + C
+                    c2_output = self.U_o.dot(predicted_img)
+                    if np.argmax(softmax(c2_output)) == np.argmax(label[:,None]):
+                        Hits_by_image.append(1)
+                    else:
+                        Hits_by_image.append(0)
+                num_correct = sum(Hits_by_image)
+                Acc = (num_correct / n_eval_images) * 100
+
+            elif classification_type == 'C1':
+                for i in range(0,n_eval_images):
+                    image = X[i,:,:]
+                    self.predict(image)
+                    predicted_img = self.predictions[0]
+                    label = Y[i,:]
+                    E = self.rep_cost()
+                    C = self.class_cost_1(label)
+                    E = E + C
+                    if np.argmax(softmax(predicted_img)) == np.argmax(label[:,None]):
+                        Hits_by_image.append(1)
+                    else:
+                        Hits_by_image.append(0)
+                num_correct = sum(Hits_by_image)
+                Acc = (num_correct / n_eval_images) * 100
+
+            else:
+                print("classification_type='C1' or 'C2'")
+
+        # if X is a single image vector of shape [:,:].
+        else:
+
+            n_eval_images = 1
+
+            if classification_type == 'C2':
+                for i in range(0,n_eval_images):
+                    image = X
+                    self.predict(image)
+                    predicted_img = self.predictions[0]
+                    label = Y
+                    E = self.rep_cost()
+                    C = self.class_cost_2(label)
+                    E = E + C
+                    c2_output = self.U_o.dot(predicted_img)
+                    if np.argmax(softmax(c2_output)) == np.argmax(label[:,None]):
+                        Hits_by_image.append(1)
+                    else:
+                        Hits_by_image.append(0)
+                num_correct = sum(Hits_by_image)
+                Acc = (num_correct / n_eval_images) * 100
+
+            elif classification_type == 'C1':
+                for i in range(0,n_eval_images):
+                    image = X
+                    self.predict(image)
+                    predicted_img = self.predictions[0]
+                    label = Y
+                    E = self.rep_cost()
+                    C = self.class_cost_1(label)
+                    E = E + C
+                    if np.argmax(softmax(predicted_img)) == np.argmax(label[:,None]):
+                        Hits_by_image.append(1)
+                    else:
+                        Hits_by_image.append(0)
+                num_correct = sum(Hits_by_image)
+                Acc = (num_correct / n_eval_images) * 100
+
+            else:
+                print("classification_type='C1' or 'C2'")
+
+        print("Evaluation finished.")
+        print('\n')
+
+        return E,C,Hits_by_image,Acc
