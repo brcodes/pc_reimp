@@ -19,15 +19,15 @@ def main():
 
     #constant learning rates, optimal for tanh model without classification
     #r 0.05, U 0.05 o 0.05
-    p = ModelParameters(unit_act='tanh', 
+    p = ModelParameters(unit_act='tanh',
         hidden_sizes = [32,10], num_epochs = 1000,
         k_r_sched = {'constant':{'initial':0.05}},
         k_U_sched = {'constant':{'initial':0.05}},
         k_o_sched = {'constant':{'initial':0.0005}})
-    
+
     # #constant learning rates, optimal for tanh model without classification
     # #r 0.05, U 0.05 o 0.05
-    # p = ModelParameters(unit_act='tanh',r_prior = 'kurtotic', U_prior = 'kurtotic', 
+    # p = ModelParameters(unit_act='tanh',r_prior = 'kurtotic', U_prior = 'kurtotic',
     #     hidden_sizes = [32,10], num_epochs = 1000,
     #     k_r_sched = {'constant':{'initial':0.05}},
     #     k_U_sched = {'constant':{'initial':0.05}},
@@ -84,7 +84,7 @@ def main():
 
     # train on training set
 
-    pcmod.train(X_train, y_train)
+    # pcmod.train(X_train, y_train)
 
 
     # pickle trained model

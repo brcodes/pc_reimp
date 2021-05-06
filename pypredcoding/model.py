@@ -191,6 +191,7 @@ class PredictiveCodingClassifier:
 
         # all below will stay empty lists if model has not been trained,
         # or if predict() has not yet been used on it, respectively
+
         # average cost per epoch during training; just representation terms
         self.E_avg_per_epoch = []
         # average cost per epoch during training; just classification term
@@ -472,14 +473,14 @@ class PredictiveCodingClassifier:
                     - (k_r / 2) * self.g(self.r[n],self.p.alpha[n])[1]
 
 
-            # return final prediction
-            # i.e. r[n]
+            # return final predictions
+            # i.e. r[n]'s
 
             prediction = self.r[n]
 
             self.predictions.append(prediction)
 
-            return
+            return self.predictions
 
         # if X is a single image of shape [:,:]
         else:
@@ -549,7 +550,7 @@ class PredictiveCodingClassifier:
 
             self.predictions.append(prediction)
 
-            return
+            return prediction
 
         return
 
@@ -560,7 +561,7 @@ class PredictiveCodingClassifier:
 
         E = []
         C = []
-        Hits_by_image = []
+        Classif_success_by_img = []
         Acc = 0
 
         # if X is a matrix of shape [n_eval_images,:,:].
@@ -571,34 +572,32 @@ class PredictiveCodingClassifier:
             if classification_type == 'C2':
                 for i in range(0,n_eval_images):
                     image = X[i,:,:]
-                    self.predict(image)
-                    predicted_img = self.predictions[0]
+                    predicted_img = self.predict(image)
                     label = Y[i,:]
                     E = self.rep_cost()
                     C = self.class_cost_2(label)
                     E = E + C
                     c2_output = self.U_o.dot(predicted_img)
                     if np.argmax(softmax(c2_output)) == np.argmax(label[:,None]):
-                        Hits_by_image.append(1)
+                        Classif_success_by_img.append(1)
                     else:
-                        Hits_by_image.append(0)
-                num_correct = sum(Hits_by_image)
+                        Classif_success_by_img.append(0)
+                num_correct = sum(Classif_success_by_img)
                 Acc = (num_correct / n_eval_images) * 100
 
             elif classification_type == 'C1':
                 for i in range(0,n_eval_images):
                     image = X[i,:,:]
-                    self.predict(image)
-                    predicted_img = self.predictions[0]
+                    predicted_img = self.predict(image)
                     label = Y[i,:]
                     E = self.rep_cost()
                     C = self.class_cost_1(label)
                     E = E + C
                     if np.argmax(softmax(predicted_img)) == np.argmax(label[:,None]):
-                        Hits_by_image.append(1)
+                        Classif_success_by_img.append(1)
                     else:
-                        Hits_by_image.append(0)
-                num_correct = sum(Hits_by_image)
+                        Classif_success_by_img.append(0)
+                num_correct = sum(Classif_success_by_img)
                 Acc = (num_correct / n_eval_images) * 100
 
             else:
@@ -612,34 +611,32 @@ class PredictiveCodingClassifier:
             if classification_type == 'C2':
                 for i in range(0,n_eval_images):
                     image = X
-                    self.predict(image)
-                    predicted_img = self.predictions[0]
+                    predicted_img = self.predict(image)
                     label = Y
                     E = self.rep_cost()
                     C = self.class_cost_2(label)
                     E = E + C
                     c2_output = self.U_o.dot(predicted_img)
                     if np.argmax(softmax(c2_output)) == np.argmax(label[:,None]):
-                        Hits_by_image.append(1)
+                        Classif_success_by_img.append(1)
                     else:
-                        Hits_by_image.append(0)
-                num_correct = sum(Hits_by_image)
+                        Classif_success_by_img.append(0)
+                num_correct = sum(Classif_success_by_img)
                 Acc = (num_correct / n_eval_images) * 100
 
             elif classification_type == 'C1':
                 for i in range(0,n_eval_images):
                     image = X
-                    self.predict(image)
-                    predicted_img = self.predictions[0]
+                    predicted_img = self.predict(image)
                     label = Y
                     E = self.rep_cost()
                     C = self.class_cost_1(label)
                     E = E + C
                     if np.argmax(softmax(predicted_img)) == np.argmax(label[:,None]):
-                        Hits_by_image.append(1)
+                        Classif_success_by_img.append(1)
                     else:
-                        Hits_by_image.append(0)
-                num_correct = sum(Hits_by_image)
+                        Classif_success_by_img.append(0)
+                num_correct = sum(Classif_success_by_img)
                 Acc = (num_correct / n_eval_images) * 100
 
             else:
@@ -648,4 +645,4 @@ class PredictiveCodingClassifier:
         print("Evaluation finished.")
         print('\n')
 
-        return E,C,Hits_by_image,Acc
+        return E,C,Classif_success_by_img,Acc
