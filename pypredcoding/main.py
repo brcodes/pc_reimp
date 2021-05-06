@@ -20,7 +20,7 @@ def main():
     #constant learning rates, optimal for tanh model without classification
     #r 0.05, U 0.05 o 0.05
     p = ModelParameters(unit_act='tanh',
-        hidden_sizes = [32,10], num_epochs = 1000,
+        hidden_sizes = [32,10], num_epochs = 100,
         k_r_sched = {'constant':{'initial':0.05}},
         k_U_sched = {'constant':{'initial':0.05}},
         k_o_sched = {'constant':{'initial':0.0005}})

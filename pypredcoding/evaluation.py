@@ -3,8 +3,6 @@ Script for evaluating PredictiveCodingClassifier model classification accuracy,
 representation costs and classification costs against any input image(s)
 """
 
-import numpy as np
-import matplotlib.pyplot as plt
 import pickle
 
 # load model to evaluate
@@ -24,5 +22,5 @@ E,C,Classif_success_by_img,Acc = pcmod.evaluate(X_train,y_train)
 # name format: evaluation_of_<type of model evaluated>_on_<data evaluated against>.pydb
 
 evaluation_out = open('evaluation_of_untrained_on_100x10.pydb','wb')
-pickle.dump((E,C,Classif_success_by_img,Acc), evaluation_out)
+pickle.dump((pcmod,E,C,Classif_success_by_img,Acc), evaluation_out)
 evaluation_out.close()

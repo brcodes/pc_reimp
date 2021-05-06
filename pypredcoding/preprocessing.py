@@ -423,10 +423,10 @@ lena_zoom_tanh_flat = flatten_images(lena_zoom_tanh[None,:,:])
 
 
 
-# # pickle the flattened input images and the output vectors as a tuple
-# tanh_data_out = open('tanh_10x10.pydb', 'wb')
-# pickle.dump((X_flat_tanh, y_dist, training_img_tanh_flat, non_training_img_tanh_flat, scrambled_tanh_flat, lena_pw_tanh_flat, lena_zoom_tanh_flat), tanh_data_out)
-# tanh_data_out.close()
+# pickle the flattened input images and the output vectors as a tuple
+tanh_data_out = open('tanh_100x10.pydb', 'wb')
+pickle.dump((X_flat_tanh, y_dist, training_img_tanh_flat, non_training_img_tanh_flat, scrambled_tanh_flat, lena_pw_tanh_flat, lena_zoom_tanh_flat), tanh_data_out)
+tanh_data_out.close()
 
 
 # NOTE: comment out code between these NOTES when pickling the Linear dataset
