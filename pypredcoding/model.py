@@ -6,6 +6,7 @@ from matplotlib import pyplot as plt
 from learning import *
 from functools import partial
 import math
+import data
 
 # activation functions
 def linear_trans(U_dot_r):
@@ -199,7 +200,7 @@ class PredictiveCodingClassifier:
         # accuracy per epoch during training
         self.acc_per_epoch = []
         # actual prediction vectors (r[n]'s)
-        self.predictions = []
+        self.prediction = []
 
         return
 
@@ -359,19 +360,20 @@ class PredictiveCodingClassifier:
 
 
                 # Loss function E
-
                 E = self.rep_cost()
 
-                # Classification cost function C
 
+                # Classification cost function C
+                
                 # if not classifying, default classification type is "NC"
                 self.class_type = 'NC'
+                
 
                 # """ Classifying using C1 """
                 # C = self.class_cost_1(label)
                 # E = E + C
                 # self.class_type = 'C1'
-
+                
 
                 """ Classifying using C2 """
                 C = self.class_cost_2(label)
@@ -394,7 +396,13 @@ class PredictiveCodingClassifier:
     def predict(self,X):
         '''
         Given one or more inputs, produce one or more outputs. X should be a matrix of shape [n_pred_images,:,:]
-        or a single image of size [:,:]
+        or a single image of size [:,:]. Predict returns a list of predictions (self.prediction), i.e.
+        self.prediction = [[contents_of_r[n]_img1],[contents_of_r[n]_img2]]. Therefore, 
+        self.prediction[0] = the actual vector of interest (what the model "sees") = [contents_of_r[n]_img1]
+        predict() also saves a list of per-update-PEs for each image, split by layer. 
+        If you predict (e.g.) 2 images, accessing these PEs is as follows:
+        image1_layer1PE, image1_layer2PE = self.prediction_errors_l1[0], self.prediction_errors_l2[0]
+        image2_layer1PE, image2_layer2PE = self.prediction_errors_l1[1], self.prediction_errors_l2[1]
         '''
 
         # number of hidden layers
@@ -404,32 +412,47 @@ class PredictiveCodingClassifier:
         # empirically, between 50-100 seem to work, so we'll stick with 100.
 
         self.n_pred_updates = 100
+        # re-initialize lists of actual prediction outputs and PEs
+        self.prediction = []
+        self.prediction_errors_l1 = []
+        self.prediction_errors_l2 = []
 
         # set learning rate for r
         k_r = 0.05
 
-        # representation costs for zeroth and nth layers
-        self.pe_1 = []
-        self.pe_2 = []
 
         # if X is a matrix of shape [n_pred_images,:,:].
+        # i.e if the input is multiple images
         if len(X.shape) == 3:
+            
+            print("using predict(3-dim_vec_input)")
 
             self.n_pred_images = X.shape[0]
-
-            # re-initialize list of actual prediction outputs
-            self.predictions = []
+            print("npredimages")
+            print(self.n_pred_images)
+            
+            # get from [n,28,28] input to [n,784] so that self.r[0] instantiation below
+            # can convert to and call each image as a [784,1] vector
+            X_flat = data.flatten_images(X)
+            
 
             print("*** Predicting ***")
             print('\n')
 
             # loop through testing images
             for image in range(0, self.n_pred_images):
+                
+                print("starting image {}".format(image+1))
+                
+                # representation costs for zeroth and nth layers
+                self.pe_1 = []
+                self.pe_2 = []
 
                 # copy first image into r[0]
 
                 # print(X[image].shape)
-                self.r[0] = X[image][:,None]
+                # convert [1,784] image to one [784,1] image 
+                self.r[0] = X_flat[image,:][:,None]
 
                 # print(X[image].shape)
                 # print(X[image][:,None].shape)
@@ -478,28 +501,42 @@ class PredictiveCodingClassifier:
     
                 prediction = self.r[n]
     
-                self.predictions.append(prediction)
+                self.prediction.append(prediction)
+                self.prediction_errors_l1.append(self.pe_1)
+                self.prediction_errors_l2.append(self.pe_2)
+                
 
-            return self.predictions
-
-        # if X is a single image of shape [:,:]
+        # if X is a single image 
+        # of shape [:,:]
         elif len(X.shape) == 2:
+            
+            print("Xshape is")
+            print(X.shape)
 
             self.n_pred_images = 1
-
-            # re-initialize list of actual prediction outputs
-            self.predictions = []
+            
+            # get from [28,28] input to [1,784] so that self.r[0] instantiation below
+            # can convert to and call the image as a [784,1] vector
+            X_flat = data.flatten_images(X[None,:,:])
+            
+            # print("Xflat is")
+            # print(X_flat.shape)
 
             print("*** Predicting ***")
             print('\n')
 
             # loop through testing images
             for image in range(0, self.n_pred_images):
+                
+                # representation costs for zeroth and nth layers
+                self.pe_1 = []
+                self.pe_2 = []
 
                 # copy first image into r[0]
 
                 # print(X[image].shape)
-                self.r[0] = X[image][:,None]
+                # convert [1,784] image to one [784,1] image 
+                self.r[0] = X_flat[image,:][:,None]
 
                 # print(X[image].shape)
                 # print(X[image][:,None].shape)
@@ -541,115 +578,127 @@ class PredictiveCodingClassifier:
                     self.r[n] = self.r[n] + (k_r / self.p.sigma_sq[n]) \
                     * self.U[n].T.dot(self.f(self.U[n].dot(self.r[n]))[1].dot(self.r[n-1] - self.f(self.U[n].dot(self.r[n]))[0])) \
                     - (k_r / 2) * self.g(self.r[n],self.p.alpha[n])[1]
-
-
+                
+                
                 # return final prediction
                 # i.e. r[n]
     
                 prediction = self.r[n]
     
-                self.predictions.append(prediction)
-
-            return prediction
+                self.prediction.append(prediction)
+                self.prediction_errors_l1.append(self.pe_1)
+                self.prediction_errors_l2.append(self.pe_2)
         
         else:
             print("input vector must be 2 or 3-dim")
 
-        return
+        return self.prediction
 
-    def evaluate(self,X,Y,classification_type='C2'):
+    def evaluate(self,X,Y,eval_class_type='C2'):
 
         """ evaluates model's E, C and classification accuracy in any state (trained, untrained)
-        using any input data. X should be a matrix of shape [n_pred_images,:,:] or a single image of size [:,:] """
+        using any input data. X should be a matrix of shape [n_pred_images,:,:] or a single image of size [:,:] 
+        Calls self.predict(): predict can take a 3-dim (multi-image) or 2-dim (single image) vector, but when called
+        here in evalute(), predict only takes in one image (2-dim vec) at a time."""
 
-        E = []
-        C = []
-        Classif_success_by_img = []
-        Acc = 0
+        self.E_per_image = []
+        self.C_per_image  = []
+        self.Classif_success_by_img = []
+        self.acc_evaluation = 0
+        self.eval_class_type = eval_class_type
 
         # if X is a matrix of shape [n_eval_images,:,:].
+        # i.e. if number of input images is greater than 1
         if len(X.shape) == 3:
 
             self.n_eval_images = X.shape[0]
 
-            if classification_type == 'C2':
+            if eval_class_type == 'C2':
                 for i in range(0,self.n_eval_images):
                     image = X[i,:,:]
-                    predicted_img = self.predict(image)
+                    predicted_img = self.predict(image)[0]
+                    
                     label = Y[i,:]
                     Eimg = self.rep_cost()
                     Cimg = self.class_cost_2(label)
-                    C.append(Cimg)
+                    self.C_per_image.append(Cimg)
                     Eimg = Eimg + Cimg
-                    E.append(Eimg)
+                    self.E_per_image.append(Eimg)
                     c2_output = self.U_o.dot(predicted_img)
                     if np.argmax(softmax(c2_output)) == np.argmax(label[:,None]):
-                        Classif_success_by_img.append(1)
+                        self.Classif_success_by_img.append(1)
                     else:
-                        Classif_success_by_img.append(0)
-                num_correct = sum(Classif_success_by_img)
-                Acc = (num_correct / self.n_eval_images) * 100
+                        self.Classif_success_by_img.append(0)
+                num_correct = sum(self.Classif_success_by_img)
+                self.acc_evaluation = (num_correct / self.n_eval_images) * 100
+                return self.E_per_image,self.C_per_image,self.Classif_success_by_img,self.acc_evaluation
 
-            elif classification_type == 'C1':
+            elif eval_class_type == 'C1':
                 for i in range(0,self.n_eval_images):
                     image = X[i,:,:]
-                    predicted_img = self.predict(image)
+                    predicted_img = self.predict(image)[0]
                     label = Y[i,:]
                     Eimg = self.rep_cost()
                     Cimg = self.class_cost_1(label)
-                    C.append(Cimg)
+                    self.C_per_image.append(Cimg)
                     Eimg = Eimg + Cimg
-                    E.append(Eimg)
+                    self.E_per_image.append(Eimg)
                     if np.argmax(softmax(predicted_img)) == np.argmax(label[:,None]):
-                        Classif_success_by_img.append(1)
+                        self.Classif_success_by_img.append(1)
                     else:
-                        Classif_success_by_img.append(0)
-                num_correct = sum(Classif_success_by_img)
-                Acc = (num_correct / self.n_eval_images) * 100
+                        self.Classif_success_by_img.append(0)
+                num_correct = sum(self.Classif_success_by_img)
+                self.acc_evaluation = (num_correct / self.n_eval_images) * 100
+                return self.E_per_image,self.C_per_image,self.Classif_success_by_img,self.acc_evaluation
 
             else:
                 print("classification_type must ='C1' or 'C2'")
                 return
+            
+            return 
 
-        # if X is a single image vector of shape [:,:].
+        # if X is a single image 
+        # i.e a vector of shape [:,:].
         elif len(X.shape) == 2:
 
             self.n_eval_images = 1
 
-            if classification_type == 'C2':
+            if eval_class_type == 'C2':
                 for i in range(0,self.n_eval_images):
                     image = X
-                    predicted_img = self.predict(image)
+                    predicted_img = self.predict(image)[0]
                     label = Y
                     Eimg = self.rep_cost()
                     Cimg = self.class_cost_2(label)
-                    C.append(Cimg)
+                    self.C_per_image.append(Cimg)
                     Eimg = Eimg + Cimg
-                    E.append(Eimg)
+                    self.E_per_image.append(Eimg)
                     c2_output = self.U_o.dot(predicted_img)
                     if np.argmax(softmax(c2_output)) == np.argmax(label[:,None]):
-                        Classif_success_by_img.append(1)
+                        self.Classif_success_by_img.append(1)
                     else:
-                        Classif_success_by_img.append(0)
-                num_correct = sum(Classif_success_by_img)
-                Acc = (num_correct / self.n_eval_images) * 100
+                        self.Classif_success_by_img.append(0)
+                num_correct = sum(self.Classif_success_by_img)
+                self.acc_evaluation = (num_correct / self.n_eval_images) * 100
+                return self.E_per_image,self.C_per_image,self.Classif_success_by_img,self.acc_evaluation
 
-            elif classification_type == 'C1':
+            elif eval_class_type == 'C1':
                 for i in range(0,self.n_eval_images):
                     image = X
-                    predicted_img = self.predict(image)
+                    predicted_img = self.predict(image)[0]
                     label = Y
                     Eimg = self.rep_cost()
                     Cimg = self.class_cost_1(label)
-                    C.append(Cimg)
+                    self.C_per_image.append(Cimg)
                     Eimg = Eimg + Cimg
-                    E.append(Eimg)
+                    self.E_per_image.append(Eimg)
                     if np.argmax(softmax(predicted_img)) == np.argmax(label[:,None]):
-                        Classif_success_by_img.append(1)
+                        self.Classif_success_by_img.append(1)
                     else:
-                        Classif_success_by_img.append(0)
-                num_correct = sum(Classif_success_by_img)
-                Acc = (num_correct / self.n_eval_images) * 100
+                        self.Classif_success_by_img.append(0)
+                num_correct = sum(self.Classif_success_by_img)
+                self.acc_evaluation = (num_correct / self.n_eval_images) * 100
+                return self.E_per_image,self.C_per_image,self.Classif_success_by_img,self.acc_evaluation
 
             else:
                 print("classification_type must ='C1' or 'C2'")
@@ -662,4 +711,4 @@ class PredictiveCodingClassifier:
         print("Evaluation finished.")
         print('\n')
 
-        return E,C,Classif_success_by_img,Acc
+        return self.E_per_image,self.C_per_image,self.Classif_success_by_img,self.acc_evaluation

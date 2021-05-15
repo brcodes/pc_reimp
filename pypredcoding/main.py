@@ -25,7 +25,7 @@ def main():
         k_U_sched = {'constant':{'initial':0.05}},
         k_o_sched = {'constant':{'initial':0.0005}})
 
-    # #constant learning rates, optimal for tanh model without classification
+    # #kurtotic priors
     # #r 0.05, U 0.05 o 0.05
     # p = ModelParameters(unit_act='tanh',r_prior = 'kurtotic', U_prior = 'kurtotic',
     #     hidden_sizes = [32,10], num_epochs = 1000,
@@ -58,11 +58,6 @@ def main():
     #     k_o_sched = {'poly':{'initial':0.05,'max_epochs':100,'poly_power':1}})
 
 
-    # instantiate model
-
-    pcmod = PredictiveCodingClassifier(p)
-
-
 
     # load preprocessed data saved by preprocessing.py
     # for a linear model training on a linear-optimized training set of 10digs x 10imgs open "linear_10x10.pydb"
@@ -73,7 +68,6 @@ def main():
     # linear_data_in.close()
 
 
-
     # for a tanh model training on a tanh-optimized training set of 10digs x 10imgs open "tanh_10x10.pydb"
     # comment out the below three lines if using linear model
 
@@ -82,9 +76,13 @@ def main():
     tanh_data_in.close()
 
 
-    # train on training set
 
-    # pcmod.train(X_train, y_train)
+    # instantiate model
+    pcmod = PredictiveCodingClassifier(p)
+
+    # train on training set
+    pcmod.train(X_train, y_train)
+
 
 
     # pickle trained model
