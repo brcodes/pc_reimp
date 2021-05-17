@@ -10,6 +10,9 @@ import re
 
 def main():
 
+    """
+    Set Model Parameters
+    """
 
     # create and modify model parameters
 
@@ -20,7 +23,7 @@ def main():
     #constant learning rates, optimal for tanh model without classification
     #r 0.05, U 0.05 o 0.05
     p = ModelParameters(unit_act='tanh',
-        hidden_sizes = [32,10], num_epochs = 100,
+        hidden_sizes = [32,10], num_epochs = 50,
         k_r_sched = {'constant':{'initial':0.05}},
         k_U_sched = {'constant':{'initial':0.05}},
         k_o_sched = {'constant':{'initial':0.0005}})
@@ -57,7 +60,9 @@ def main():
     #     k_U_sched = {'poly':{'initial':0.05,'max_epochs':100,'poly_power':1}},
     #     k_o_sched = {'poly':{'initial':0.05,'max_epochs':100,'poly_power':1}})
 
-
+    """
+    Pickle In
+    """
 
     # load preprocessed data saved by preprocessing.py
     # for a linear model training on a linear-optimized training set of 10digs x 10imgs open "linear_10x10.pydb"
@@ -75,7 +80,9 @@ def main():
     X_train, y_train, training_img, non_training_img, scrm_training_img, lena_pw, lena_zoom = pickle.load(tanh_data_in)
     tanh_data_in.close()
 
-
+    """
+    Train
+    """
 
     # instantiate model
     pcmod = PredictiveCodingClassifier(p)
@@ -84,17 +91,70 @@ def main():
     pcmod.train(X_train, y_train)
 
 
+    """
+    Pickle Out
+    """
 
-    # pickle trained model
+    # pickle output model
+    # MUST uncomment desired names of parameters in the model
 
+    #model size
+    model_size = '[32.10]'
+
+    #transformation function
+    transform_type = 'tanh'
+    # transform_type = 'linear'
+
+    #prior type
     prior_type = 'gauss'
     # prior_type = 'kurt'
 
+    #classification method
     # class_type = 'NC'
     # class_type = 'C1'
     class_type = 'C2'
 
-    pcmod_out = open('pcmod_trained_1000imgs_{}_{}.pydb'.format(prior_type,class_type),'wb')
+    #trained or untrained
+    trained = 'T'
+    # trained = 'nt'
+
+    #number of epochs if trained (if not, use -)
+    # num_epochs = '1000e'
+    # num_epochs = '100e'
+    num_epochs = '50e'
+    # num_epochs = '-'
+
+    #dataset trained on if trained (if not, use -)
+    training_dataset = 'tanh100x10'
+    # training_dataset = 'tanh10x10'
+    # training_dataset = '-'
+    
+    #evaluated or not evaluated with evaluate() (should occur in evaluation.py, so likely choose ne here in main.py)
+    # evaluated = 'E'
+    evaluated = 'ne'
+
+    #images evaluated against, if evaluated (if not, use -)
+    # eval_dataset = 'tanh100x10'
+    # eval_dataset = 'tanh10x10'
+    eval_dataset = '-'
+
+    #used or not used for prediction with predict() (should occur in prediction.py, so likely choose np here in main.py)
+    # used_for_pred = 'P'
+    used_for_pred = 'np'
+
+    #images predicted, if used for prediction (if not, use -)
+    #images 1-5 from April/May exps
+    # pred_dataset = '5imgs'
+    pred_dataset = '-'
+
+    #extra identifier for any particular or unique qualities of the model object
+    # extra_tag = 'randUo'
+    extra_tag = 'pipeline_test'
+    # extra_tag = '-'
+
+
+    pcmod_out = open('pc.{}.{}.{}.{}.{}.{}.{}.{}.{}.{}.{}.{}.pydb'.format(model_size,transform_type,prior_type,class_type,\
+        trained,num_epochs,training_dataset, evaluated, eval_dataset, used_for_pred, pred_dataset,extra_tag),'wb')
     pickle.dump(pcmod, pcmod_out)
     pcmod_out.close()
 

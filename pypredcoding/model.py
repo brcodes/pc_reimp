@@ -382,9 +382,9 @@ class PredictiveCodingClassifier:
 
 
             # store average costs and accuracy per epoch
-            E_avg_per_epoch = E/num_images
-            C_avg_per_epoch = C/num_images
-            acc_per_epoch = round((num_correct/num_images)*100)
+            E_avg_per_epoch = E/self.n_training_images
+            C_avg_per_epoch = C/self.n_training_images
+            acc_per_epoch = round((num_correct/self.n_training_images)*100)
 
             self.E_avg_per_epoch.append(E_avg_per_epoch)
             self.C_avg_per_epoch.append(C_avg_per_epoch)
