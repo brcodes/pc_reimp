@@ -92,11 +92,37 @@ def main():
 
 
     """
+    PCMOD OBJECT NAMING FORMAT
+    and pipeline instructions
+    """
+
+    # every pickled file in the main -> evaluation -> prediction -> plotting script pipeline
+    # has been set to the following format:
+
+    # pc . [sizelayer1.sizelayer2] . transform function . prior . classification method
+    # . trained or not . # epochs if trained . training image set
+    # . evaluated or not . evaluation image set . predicted with or not . prediction image set . extra tag . pydb
+
+    # each component must be a string
+    # "-" serves as a placeholder for "not present"
+
+    # though the names are backwards compatible, currently the scripts can only be run in one direction
+
+    # main -> evaluation -> prediction -> plotting
+    # main -> prediction -> plotting
+    # main -> evaluation -> plotting
+    # main -> plotting
+
+    # note that evaluation and/or prediction can be skipped
+
+    """
     Pickle Out
     """
 
     # pickle output model
     # MUST uncomment desired names of parameters in the model
+
+    # "-" serves as a placeholder for "not present"
 
     #model size
     model_size = '[32.10]'
@@ -128,7 +154,7 @@ def main():
     training_dataset = 'tanh100x10'
     # training_dataset = 'tanh10x10'
     # training_dataset = '-'
-    
+
     #evaluated or not evaluated with evaluate() (should occur in evaluation.py, so likely choose ne here in main.py)
     # evaluated = 'E'
     evaluated = 'ne'
