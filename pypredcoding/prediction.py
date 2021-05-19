@@ -9,10 +9,11 @@ import pickle
 
 
 """
-Pickle In
+Pickle In Model to Use for Prediction
+MUST comment-in desired naming parameters
 """
 
-# import the right model to evaluate
+# import the right model to predict with
 # by uncommenting all of its parameters
 
 #model size
@@ -37,8 +38,8 @@ trained = 'T'
 
 #number of epochs if trained (if not, use -)
 # num_epochs = '1000e'
-# num_epochs = '100e'
-num_epochs = '50e'
+num_epochs = '100e'
+# num_epochs = '50e'
 # num_epochs = '-'
 
 #dataset trained on if trained (if not, use -)
@@ -47,13 +48,13 @@ training_dataset = 'tanh100x10'
 # training_dataset = '-'
 
 #evaluated or not evaluated with so far
-evaluated = 'E'
-# evaluated = 'ne'
+# evaluated = 'E'
+evaluated = 'ne'
 
 #images evaluated against, if evaluated (if not, use -)
 # eval_dataset = 'tanh100x10'
-eval_dataset = 'tanh10x10'
-# eval_dataset = '-'
+# eval_dataset = 'tanh10x10'
+eval_dataset = '-'
 
 #used or not used for prediction so far
 # used_for_pred = 'P'
@@ -66,8 +67,8 @@ pred_dataset = '-'
 
 #extra identifier for any particular or unique qualities of the model object
 # extra_tag = 'randUo'
-extra_tag = 'pipeline_test'
-# extra_tag = '-'
+# extra_tag = 'pipeline_test'
+extra_tag = '-'
 
 
 # SOME CONDITIONAL LOGIC:
@@ -84,26 +85,53 @@ if evaluated == "E":
       trained,num_epochs,training_dataset, evaluated, eval_dataset, used_for_pred, pred_dataset,extra_tag),'rb')
     pcmod,E,C,Classif_success_by_img,Acc = pickle.load(pcmod_in)
     pcmod_in.close()
-    
-elif evaluate == "ne":
+
+elif evaluated == "ne":
     # load it
     pcmod_in = open('pc.{}.{}.{}.{}.{}.{}.{}.{}.{}.{}.{}.{}.pydb'.format(model_size,transform_type,prior_type,class_type,\
       trained,num_epochs,training_dataset, evaluated, eval_dataset, used_for_pred, pred_dataset,extra_tag),'rb')
     pcmod = pickle.load(pcmod_in)
     pcmod_in.close()
-    
-else:
-    print('evaluate must = "E" or "ne"')
 
-# evaluation dataset
+else:
+    print('evaluated must = "E" or "ne"')
+
+
+"""
+Pickle In Prediction Image Set
+comment-in correct image set
+"""
+
+# NOTE: you must import all of (e.g.) tanh100x10.pydb to get the 5 in-bag-to-lena-prewhitened prediction images,
+# even if you don't intend to use X_train or y_train
+
+# linear_data_in = open('linear_10x10.pydb','rb')
+# X_train, y_train, training_img, non_training_img, scrm_training_img, lena_pw, lena_zoom = pickle.load(linear_data_in)
+# linear_data_in.close()
+
+# # prediction dataset
+# tanh_data_in = open('tanh_10x10.pydb','rb')
+# X_train, y_train, training_img, non_training_img, scrm_training_img, lena_pw, lena_zoom = pickle.load(tanh_data_in)
+# tanh_data_in.close()
+
+# prediction dataset
 tanh_data_in = open('tanh_100x10.pydb','rb')
 X_train, y_train, training_img, non_training_img, scrm_training_img, lena_pw, lena_zoom = pickle.load(tanh_data_in)
 tanh_data_in.close()
+
+# # prediction dataset
+# tanh_data_in = open('tanh_1000x10.pydb','rb')
+# X_train, y_train, training_img, non_training_img, scrm_training_img, lena_pw, lena_zoom = pickle.load(tanh_data_in)
+# tanh_data_in.close()
+
+
 
 
 
 """
 Set Prediction Images
+add desired prediction image vectors to the list "prediction_image_set"
+will work with 1-n number of single images (e.g. lena_zoom) or 3-dim image vectors (e.g. X_train)
 """
 
 
@@ -118,10 +146,14 @@ Set Prediction Images
 # then the plot with "pred_img 1" in the title is the plot corresponding to training_img
 # if prediction_image_set = [X_train] from the 1000 image dataset
 # then the plot with "pred_img 1" in the title is the plot corresponding to X_train[0]
+
+
 prediction_image_set = [training_img,non_training_img,scrm_training_img,lena_zoom,lena_pw]
+
 
 # print("training_img.shape")
 # print(training_img.shape)
+
 
 # instantiate empty anchor vector to stack on
 combined_pred_imgs_vec = np.zeros(shape=(1,28,28))
@@ -160,7 +192,11 @@ pcmod.predict(combined_pred_imgs_vec)
 
 
 """
-Pickle Out
+Pickle Out Model Used for Prediction, the Prediction Image Set used, and # Prediction Images 
+(all other useful PE metrics for plotting are inside pcmod)
+
+MUST comment-in (or write new) name of image set predicted
+do not touch used_for_pred = 'P'
 """
 
 #output pickle naming

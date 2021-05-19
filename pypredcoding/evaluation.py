@@ -7,7 +7,8 @@ import pickle
 import data
 
 """
-Pickle In
+Pickle In Trained or Untrained Model
+MUST comment-in desired naming parameters
 """
 
 # import the right model to evaluate
@@ -96,7 +97,9 @@ E,C,Classif_success_by_img,Acc = pcmod.evaluate(X_inflated,y_train)
 
 
 """
-Pickle Out
+Pickle Out Evaluated Model and E,C,Accuracy Evaluation Metrics
+MUST comment-in name of image set evaluated against
+do not touch evaluated = 'E'
 """
 
 #output pickle naming

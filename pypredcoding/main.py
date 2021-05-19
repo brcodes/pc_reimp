@@ -61,7 +61,8 @@ def main():
     #     k_o_sched = {'poly':{'initial':0.05,'max_epochs':100,'poly_power':1}})
 
     """
-    Pickle In
+    Pickle In Training Image Set
+    comment-in correct image set
     """
 
     # load preprocessed data saved by preprocessing.py
@@ -72,21 +73,33 @@ def main():
     # X_train, y_train, training_img, non_training_img, scrm_training_img, lena_pw, lena_zoom = pickle.load(linear_data_in)
     # linear_data_in.close()
 
-
     # for a tanh model training on a tanh-optimized training set of 10digs x 10imgs open "tanh_10x10.pydb"
+    # for 100x10, use the associated tanh_100x10.pydb
+    # for 1000x10, use the associated tanh_1000x10.pydb
     # comment out the below three lines if using linear model
+    
+    # tanh_data_in = open('tanh_10x10.pydb','rb')
+    # X_train, y_train, training_img, non_training_img, scrm_training_img, lena_pw, lena_zoom = pickle.load(tanh_data_in)
+    # tanh_data_in.close()
 
     tanh_data_in = open('tanh_100x10.pydb','rb')
     X_train, y_train, training_img, non_training_img, scrm_training_img, lena_pw, lena_zoom = pickle.load(tanh_data_in)
     tanh_data_in.close()
+    
+    # tanh_data_in = open('tanh_1000x10.pydb','rb')
+    # X_train, y_train, training_img, non_training_img, scrm_training_img, lena_pw, lena_zoom = pickle.load(tanh_data_in)
+    # tanh_data_in.close()
+
 
     """
     Train
     """
+    
+    # NOTE: comment out pcmod.train() line below to leave model untrained
 
     # instantiate model
     pcmod = PredictiveCodingClassifier(p)
-
+    
     # train on training set
     pcmod.train(X_train, y_train)
 
@@ -97,14 +110,25 @@ def main():
     """
 
     # every pickled file in the main -> evaluation -> prediction -> plotting script pipeline
-    # has been set to the following format:
+    # has been named with the following format:
 
     # pc . [sizelayer1.sizelayer2] . transform function . prior . classification method
     # . trained or not . # epochs if trained . training image set
     # . evaluated or not . evaluation image set . predicted with or not . prediction image set . extra tag . pydb
 
-    # each component must be a string
-    # "-" serves as a placeholder for "not present"
+    # e.g.
+    # pc.[32.10].tanh.gauss.C2.T.100e.tanh100x10.ne.-.np.-.randUo.pydb
+    
+    # the above model:
+    # is size 32,10, tanh, gaussian, has C2 classification, was trained for 100 epochs on
+    # the tanh 100x10 dataset, was not evaluated (ne) on any evaluation image set (-), was not
+    # used for prediction (np) on any images (-), and its extra tag indicates its train() loop in model.py
+    # was set so that Uo would stay random, never updating based on the labels (hence: 'randUo')
+
+    # note that "-" serves as a placeholder for "not present"
+    
+    # when commenting-in the correct naming parameters for pickling in and out in main, eval, pred, or plot, 
+    # note that they must be strings. I hope to set this up at some point to run with less human input.
 
     # though the names are backwards compatible, currently the scripts can only be run in one direction
 
@@ -116,11 +140,12 @@ def main():
     # note that evaluation and/or prediction can be skipped
 
     """
-    Pickle Out
+    Pickle Out Trained or Untrained Model
+    MUST comment-in desired naming parameters
     """
 
     # pickle output model
-    # MUST uncomment desired names of parameters in the model
+    # MUST comment-in desired names of parameters in the model
 
     # "-" serves as a placeholder for "not present"
 

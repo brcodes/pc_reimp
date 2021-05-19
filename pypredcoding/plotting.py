@@ -11,6 +11,7 @@ import pickle
 
 """
 Comment-in the plot type
+6 options
 """
 
 
@@ -32,7 +33,10 @@ plot_type = 'predPEs'
 
 
 """
-Comment-in the parameters of the object being plotted
+Comment-in the naming parameters of the object being plotted
+MUST comment-in 'T' and a training_dataset for trainingE, trainingECA split, and trainingECAone plots
+MUST comment-in 'E' and an eval_dataset for evalECAsplit and evalECAone plots
+MUST comment-in 'P' and a pred_dataset for predPEs plot
 """
 
 
@@ -58,8 +62,8 @@ trained = 'T'
 
 #number of epochs if trained (if not, use -)
 # num_epochs = '1000e'
-# num_epochs = '100e'
-num_epochs = '50e'
+num_epochs = '100e'
+# num_epochs = '50e'
 # num_epochs = '-'
 
 #dataset trained on if trained (if not, use -)
@@ -68,13 +72,13 @@ training_dataset = 'tanh100x10'
 # training_dataset = '-'
 
 #evaluated or not evaluated with so far
-evaluated = 'E'
-# evaluated = 'ne'
+# evaluated = 'E'
+evaluated = 'ne'
 
 #images evaluated against, if evaluated (if not, use -)
 # eval_dataset = 'tanh100x10'
-eval_dataset = 'tanh10x10'
-# eval_dataset = '-'
+# eval_dataset = 'tanh10x10'
+eval_dataset = '-'
 
 #used or not used for prediction so far
 used_for_pred = 'P'
@@ -88,14 +92,16 @@ pred_dataset = '5imgs'
 #extra identifier for any particular or unique qualities of the model object
 # extra_tag = 'randUo'
 # extra_tag = 'scaled_ppixel'
-extra_tag = 'pipeline_test'
-# extra_tag = '-'
+# extra_tag = 'pipeline_test'
+extra_tag = '-'
 
 
 """
 Define plotting function
 """
 
+# NOTE: change plots or add new plots inside this function
+# if you make a new plot, add a new plot_type and describe it under the plot type docstring above
 
 def plot(plot_type,model_size,transform_type,prior_type,class_type,\
     trained,num_epochs,training_dataset, evaluated, eval_dataset, used_for_pred, pred_dataset,extra_tag):
@@ -710,7 +716,9 @@ def plot(plot_type,model_size,transform_type,prior_type,class_type,\
 
 """
 Run plotting function
+this shouldn't be changed often, if ever
 """
+
 
 plot(plot_type,model_size,transform_type,prior_type,class_type,\
     trained,num_epochs,training_dataset, evaluated, eval_dataset, used_for_pred, pred_dataset,extra_tag)
