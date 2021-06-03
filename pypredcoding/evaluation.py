@@ -15,20 +15,23 @@ MUST comment-in desired naming parameters
 # by uncommenting all of its parameters
 
 #model size
-model_size = '[32.10]'
+# model_size = '[32.10]'
+# model_size = '[32.32]'
+model_size = '[128.32]'
+
 
 #transformation function
 transform_type = 'tanh'
 # transform_type = 'linear'
 
 #prior type
-prior_type = 'gauss'
-# prior_type = 'kurt'
+# prior_type = 'gauss'
+prior_type = 'kurt'
 
 #classification method
-# class_type = 'NC'
+class_type = 'NC'
 # class_type = 'C1'
-class_type = 'C2'
+# class_type = 'C2'
 
 #trained or untrained
 trained = 'T'
@@ -36,8 +39,8 @@ trained = 'T'
 
 #number of epochs if trained (if not, use -)
 # num_epochs = '1000e'
-# num_epochs = '100e'
-num_epochs = '50e'
+num_epochs = '100e'
+# num_epochs = '50e'
 # num_epochs = '-'
 
 #dataset trained on if trained (if not, use -)
@@ -65,8 +68,8 @@ pred_dataset = '-'
 
 #extra identifier for any particular or unique qualities of the model object
 # extra_tag = 'randUo'
-extra_tag = 'pipeline_test'
-# extra_tag = '-'
+# extra_tag = 'pipeline_test'
+extra_tag = '-'
 
 # load it
 pcmod_in = open('pc.{}.{}.{}.{}.{}.{}.{}.{}.{}.{}.{}.{}.pydb'.format(model_size,transform_type,prior_type,class_type,\
@@ -75,9 +78,15 @@ pcmod = pickle.load(pcmod_in)
 pcmod_in.close()
 
 # load data to evaluate against
-tanh_data_in = open('tanh_10x10.pydb','rb')
+tanh_data_in = open('tanh_100x10.pydb','rb')
 X_train, y_train, training_img, non_training_img, scrm_training_img, lena_pw, lena_zoom = pickle.load(tanh_data_in)
 tanh_data_in.close()
+
+#output pickle naming
+
+#images evaluated against (must match tanh_data_in]
+eval_dataset = 'tanh100x10'
+# eval_dataset = 'tanh10x10'
 
 # print(X_train.shape)
 # print(y_train.shape)
@@ -90,6 +99,10 @@ X_inflated = data.inflate_vectors(X_train)
 """
 Evaluate
 """
+
+# list naming parameters above: if anything left unset, evaluate) will not run
+naming_parameters = [model_size,transform_type,prior_type,class_type,\
+    trained,num_epochs,training_dataset, evaluated, eval_dataset, used_for_pred, pred_dataset,extra_tag]
 
 
 # evaluate
@@ -106,10 +119,6 @@ do not touch evaluated = 'E'
 
 #evaluated is now true
 evaluated = 'E'
-
-#images evaluated against
-# eval_dataset = 'tanh100x10'
-eval_dataset = 'tanh10x10'
 
 
 evaluation_out = open('pc.{}.{}.{}.{}.{}.{}.{}.{}.{}.{}.{}.{}.pydb'.format(model_size,transform_type,prior_type,class_type,\

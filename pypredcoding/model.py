@@ -333,19 +333,19 @@ class PredictiveCodingClassifier:
                     - (k_U / 2) * self.h(self.U[i],self.p.lam[i])[1]
 
 
-                # """ r(n) update (C1) """
-                # self.r[n] = self.r[n] + (k_r / self.p.sigma_sq[n]) \
-                # * self.U[n].T.dot(self.f(self.U[n].dot(self.r[n]))[1].dot(self.r[n-1] - self.f(self.U[n].dot(self.r[n]))[0])) \
-                # - (k_r / 2) * self.g(self.r[n],self.p.alpha[n])[1] \
-                # # # classification term
-                # # + (k_o / 2) * (label[:,None] - softmax(self.r[n]))
-
-                """ r(n) update (C2) """
+                """ r(n) update (C1) """
                 self.r[n] = self.r[n] + (k_r / self.p.sigma_sq[n]) \
                 * self.U[n].T.dot(self.f(self.U[n].dot(self.r[n]))[1].dot(self.r[n-1] - self.f(self.U[n].dot(self.r[n]))[0])) \
                 - (k_r / 2) * self.g(self.r[n],self.p.alpha[n])[1] \
-                # classification term
-                + (k_r / 2) * (self.U_o.T.dot(label[:,None]) - self.U_o.T.dot(softmax(self.U_o.dot(self.r[n]))))
+                # # classification term
+                # + (k_o / 2) * (label[:,None] - softmax(self.r[n]))
+
+                # """ r(n) update (C2) """
+                # self.r[n] = self.r[n] + (k_r / self.p.sigma_sq[n]) \
+                # * self.U[n].T.dot(self.f(self.U[n].dot(self.r[n]))[1].dot(self.r[n-1] - self.f(self.U[n].dot(self.r[n]))[0])) \
+                # - (k_r / 2) * self.g(self.r[n],self.p.alpha[n])[1] \
+                # # classification term
+                # + (k_r / 2) * (self.U_o.T.dot(label[:,None]) - self.U_o.T.dot(softmax(self.U_o.dot(self.r[n]))))
 
 
                 # U[n] update (C1, C2) (identical to U[i], except index numbers)
@@ -354,9 +354,9 @@ class PredictiveCodingClassifier:
                 - (k_U / 2) * self.h(self.U[n],self.p.lam[n])[1]
 
 
-                """ U_o update (C2) """
-                self.o = np.exp(self.U_o.dot(self.r[n]))
-                self.U_o = self.U_o + label[:,None].dot(self.r[n].T) - len(label)*softmax((self.U_o.dot(self.r[n])).dot(self.r[n].T))
+                # """ U_o update (C2) """
+                # self.o = np.exp(self.U_o.dot(self.r[n]))
+                # self.U_o = self.U_o + label[:,None].dot(self.r[n].T) - len(label)*softmax((self.U_o.dot(self.r[n])).dot(self.r[n].T))
 
 
                 # Loss function E
@@ -375,10 +375,10 @@ class PredictiveCodingClassifier:
                 # self.class_type = 'C1'
                 
 
-                """ Classifying using C2 """
-                C = self.class_cost_2(label)
-                E = E + C
-                self.class_type = 'C2'
+                # """ Classifying using C2 """
+                # C = self.class_cost_2(label)
+                # E = E + C
+                # self.class_type = 'C2'
 
 
             # store average costs and accuracy per epoch
@@ -413,6 +413,7 @@ class PredictiveCodingClassifier:
 
         self.n_pred_updates = 100
         # re-initialize lists of actual prediction outputs and PEs
+        self.r1s = []
         self.prediction = []
         self.prediction_errors_l1 = []
         self.prediction_errors_l2 = []
@@ -499,8 +500,10 @@ class PredictiveCodingClassifier:
                 # return final predictions
                 # i.e. r[n]'s
     
+                r1 = self.r[1]
                 prediction = self.r[n]
     
+                self.r1s.append(r1)
                 self.prediction.append(prediction)
                 self.prediction_errors_l1.append(self.pe_1)
                 self.prediction_errors_l2.append(self.pe_2)
@@ -580,11 +583,12 @@ class PredictiveCodingClassifier:
                     - (k_r / 2) * self.g(self.r[n],self.p.alpha[n])[1]
                 
                 
-                # return final prediction
-                # i.e. r[n]
+                # return final prediction (r[n]) and final r[1]
     
+                r1 = self.r[1]
                 prediction = self.r[n]
     
+                self.r1s.append(r1)
                 self.prediction.append(prediction)
                 self.prediction_errors_l1.append(self.pe_1)
                 self.prediction_errors_l2.append(self.pe_2)
@@ -615,6 +619,7 @@ class PredictiveCodingClassifier:
 
             if eval_class_type == 'C2':
                 for i in range(0,self.n_eval_images):
+                    print("eval image{}".format(i+1))
                     image = X[i,:,:]
                     predicted_img = self.predict(image)[0]
                     
@@ -635,6 +640,7 @@ class PredictiveCodingClassifier:
 
             elif eval_class_type == 'C1':
                 for i in range(0,self.n_eval_images):
+                    print("eval image{}".format(i+1))
                     image = X[i,:,:]
                     predicted_img = self.predict(image)[0]
                     label = Y[i,:]
@@ -665,6 +671,7 @@ class PredictiveCodingClassifier:
 
             if eval_class_type == 'C2':
                 for i in range(0,self.n_eval_images):
+                    print("eval image{}".format(i+1))
                     image = X
                     predicted_img = self.predict(image)[0]
                     label = Y
@@ -684,6 +691,7 @@ class PredictiveCodingClassifier:
 
             elif eval_class_type == 'C1':
                 for i in range(0,self.n_eval_images):
+                    print("eval image{}".format(i+1))
                     image = X
                     predicted_img = self.predict(image)[0]
                     label = Y

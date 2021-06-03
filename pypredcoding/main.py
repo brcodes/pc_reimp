@@ -22,19 +22,19 @@ def main():
 
     #constant learning rates, optimal for tanh model without classification
     #r 0.05, U 0.05 o 0.05
-    p = ModelParameters(unit_act='tanh',
-        hidden_sizes = [32,10], num_epochs = 50,
-        k_r_sched = {'constant':{'initial':0.05}},
-        k_U_sched = {'constant':{'initial':0.05}},
-        k_o_sched = {'constant':{'initial':0.0005}})
-
-    # #kurtotic priors
-    # #r 0.05, U 0.05 o 0.05
-    # p = ModelParameters(unit_act='tanh',r_prior = 'kurtotic', U_prior = 'kurtotic',
-    #     hidden_sizes = [32,10], num_epochs = 1000,
+    # p = ModelParameters(unit_act='tanh',
+    #     hidden_sizes = [128,32], num_epochs = 100,
     #     k_r_sched = {'constant':{'initial':0.05}},
     #     k_U_sched = {'constant':{'initial':0.05}},
     #     k_o_sched = {'constant':{'initial':0.0005}})
+
+    #kurtotic priors
+    #r 0.05, U 0.05 o 0.05
+    p = ModelParameters(unit_act='tanh',r_prior = 'kurtotic', U_prior = 'kurtotic',
+        hidden_sizes = [128,32], num_epochs = 100,
+        k_r_sched = {'constant':{'initial':0.05}},
+        k_U_sched = {'constant':{'initial':0.05}},
+        k_o_sched = {'constant':{'initial':0.0005}})
 
     # #step decay learning rates for tanh model (has not been optimized)
     # p = ModelParameters(unit_act='tanh',hidden_sizes = [32,32], num_epochs = 400,
@@ -61,50 +61,6 @@ def main():
     #     k_o_sched = {'poly':{'initial':0.05,'max_epochs':100,'poly_power':1}})
 
     """
-    Pickle In Training Image Set
-    comment-in correct image set
-    """
-
-    # load preprocessed data saved by preprocessing.py
-    # for a linear model training on a linear-optimized training set of 10digs x 10imgs open "linear_10x10.pydb"
-    # comment out the below three lines if using tanh model
-
-    # linear_data_in = open('linear_10x10.pydb','rb')
-    # X_train, y_train, training_img, non_training_img, scrm_training_img, lena_pw, lena_zoom = pickle.load(linear_data_in)
-    # linear_data_in.close()
-
-    # for a tanh model training on a tanh-optimized training set of 10digs x 10imgs open "tanh_10x10.pydb"
-    # for 100x10, use the associated tanh_100x10.pydb
-    # for 1000x10, use the associated tanh_1000x10.pydb
-    # comment out the below three lines if using linear model
-    
-    # tanh_data_in = open('tanh_10x10.pydb','rb')
-    # X_train, y_train, training_img, non_training_img, scrm_training_img, lena_pw, lena_zoom = pickle.load(tanh_data_in)
-    # tanh_data_in.close()
-
-    tanh_data_in = open('tanh_100x10.pydb','rb')
-    X_train, y_train, training_img, non_training_img, scrm_training_img, lena_pw, lena_zoom = pickle.load(tanh_data_in)
-    tanh_data_in.close()
-    
-    # tanh_data_in = open('tanh_1000x10.pydb','rb')
-    # X_train, y_train, training_img, non_training_img, scrm_training_img, lena_pw, lena_zoom = pickle.load(tanh_data_in)
-    # tanh_data_in.close()
-
-
-    """
-    Train
-    """
-    
-    # NOTE: comment out pcmod.train() line below to leave model untrained
-
-    # instantiate model
-    pcmod = PredictiveCodingClassifier(p)
-    
-    # train on training set
-    pcmod.train(X_train, y_train)
-
-
-    """
     PCMOD OBJECT NAMING FORMAT
     and pipeline instructions
     """
@@ -118,7 +74,7 @@ def main():
 
     # e.g.
     # pc.[32.10].tanh.gauss.C2.T.100e.tanh100x10.ne.-.np.-.randUo.pydb
-    
+
     # the above model:
     # is size 32,10, tanh, gaussian, has C2 classification, was trained for 100 epochs on
     # the tanh 100x10 dataset, was not evaluated (ne) on any evaluation image set (-), was not
@@ -126,9 +82,9 @@ def main():
     # was set so that Uo would stay random, never updating based on the labels (hence: 'randUo')
 
     # note that "-" serves as a placeholder for "not present"
-    
-    # when commenting-in the correct naming parameters for pickling in and out in main, eval, pred, or plot, 
-    # note that they must be strings. I hope to set this up at some point to run with less human input.
+
+    # when commenting-in the correct naming parameters for pickling in and out in main, eval, pred, or plot,
+    # note that they must be strings. I hope to set this up at some point as a function that runs with less human input.
 
     # though the names are backwards compatible, currently the scripts can only be run in one direction
 
@@ -139,40 +95,44 @@ def main():
 
     # note that evaluation and/or prediction can be skipped
 
+
     """
-    Pickle Out Trained or Untrained Model
+    Set Naming Parameters for Model (Define Model Output Pickle Filename)
     MUST comment-in desired naming parameters
+    MUST match model parameters set above
     """
 
     # pickle output model
     # MUST comment-in desired names of parameters in the model
-
+    
     # "-" serves as a placeholder for "not present"
 
     #model size
-    model_size = '[32.10]'
+    # model_size = '[32.10]'
+    # model_size = '[32.32]'
+    model_size = '[128.32]'
 
     #transformation function
     transform_type = 'tanh'
     # transform_type = 'linear'
 
     #prior type
-    prior_type = 'gauss'
-    # prior_type = 'kurt'
+    # prior_type = 'gauss'
+    prior_type = 'kurt'
 
     #classification method
-    # class_type = 'NC'
+    class_type = 'NC'
     # class_type = 'C1'
-    class_type = 'C2'
+    # class_type = 'C2'
 
-    #trained or untrained
+    #will be trained or untrained
     trained = 'T'
     # trained = 'nt'
 
     #number of epochs if trained (if not, use -)
     # num_epochs = '1000e'
-    # num_epochs = '100e'
-    num_epochs = '50e'
+    num_epochs = '100e'
+    # num_epochs = '50e'
     # num_epochs = '-'
 
     #dataset trained on if trained (if not, use -)
@@ -200,9 +160,62 @@ def main():
 
     #extra identifier for any particular or unique qualities of the model object
     # extra_tag = 'randUo'
-    extra_tag = 'pipeline_test'
-    # extra_tag = '-'
+    # extra_tag = 'pipeline_test'
+    extra_tag = '-'
 
+    """
+    Pickle In Training Image Set
+    comment-in correct image set
+    """
+
+    # load preprocessed data saved by preprocessing.py
+    # for a linear model training on a linear-optimized training set of 10digs x 10imgs open "linear_10x10.pydb"
+    # comment out the below three lines if using tanh model
+
+    # linear_data_in = open('linear_10x10.pydb','rb')
+    # X_train, y_train, training_img, non_training_img, scrm_training_img, lena_pw, lena_zoom = pickle.load(linear_data_in)
+    # linear_data_in.close()
+
+    # for a tanh model training on a tanh-optimized training set of 10digs x 10imgs open "tanh_10x10.pydb"
+    # for 100x10, use the associated tanh_100x10.pydb
+    # for 1000x10, use the associated tanh_1000x10.pydb
+    # comment out the below three lines if using linear model
+
+    # tanh_data_in = open('tanh_10x10.pydb','rb')
+    # X_train, y_train, training_img, non_training_img, scrm_training_img, lena_pw, lena_zoom = pickle.load(tanh_data_in)
+    # tanh_data_in.close()
+
+    tanh_data_in = open('tanh_100x10.pydb','rb')
+    X_train, y_train, training_img, non_training_img, scrm_training_img, lena_pw, lena_zoom = pickle.load(tanh_data_in)
+    tanh_data_in.close()
+
+    # tanh_data_in = open('tanh_1000x10.pydb','rb')
+    # X_train, y_train, training_img, non_training_img, scrm_training_img, lena_pw, lena_zoom = pickle.load(tanh_data_in)
+    # tanh_data_in.close()
+
+
+    """
+    Train
+    """
+
+    # list naming parameters above: if anything left unset, train() will not run
+    naming_parameters = [model_size,transform_type,prior_type,class_type,\
+        trained,num_epochs,training_dataset, evaluated, eval_dataset, used_for_pred, pred_dataset,extra_tag]
+
+    # NOTE: comment out pcmod.train() line below to leave model untrained
+
+    # instantiate model
+    pcmod = PredictiveCodingClassifier(p)
+
+    # train on training set
+    pcmod.train(X_train, y_train)
+
+
+    """
+    Pickle Out Trained or Untrained Model
+    """
+
+    # pickle output model
 
     pcmod_out = open('pc.{}.{}.{}.{}.{}.{}.{}.{}.{}.{}.{}.{}.pydb'.format(model_size,transform_type,prior_type,class_type,\
         trained,num_epochs,training_dataset, evaluated, eval_dataset, used_for_pred, pred_dataset,extra_tag),'wb')

@@ -17,20 +17,23 @@ MUST comment-in desired naming parameters
 # by uncommenting all of its parameters
 
 #model size
-model_size = '[32.10]'
+# model_size = '[32.10]'
+# model_size = '[32.32]'
+model_size = '[128.32]'
+
 
 #transformation function
 transform_type = 'tanh'
 # transform_type = 'linear'
 
 #prior type
-prior_type = 'gauss'
-# prior_type = 'kurt'
+# prior_type = 'gauss'
+prior_type = 'kurt'
 
 #classification method
-# class_type = 'NC'
+class_type = 'NC'
 # class_type = 'C1'
-class_type = 'C2'
+# class_type = 'C2'
 
 #trained or untrained
 trained = 'T'
@@ -186,6 +189,10 @@ combined_pred_imgs_vec = combined_pred_imgs_vec[1:,:,:]
 Predict
 """
 
+
+# list naming parameters above: if anything left unset, predict() will not run
+naming_parameters = [model_size,transform_type,prior_type,class_type,\
+    trained,num_epochs,training_dataset, evaluated, eval_dataset, used_for_pred, pred_dataset,extra_tag]
 
 # predict each image in the multi-image vector created above
 pcmod.predict(combined_pred_imgs_vec)

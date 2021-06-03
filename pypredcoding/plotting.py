@@ -7,6 +7,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 from matplotlib import style
 import pickle
+from kbutil import tsne
 
 
 """
@@ -31,6 +32,7 @@ Comment-in the plot type
 
 plot_type = 'predPEs'
 
+# plot_type = 'tsne'
 
 """
 Comment-in the naming parameters of the object being plotted
@@ -41,7 +43,10 @@ MUST comment-in 'P' and a pred_dataset for predPEs plot
 
 
 #model size
-model_size = '[32.10]'
+# model_size = '[32.10]'
+model_size = '[32.32]'
+# model_size = '[128.32]'
+
 
 #transformation function
 transform_type = 'tanh'
@@ -707,7 +712,10 @@ def plot(plot_type,model_size,transform_type,prior_type,class_type,\
               trained,num_epochs,training_dataset, evaluated, eval_dataset, used_for_pred, pred_dataset,extra_tag))
             print("used_for_pred must = 'P' or 'np'")
             print("predict image(s) with this model first [prediction.py]")
-
+        
+        
+        
+        
     else:
         print("plot type must be one of pre-listed six types")
 
