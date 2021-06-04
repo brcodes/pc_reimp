@@ -71,20 +71,22 @@ training_dataset = 'tanh100x10'
 # training_dataset = '-'
 
 #evaluated or not evaluated with so far
-# evaluated = 'E'
-evaluated = 'ne'
+evaluated = 'E'
+# evaluated = 'ne'
 
 #images evaluated against, if evaluated (if not, use -)
-# eval_dataset = 'tanh100x10'
+eval_dataset = 'tanh100x10'
 # eval_dataset = 'tanh10x10'
-eval_dataset = '-'
+# eval_dataset = '-'
 
 #must be P
 used_for_pred = 'P'
 
 #images predicted, if used for prediction (if not, use -)
 #images 1-5 from April/May 2021 exps
-pred_dataset = '5imgs'
+# pred_dataset = '5imgs'
+# pred_dataset = '0-9_minE_128.32_kurt'
+pred_dataset = '0-9_maxE_128.32_kurt'
 # pred_dataset = '-'
 
 #extra identifier for any particular or unique qualities of the model object
@@ -122,12 +124,20 @@ for image in range(0,n_pred_images):
     fU1r1_l2 = tanh_trans(pcmod.U[1].dot(fU2r2))[0]
     fU1r1_resize_l2 = fU1r1_l2.reshape(28,28)
     
+    # original image
+    original_image = prediction_image_set[image].reshape(28,28)
+    
     # plot
-    plt.subplot(121),plt.imshow(fU1r1_resize_l1, cmap='Greys'),plt.title('image #{} L{}'.format(image+1,1))
+    plt.subplot(131),plt.imshow(original_image, cmap='Greys'),plt.title('image #{} Original'.format(image+1))
     plt.xticks([]), plt.yticks([])
     # plt.colorbar(fraction=0.046, pad=0.04)
-    plt.subplot(122),plt.imshow(fU1r1_resize_l2, cmap='Greys'),plt.title('image #{} L{}'.format(image+1,2))
+    plt.subplot(132),plt.imshow(fU1r1_resize_l1, cmap='Greys'),plt.title('image #{} L{}'.format(image+1,1))
+    plt.xticks([]), plt.yticks([])
+    # plt.colorbar(fraction=0.046, pad=0.04)
+    plt.subplot(133),plt.imshow(fU1r1_resize_l2, cmap='Greys'),plt.title('image #{} L{}'.format(image+1,2))
     plt.xticks([]), plt.yticks([])
     # plt.colorbar(fraction=0.046, pad=0.04)
     plt.show()
+    
+    
 

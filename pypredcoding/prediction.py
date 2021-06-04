@@ -51,13 +51,13 @@ training_dataset = 'tanh100x10'
 # training_dataset = '-'
 
 #evaluated or not evaluated with so far
-# evaluated = 'E'
-evaluated = 'ne'
+evaluated = 'E'
+# evaluated = 'ne'
 
 #images evaluated against, if evaluated (if not, use -)
-# eval_dataset = 'tanh100x10'
+eval_dataset = 'tanh100x10'
 # eval_dataset = 'tanh10x10'
-eval_dataset = '-'
+# eval_dataset = '-'
 
 #used or not used for prediction so far
 # used_for_pred = 'P'
@@ -127,9 +127,37 @@ tanh_data_in.close()
 # X_train, y_train, training_img, non_training_img, scrm_training_img, lena_pw, lena_zoom = pickle.load(tanh_data_in)
 # tanh_data_in.close()
 
+"""
+Isolate best-performing digit of each kind (0-9)
+from evaluation object E (i.e. list pcmod.E_per_image)
+(model must have been evaluated on a 100x10 image set for indexing to work)
+(remember X_train above is flat)
+"""
 
+E_per_image = E
+E_by_dig = {}
+E_min_per_dig = {}
+E_min_index_per_dig = {}
+lowest_E_digits = []
 
+index1 = -100
+index2 = -1
 
+for dig in range(0,10):
+    index1 += 100
+    index2 += 100
+    E_by_dig[dig] = E_per_image[index1:index2]
+    E_min_per_dig[dig] = min(E_by_dig[dig])
+    E_min_index_per_dig[dig] = E_per_image.index(E_min_per_dig[dig])
+    lowest_E_digits.append(X_train[E_min_index_per_dig[dig],:])
+    # add another dimension to make all prediction images unified in 784,1 shape
+    lowest_E_digits[dig] = lowest_E_digits[dig][None,:]
+
+print("E_min_per_dig")
+print(E_min_per_dig)
+print("E_min_index_per_dig")
+print(E_min_index_per_dig)
+    
 
 """
 Set Prediction Images
@@ -151,11 +179,17 @@ will work with 1-n number of single images (e.g. lena_zoom) or 3-dim image vecto
 # then the plot with "pred_img 1" in the title is the plot corresponding to X_train[0]
 
 
-prediction_image_set = [training_img,non_training_img,scrm_training_img,lena_zoom,lena_pw]
+prediction_image_set = lowest_E_digits
 
+print("len(prediction_image_set)")
+print(len(prediction_image_set))
+print("prediction_image_set[0].shape")
+print(prediction_image_set[0].shape)
 
-# print("training_img.shape")
-# print(training_img.shape)
+# prediction_image_set = [training_img,non_training_img,scrm_training_img,lena_zoom,lena_pw]
+
+print("training_img.shape")
+print(training_img.shape)
 
 
 # instantiate empty anchor vector to stack on
@@ -164,7 +198,8 @@ combined_pred_imgs_vec = np.zeros(shape=(1,28,28))
 # count
 n_pred_images = 0
 
-# stack
+# vstack and count number of prediction images
+
 for image in prediction_image_set:
     if len(image.shape) == 2:
         reshaped = image.reshape(1,28,28)
@@ -213,7 +248,9 @@ used_for_pred = 'P'
 
 #images predicted, if used for prediction (if not, use -)
 #images 1-5 from April/May 2021 exps
-pred_dataset = '5imgs'
+# pred_dataset = '5imgs'
+pred_dataset = '0-9_minE_128.32_kurt'
+# pred_dataset = '0-9_maxE_128.32_kurt'
 
 
 

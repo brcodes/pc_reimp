@@ -16,7 +16,7 @@ Comment-in the plot type
 """
 
 
-# plot_type = 'trainingE'
+plot_type = 'trainingE'
 
 # # for models with different E,C scales
 # plot_type = 'trainingECAsplitplot'
@@ -30,9 +30,8 @@ Comment-in the plot type
 # # for models with same E,C scale
 # plot_type = 'evalECAoneplot'
 
-plot_type = 'predPEs'
+# plot_type = 'predPEs'
 
-# plot_type = 'tsne'
 
 """
 Comment-in the naming parameters of the object being plotted
@@ -44,8 +43,8 @@ MUST comment-in 'P' and a pred_dataset for predPEs plot
 
 #model size
 # model_size = '[32.10]'
-model_size = '[32.32]'
-# model_size = '[128.32]'
+# model_size = '[32.32]'
+model_size = '[128.32]'
 
 
 #transformation function
@@ -53,13 +52,13 @@ transform_type = 'tanh'
 # transform_type = 'linear'
 
 #prior type
-prior_type = 'gauss'
-# prior_type = 'kurt'
+# prior_type = 'gauss'
+prior_type = 'kurt'
 
 #classification method
-# class_type = 'NC'
+class_type = 'NC'
 # class_type = 'C1'
-class_type = 'C2'
+# class_type = 'C2'
 
 #trained or untrained
 trained = 'T'
@@ -85,14 +84,17 @@ evaluated = 'ne'
 # eval_dataset = 'tanh10x10'
 eval_dataset = '-'
 
+
 #used or not used for prediction so far
-used_for_pred = 'P'
-# used_for_pred = 'np'
+# used_for_pred = 'P'
+used_for_pred = 'np'
 
 #images predicted, if used for prediction (if not, use -)
 #images 1-5 from April/May 2021 exps
-pred_dataset = '5imgs'
-# pred_dataset = '-'
+# pred_dataset = '5imgs'
+# pred_dataset = '0-9_minE_128.32_kurt'
+# pred_dataset = '0-9_maxE_128.32_kurt'
+pred_dataset = '-'
 
 #extra identifier for any particular or unique qualities of the model object
 # extra_tag = 'randUo'
