@@ -43,8 +43,8 @@ MUST comment-in 'P' and a pred_dataset for predPEs plot
 
 #model size
 # model_size = '[32.10]'
-# model_size = '[32.32]'
-model_size = '[128.32]'
+model_size = '[32.32]'
+# model_size = '[128.32]'
 
 
 #transformation function
@@ -52,8 +52,8 @@ transform_type = 'tanh'
 # transform_type = 'linear'
 
 #prior type
-# prior_type = 'gauss'
-prior_type = 'kurt'
+prior_type = 'gauss'
+# prior_type = 'kurt'
 
 #classification method
 class_type = 'NC'

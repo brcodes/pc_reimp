@@ -30,7 +30,7 @@ t-SNE
 """
 
 # # run t-sne
-# # e.g. 
+# # e.g.
 # # Y = tsne.tsne(X, no_dims, initial_dims = 50, perplexity = 30.0)
 
 # X_train_tsne = tsne.tsne(X_train, no_dims=2, initial_dims=10, perplexity=30.0)
@@ -62,7 +62,7 @@ tsne_in.close()
 
 print('tsne_results.shape')
 print(tsne_results.shape)
-    
+
 
 
 """
@@ -142,9 +142,10 @@ evaluation_results = (pcmod,E,C,Classif_success_by_img,Acc)
 t-SNE plotting function
 """
 
-def plot_tsne(tsne_results, evaluation_results, shading_determinant="E", def_alpha=0.7, color_scheme="multi", mono_color="sky_blue"):
-    
-    """ takes 6 arguments: 1) tsne results (an N_datapoints,2dims)-shaped vector, 
+def plot_tsne(tsne_results, evaluation_results, shading_determinant="E", def_alpha=0.7, color_scheme="multi",
+    mono_color="sky_blue", dot_type="digits", dot_size = 3):
+
+    """ takes 6 arguments: 1) tsne results (an N_datapoints,2dims)-shaped vector,
     2) evaluation results (a 5-element tuple containing: the evaluated model [pcmod], representation loss [E],
     classification loss [C], and classification success (1) or failure (0) per image [Classif...],
     and classification accuracy across all eval'd images), 3) an argument to determine the basis of opacity for
@@ -154,22 +155,22 @@ def plot_tsne(tsne_results, evaluation_results, shading_determinant="E", def_alp
     [1 color wheel color per image class, i.e. 10 for MNIST digits 0-9],"mono" = monochromatic [defaults to using color assigned to mono_color],
     and "bw" = black and white), and 6) the chosen color for the monochromatic scheme, defaults to "sky_blue".
     """
-    
-    
-  
+
+
+
     dim1_list = []
     dim2_list = []
-    
+
     for result in tsne_results:
         dim1 = result[0]
         dim2 = result[1]
         dim1_list.append(dim1)
         dim2_list.append(dim2)
-        
+
     print("tsne output shape is {}".format(tsne_results.shape))
-    
+
     #split digits to plot with specific colors or labels
-    
+
     lime_green='#3cb44b'
     magenta_red='#e6194b'
     sky_blue='#4363d8'
@@ -191,139 +192,139 @@ def plot_tsne(tsne_results, evaluation_results, shading_determinant="E", def_alp
     white='#ffffff'
     black='#000000'
     gold_yellow:'#ffe119'
-    
-    
-    
+
+
+
     Emax = max(E)
     Emin = min(E)
-    
+
     print(Emax)
     print(Emin)
-    
+
     alphas = []
-    
+
     for cost in E:
         normed_cost = ((cost-Emin) / Emax)
         # # for uniform opacity
         # normed_cost = 1
         alphas.append(normed_cost)
-        
+
     print("min(alphas)")
     print(min(alphas))
-    
-    
+
+
     """
     plot t-SNE result
     """
-    
-    
+
+
     x0s = dim1_list[0:100]
     y0s = dim2_list[0:100]
     for i in range(0,100):
         plot = plt.scatter(x0s[i], y0s[i], c=lime_green, marker="$0$", alpha=alphas[i])
-    
+
     x1s = dim1_list[100:200]
     y1s = dim2_list[100:200]
     for i in range(0,100):
         plot = plt.scatter(x1s[i], y1s[i], c=magenta_red, marker="$1$", alpha=alphas[i])
-    
+
     x2s = dim1_list[200:300]
     y2s = dim2_list[200:300]
     for i in range(0,100):
         plot = plt.scatter(x2s[i], y2s[i], c=sky_blue,  marker="$2$", alpha=alphas[i])
-    
+
     x3s = dim1_list[300:400]
     y3s = dim2_list[300:400]
     for i in range(0,100):
         plot = plt.scatter(x3s[i], y3s[i], c=light_orange, marker="$3$", alpha=alphas[i])
-    
+
     x4s = dim1_list[400:500]
     y4s = dim2_list[400:500]
     for i in range(0,100):
         plot = plt.scatter(x4s[i], y4s[i], c=bright_purple,  marker="$4$",alpha=alphas[i])
-    
+
     x5s = dim1_list[500:600]
     y5s = dim2_list[500:600]
     for i in range(0,100):
         plot = plt.scatter(x5s[i], y5s[i], c='gold',  marker="$5$",alpha=alphas[i])
-    
+
     x6s = dim1_list[600:700]
     y6s = dim2_list[600:700]
     for i in range(0,100):
         plot = plt.scatter(x6s[i], y6s[i], c=magenta_pink, marker="$6$", alpha=alphas[i])
-    
+
     x7s = dim1_list[700:800]
     y7s = dim2_list[700:800]
     for i in range(0,100):
         plot = plt.scatter(x7s[i], y7s[i], c=dark_grey,  marker="$7$",alpha=alphas[i])
-    
+
     x8s = dim1_list[800:900]
     y8s = dim2_list[800:900]
     for i in range(0,100):
         plot = plt.scatter(x8s[i], y8s[i], c=pink_skin,  marker="$8$",alpha=alphas[i])
-    
+
     x9s = dim1_list[900:1000]
     y9s = dim2_list[900:1000]
     for i in range(0,100):
         plot = plt.scatter(x9s[i], y9s[i], c=dark_lakefoam_green, marker="$9$", alpha=alphas[i])
-    
-    
-    
+
+
+
     # greyscale
-    
+
     # x0s = dim1_list[0:100]
     # y0s = dim2_list[0:100]
     # for i in range(0,100):
     #     plot = plt.scatter(x0s[i], y0s[i], c=black, marker="$0$", alpha=alphas[i])
-    
+
     # x1s = dim1_list[100:200]
     # y1s = dim2_list[100:200]
     # for i in range(0,100):
     #     plot = plt.scatter(x1s[i], y1s[i], c=black, marker="$1$", alpha=alphas[i])
-    
+
     # x2s = dim1_list[200:300]
     # y2s = dim2_list[200:300]
     # for i in range(0,100):
     #     plot = plt.scatter(x2s[i], y2s[i], c=black,  marker="$2$", alpha=alphas[i])
-    
+
     # x3s = dim1_list[300:400]
     # y3s = dim2_list[300:400]
     # for i in range(0,100):
     #     plot = plt.scatter(x3s[i], y3s[i], c=black, marker="$3$", alpha=alphas[i])
-    
+
     # x4s = dim1_list[400:500]
     # y4s = dim2_list[400:500]
     # for i in range(0,100):
     #     plot = plt.scatter(x4s[i], y4s[i], c=black,  marker="$4$",alpha=alphas[i])
-    
+
     # x5s = dim1_list[500:600]
     # y5s = dim2_list[500:600]
     # for i in range(0,100):
     #     plot = plt.scatter(x5s[i], y5s[i], c=black,  marker="$5$",alpha=alphas[i])
-    
+
     # x6s = dim1_list[600:700]
     # y6s = dim2_list[600:700]
     # for i in range(0,100):
     #     plot = plt.scatter(x6s[i], y6s[i], c=black, marker="$6$", alpha=alphas[i])
-    
+
     # x7s = dim1_list[700:800]
     # y7s = dim2_list[700:800]
     # for i in range(0,100):
     #     plot = plt.scatter(x7s[i], y7s[i], c=black,  marker="$7$",alpha=alphas[i])
-    
+
     # x8s = dim1_list[800:900]
     # y8s = dim2_list[800:900]
     # for i in range(0,100):
     #     plot = plt.scatter(x8s[i], y8s[i],c=black,  marker="$8$",alpha=alphas[i])
-    
+
     # x9s = dim1_list[900:1000]
     # y9s = dim2_list[900:1000]
     # for i in range(0,100):
     #     plot = plt.scatter(x9s[i], y9s[i], c=black, marker="$9$", alpha=alphas[i])
-    
-    
-    
-    
+
+
+
+
     # plt.title('t-SNE on 100x10 MNIST image set')
     plt.xlabel('dim1')
     plt.ylabel('dim2')
@@ -333,14 +334,14 @@ def plot_tsne(tsne_results, evaluation_results, shading_determinant="E", def_alp
     ax.spines["bottom"].set_linewidth(3)
     ax.spines["right"].set_linewidth(3)
     ax.spines["left"].set_linewidth(3)
-    
+
     plt.savefig('tsne_tanh100x10_10initdims_3_128,32_kurt.png',dpi=1200)
-    
+
     plt.show()
-    
+
     return
-    
-    
+
+
 
 """
 Plot "Histogram" (Scatter Plot) of E vs Evaluation Image
@@ -386,20 +387,3 @@ Plot "Histogram" (Scatter Plot) of E vs Evaluation Image
 # # plt.xlabel('Image')
 # # plt.ylabel('E after 100 r updates')
 # # plt.show()
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-    
