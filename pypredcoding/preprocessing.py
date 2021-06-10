@@ -8,11 +8,97 @@ import random
 
 """
 This script is for preprocessing and pickling image data for use with
-PredictiveCodingClassifier.train() or .test()
+PredictiveCodingClassifier.train(), evaluate(), or predict()
+
+or with
+
+TiledPredictiveCodingClassifier.tiled_train(), tiled_evaluate(), tiled_predict()
 """
+
 
 """
 Load MNIST images and prepare 100 images, 10 of each digit (0-9)
+
+100 NORMAL 28x28 images
+
+"""
+#
+# # load data
+# # frac_samp 0.000166 = 10 images
+# # frac_samp 0.00166 = 100 images
+# # frac_samp 0.0166 = 1000 images
+# # frac_samp 0.166 = 10000 images
+# # frac_samp 1 = 60000 images
+# (X_train, y_train),(X_test,y_test) = get_mnist_data(frac_samp=0.0166,return_test=True)
+#
+# # number of initial training images
+# num_imgs = y_train.shape[0]
+# # print(num_imgs)
+#
+# # make evenly distributed dataset of digits 0 - 9, 10 digits each
+# # the following logic, which proceeds down to the "rescaling, normalization" area of main.py
+# #   takes however many initial training images there are (1000 here), and extracts
+# #   ten of each digit, generating an evenly distributed 10 dig x 10 images (100 image) training set
+#
+# X_dict = {}
+# y_dict = {}
+#
+# for i in range(0,10):
+#     X_dict[i] = np.zeros(shape=(1,28,28))
+#     y_dict[i] = np.zeros(shape=(1,10))
+#
+# # print(X_dict[0].shape)
+# # print(y_dict[0].shape)
+#
+# for i in range(0,num_imgs):
+#     label = y_train[i,:]
+#     digit = np.nonzero(label)[0][0]
+#     X_dict[digit] = np.vstack((X_dict[digit], X_train[i,:,:][None,:,:]))
+#     y_dict[digit] = np.vstack((y_dict[digit], label[None,:]))
+#
+# # verify intermediate dictionary setup step
+#
+# # print("dict key sizes")
+# # for i in range(0,10):
+# #     print(X_dict[i][1:,:,:].shape)
+#
+# # print("dict num keys")
+# # print(len(X_dict))
+#
+# X_dist = np.zeros(shape=(1,28,28))
+# y_dist = np.zeros(shape=(1,10))
+#
+# # i is each unique digit, 0 - 9
+# # dict indexing is to: a) avoid empty first vector in dict value (value is a 2D array),
+# # b) only take first ten filled vectors from the value per key
+# for i in range(0,10):
+#     X_dist = np.vstack((X_dist, X_dict[i][1:11,:,:]))
+#     y_dist = np.vstack((y_dist, y_dict[i][1:11,:]))
+#
+# # remove first empty vector of X_dist, y_dist to generate final image and label set
+# X_dist = X_dist[1:,:,:]
+# y_dist = y_dist[1:,:]
+#
+# # verify array shape and presence & type of raw data of 10 dig x 10 imgs dataset
+#
+# # print(X_dist.shape)
+# # print(y_dist.shape)
+# # for i in range(0,100):
+# #     print(y_dist[i])
+# # for i in range(0,12):
+# #     print(X_dist[i])
+#
+# # visually verify full 10 dig by 10 imgs practice set by printing each img
+#
+# # for i in range(88,X_dist.shape[0]):
+# #     plt.imshow(X_dist[i,:,:])
+# #     plt.show()
+
+"""
+Load MNIST images and prepare 100 images, 10 of each digit (0-9)
+
+100 DOWNSAMPLED 24x24 images
+
 """
 
 # load data
@@ -36,7 +122,7 @@ X_dict = {}
 y_dict = {}
 
 for i in range(0,10):
-    X_dict[i] = np.zeros(shape=(1,28,28))
+    X_dict[i] = np.zeros(shape=(1,24,24))
     y_dict[i] = np.zeros(shape=(1,10))
 
 # print(X_dict[0].shape)
@@ -45,7 +131,10 @@ for i in range(0,10):
 for i in range(0,num_imgs):
     label = y_train[i,:]
     digit = np.nonzero(label)[0][0]
-    X_dict[digit] = np.vstack((X_dict[digit], X_train[i,:,:][None,:,:]))
+    # the three following lines are all that change in the main downsampling image loop
+    image = X_train[i,:,:]
+    resized_image = cv2.resize(image,(24,24))
+    X_dict[digit] = np.vstack((X_dict[digit], resized_image[None,:,:]))
     y_dict[digit] = np.vstack((y_dict[digit], label[None,:]))
 
 # verify intermediate dictionary setup step
@@ -57,7 +146,7 @@ for i in range(0,num_imgs):
 # print("dict num keys")
 # print(len(X_dict))
 
-X_dist = np.zeros(shape=(1,28,28))
+X_dist = np.zeros(shape=(1,24,24))
 y_dist = np.zeros(shape=(1,10))
 
 # i is each unique digit, 0 - 9
@@ -82,12 +171,17 @@ y_dist = y_dist[1:,:]
 
 # visually verify full 10 dig by 10 imgs practice set by printing each img
 
+print('X_dist[0].shape is {}'.format(X_dist[0].shape))
+
 # for i in range(88,X_dist.shape[0]):
 #     plt.imshow(X_dist[i,:,:])
 #     plt.show()
 
 """
 Load MNIST images and prepare 1,000 images, 100 of each digit (0-9)
+
+1,000 NORMAL 28x28 images
+
 """
 
 # # load data
@@ -145,6 +239,72 @@ Load MNIST images and prepare 1,000 images, 100 of each digit (0-9)
 # # for i in range(899,X_dist.shape[0]):
 # #     plt.imshow(X_dist[i,:,:])
 # #     plt.show()
+
+"""
+Load MNIST images and prepare 1,000 images, 100 of each digit (0-9)
+
+1,000 DOWNSAMPLED 24x24 images
+
+"""
+
+# # load data
+# # frac_samp 0.166 = 10000 images
+# (X_train, y_train),(X_test,y_test) = get_mnist_data(frac_samp=0.166,return_test=True)
+#
+# # number of initial training images
+# num_imgs = y_train.shape[0]
+# # print(num_imgs)
+#
+# # make evenly distributed dataset of digits 0 - 9, 100 digits each
+#
+# X_dict = {}
+# y_dict = {}
+#
+# for i in range(0,10):
+#     X_dict[i] = np.zeros(shape=(1,24,24))
+#     y_dict[i] = np.zeros(shape=(1,10))
+#
+# # print(X_dict[0].shape)
+# # print(y_dict[0].shape)
+#
+# for i in range(0,num_imgs):
+#     label = y_train[i,:]
+#     digit = np.nonzero(label)[0][0]
+#     image = X_train[i,:,:]
+#     resized_image = cv2.resize(image,(24,24))
+#     X_dict[digit] = np.vstack((X_dict[digit], resized_image[None,:,:]))
+#     y_dict[digit] = np.vstack((y_dict[digit], label[None,:]))
+#
+#
+# X_dist = np.zeros(shape=(1,24,24))
+# y_dist = np.zeros(shape=(1,10))
+#
+# # i is each unique digit, 0 - 9
+# # dict indexing is to: a) avoid empty first vector in dict value (value is a 2D array),
+# # b) only take first ten filled vectors from the value per key
+# for i in range(0,10):
+#     X_dist = np.vstack((X_dist, X_dict[i][1:101,:,:]))
+#     y_dist = np.vstack((y_dist, y_dict[i][1:101,:]))
+#
+# # remove first empty vector of X_dist, y_dist to generate final image and label set
+# X_dist = X_dist[1:,:,:]
+# y_dist = y_dist[1:,:]
+#
+# # verify array shape and presence & type of raw data of 100 dig x 10 imgs dataset
+#
+# # print(X_dist.shape)
+# # print(y_dist.shape)
+# # for i in range(0,101):
+# #     print(y_dist[i])
+# # for i in range(0,12):
+# #     print(X_dist[i])
+#
+# # visually verify 100 dig by 10 imgs practice set by printing
+#
+# # for i in range(899,X_dist.shape[0]):
+# #     plt.imshow(X_dist[i,:,:])
+# #     plt.show()
+
 
 """
 Load MNIST images and prepare 10,000 images, 1,000 of each digit (0-9)
@@ -213,6 +373,9 @@ Load MNIST images and prepare 10,000 images, 1,000 of each digit (0-9)
 # out of bag image
 non_training_img = np.copy(X_test[0,:,:])
 
+# for 24x24 image
+non_training_img = cv2.resize(non_training_img, (24,24))
+
 # # verify image
 # plt.imshow(non_training_img, cmap='Greys'),plt.title('out of bag mnist image')
 # plt.show()
@@ -224,7 +387,12 @@ training_img = np.copy(X_dist[0,:,:])
 scrambled = np.copy(X_dist[0,:,:])
 scrambled = scrambled.ravel()
 np.random.shuffle(scrambled)
-scrambled = scrambled.reshape(28,28)
+
+# # for 28x28 image
+# scrambled = scrambled.reshape(28,28)
+
+# for 24x24 image
+scrambled = scrambled.reshape(24,24)
 
 # # verify in bag normal and scrambled images
 # plt.subplot(121), plt.imshow(training_img, cmap='Greys'),plt.title('in bag mnist normal')
@@ -246,9 +414,12 @@ lena_zoom_path = 'non_mnist_images/lena_128x128_grey_zoomed.png'
 lena_pw_read = cv2.imread(lena_pw_path,0)
 lena_zoom_read = cv2.imread(lena_zoom_path,0)
 
-lena_pw = cv2.resize(lena_pw_read,(28,28))
-lena_zoom = cv2.resize(lena_zoom_read,(28,28))
+# lena_pw = cv2.resize(lena_pw_read,(28,28))
+# lena_zoom = cv2.resize(lena_zoom_read,(28,28))
 
+# for 24x24
+lena_pw = cv2.resize(lena_pw_read,(24,24))
+lena_zoom = cv2.resize(lena_zoom_read,(24,24))
 
 
 # print(lena_pw)
@@ -378,7 +549,9 @@ lena_zoom_tanh_flat = flatten_images(lena_zoom_tanh[None,:,:])
 # plt.imshow(lena_zoom_tanh, cmap='Greys'),plt.title('lena zoom tanh')
 # plt.show()
 
-
+'''
+Plot histograms of "increasingly out-of-bag images 1-5"
+'''
 
 # plt.hist(training_img_tanh.ravel(),256,[-1,1])
 # plt.suptitle("training image tanh histogram")
@@ -421,10 +594,12 @@ lena_zoom_tanh_flat = flatten_images(lena_zoom_tanh[None,:,:])
 # plt.show()
 
 
-
+'''
+Pickle out whatever dataset has been created above
+'''
 
 # pickle the flattened input images and the output vectors as a tuple
-tanh_data_out = open('tanh_100x10.pydb', 'wb')
+tanh_data_out = open('tanh_10x10_size_24x24.pydb', 'wb')
 pickle.dump((X_flat_tanh, y_dist, training_img_tanh_flat, non_training_img_tanh_flat, scrambled_tanh_flat, lena_pw_tanh_flat, lena_zoom_tanh_flat), tanh_data_out)
 tanh_data_out.close()
 

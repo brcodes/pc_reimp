@@ -1,5 +1,5 @@
 from parameters import ModelParameters
-from model import PredictiveCodingClassifier
+from model import PredictiveCodingClassifier, TiledPredictiveCodingClassifier
 import numpy as np
 import pickle
 import cProfile
@@ -30,8 +30,8 @@ def main():
 
     #kurtotic priors
     #r 0.05, U 0.05 o 0.05
-    p = ModelParameters(unit_act='tanh',r_prior = 'kurtotic', U_prior = 'kurtotic',
-        hidden_sizes = [128,32], num_epochs = 100,
+    p = ModelParameters(unit_act='tanh',r_prior = 'kurtotic', U_prior = 'kurtotic', input_size=576,
+        hidden_sizes = [96,32], tile_offset = 6, num_epochs = 100,
         k_r_sched = {'constant':{'initial':0.05}},
         k_U_sched = {'constant':{'initial':0.05}},
         k_o_sched = {'constant':{'initial':0.0005}})
@@ -104,13 +104,14 @@ def main():
 
     # pickle output model
     # MUST comment-in desired names of parameters in the model
-    
+
     # "-" serves as a placeholder for "not present"
 
     #model size
     # model_size = '[32.10]'
     # model_size = '[32.32]'
-    model_size = '[128.32]'
+    # model_size = '[128.32]'
+    model_size = '[96.32]'
 
     #transformation function
     transform_type = 'tanh'
@@ -136,7 +137,8 @@ def main():
     # num_epochs = '-'
 
     #dataset trained on if trained (if not, use -)
-    training_dataset = 'tanh100x10'
+    # training_dataset = 'tanh100x10'
+    training_dataset = 'tanh100x10_size24x24'
     # training_dataset = 'tanh10x10'
     # training_dataset = '-'
 
@@ -161,7 +163,8 @@ def main():
     #extra identifier for any particular or unique qualities of the model object
     # extra_tag = 'randUo'
     # extra_tag = 'pipeline_test'
-    extra_tag = '-'
+    extra_tag = 'tiled_offset_6'
+    # extra_tag = '-'
 
     """
     Pickle In Training Image Set
@@ -185,7 +188,7 @@ def main():
     # X_train, y_train, training_img, non_training_img, scrm_training_img, lena_pw, lena_zoom = pickle.load(tanh_data_in)
     # tanh_data_in.close()
 
-    tanh_data_in = open('tanh_100x10.pydb','rb')
+    tanh_data_in = open('tanh_100x10_size_24x24.pydb','rb')
     X_train, y_train, training_img, non_training_img, scrm_training_img, lena_pw, lena_zoom = pickle.load(tanh_data_in)
     tanh_data_in.close()
 
@@ -204,23 +207,33 @@ def main():
 
     # NOTE: comment out pcmod.train() line below to leave model untrained
 
-    # instantiate model
-    pcmod = PredictiveCodingClassifier(p)
+    # # instantiate model
+    # pcmod = PredictiveCodingClassifier(p)
+    # # train on training set
+    # pcmod.train(X_train, y_train)
 
-    # train on training set
-    pcmod.train(X_train, y_train)
+    # instantiate and train tiled model
+    tiled_pcmod = TiledPredictiveCodingClassifier(p)
+    tiled_pcmod.tiled_train(X_train, y_train)
 
 
     """
     Pickle Out Trained or Untrained Model
     """
 
-    # pickle output model
+    # # pickle output model
+    #
+    # pcmod_out = open('pc.{}.{}.{}.{}.{}.{}.{}.{}.{}.{}.{}.{}.pydb'.format(model_size,transform_type,prior_type,class_type,\
+    #     trained,num_epochs,training_dataset, evaluated, eval_dataset, used_for_pred, pred_dataset,extra_tag),'wb')
+    # pickle.dump(pcmod, pcmod_out)
+    # pcmod_out.close()
 
-    pcmod_out = open('pc.{}.{}.{}.{}.{}.{}.{}.{}.{}.{}.{}.{}.pydb'.format(model_size,transform_type,prior_type,class_type,\
+    # pickle tiled output model
+
+    tiled_pcmod_out = open('pc.{}.{}.{}.{}.{}.{}.{}.{}.{}.{}.{}.{}.pydb'.format(model_size,transform_type,prior_type,class_type,\
         trained,num_epochs,training_dataset, evaluated, eval_dataset, used_for_pred, pred_dataset,extra_tag),'wb')
-    pickle.dump(pcmod, pcmod_out)
-    pcmod_out.close()
+    pickle.dump(tiled_pcmod, tiled_pcmod_out)
+    tiled_pcmod_out.close()
 
 
 

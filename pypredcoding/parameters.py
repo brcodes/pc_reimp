@@ -16,9 +16,11 @@ class ModelParameters(object):
     Class for holding and checking parameters relevant to model creation.
     '''
     # sizes of representations and weights
-    input_size = attr.ib(default=784,validator=attr.validators.instance_of(int))
+    input_size = attr.ib(default=576,validator=attr.validators.instance_of(int))
     output_size = attr.ib(default=10,validator=attr.validators.instance_of(int))
-    hidden_sizes = attr.ib(default=[32,32],validator=attr.validators.instance_of(list))
+    hidden_sizes = attr.ib(default=[96,32],validator=attr.validators.instance_of(list))
+    # tiling
+    tile_offset = attr.ib(default=6,validator=attr.validators.instance_of(int))
     # hidden layer variance - NOTE: must have >= number of elements as hidden_sizes
     # r&b have layer 1 and 2 values as 1.0, 10.0 respectively; the final value is from mli pc model "r3"
     sigma_sq = attr.ib(default={1: 1.0, 2: 10.0, 3: 10.0, 4: 10.0, 5: 10.0, 6: 10.0, 7: 10.0, 8: 10.0, 9: 2.0},validator=attr.validators.instance_of(dict))

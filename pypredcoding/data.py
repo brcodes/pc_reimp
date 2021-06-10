@@ -149,3 +149,38 @@ def zca_filter(image_array, epsilon=0.1):
     # inflate
     zca_imgs = inflate_vectors(images_ZCA)
     return zca_imgs
+
+def cut(image_array, tile_offset):
+    '''
+    Designed to take a 24x24 image array (an MNIST image downsampled from native 28x28) and cut it
+    into three (rectangle) tiles whose size and amount of overlap depend on their horizontal (L -> R)
+    offset from the previous tile.
+
+    For 24x24 images, tile_offset can range from 0 (all tiles are 24x24 and fully overlap)
+    to 8 (all tiles are 8x24 and do not overlap at all). tile_offset = 6 is the only value where the offset = overlap (6)
+
+    returns a tuple.
+    '''
+
+    image_width = image_array.shape[1]
+
+    t1_index1 = 0
+    t1_index2 = image_width - (tile_offset*2)
+
+    # take all rows (:) within some horizontal slice
+    tile1 = image_array[:,t1_index1:t1_index2]
+    tile1flat = flatten_images(tile1[None,:,:])
+
+    t2_index1 = t1_index1 + tile_offset
+    t2_index2 = image_width - tile_offset
+
+    tile2 = image_array[:,t2_index1:t2_index2]
+    tile2flat = flatten_images(tile2[None,:,:])
+
+    t3_index1 = t2_index1 + tile_offset
+    t3_index2 = image_width
+
+    tile3 = image_array[:,t3_index1:t3_index2]
+    tile3flat = flatten_images(tile3[None,:,:])
+
+    return (tile1flat, tile2flat, tile3flat)
