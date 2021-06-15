@@ -214,7 +214,10 @@ def main():
 
     # instantiate and train tiled model
     tiled_pcmod = TiledPredictiveCodingClassifier(p)
-    tiled_pcmod.tiled_train(X_train, y_train)
+    
+    # safeguard against training a non-tiled model
+    if tiled_pcmod.is_tiled == True:
+        tiled_pcmod.train(X_train, y_train)
 
 
     """

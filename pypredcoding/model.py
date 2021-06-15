@@ -723,26 +723,15 @@ class PredictiveCodingClassifier:
 
 class TiledPredictiveCodingClassifier:
     def __init__(self, parameters):
-
+        
+        self.is_tiled = True
+        
         self.p = parameters
 
         # possible choices for transformations, priors
         self.unit_act = {'linear':linear_trans,'tanh':tanh_trans}
         self.prior_dict = {'gaussian':gauss_prior, 'kurtotic':kurt_prior}
 
-        # representations
-
-        self.r0 = [[],[],[]]
-        self.r1 = [[],[],[]]
-        # all the representations (including the image r[0] which is not trained)
-        # self.r1 will = self.r[1] once filled
-        self.r = {}
-
-        # synaptic weights controlling reconstruction in the network
-        # U1 is its own list with U1[0] = U1.1, U1[1] = U1.2, and U1[2] = U1.3
-        self.U1 = [[],[],[]]
-        # self.U1 will = self.U[1] once filled
-        self.U = {}
 
         # priors and transforms
         self.f = self.unit_act[self.p.unit_act]
@@ -804,14 +793,30 @@ class TiledPredictiveCodingClassifier:
         self.input_image_width = np.sqrt(self.p.input_size)
 
         self.r0_single_tile_area = int(self.input_image_height * (self.input_image_width - 2 * self.p.tile_offset))
-        print('self.r0singletilearea is {}'.format(self.r0_single_tile_area))
+        print('area of a single tile is {}'.format(self.r0_single_tile_area))
+        print('\n')
+        
+        # representations
 
-        # initialize image input layer in three tiles of of size (input_size,)
+        self.r0 = np.zeros((3,self.r0_single_tile_area,1))
+        self.r1 = np.zeros((3,int(self.p.hidden_sizes[0]/3),1))
+        # all the representations (including the image r[0] which is not trained)
+        print('shape of r0 is ')
+        print(self.r0.shape)
+        print('shape of r0.0 is')
+        print(self.r0[0].shape)
+        print('shape of r1 is ')
+        print(self.r1.shape)
+        # self.r1 will = self.r[1] once filled
+        self.r = {}
+
+        # initialize image input layer in three tiles of of size (single tile area,1)
         self.r0[0] = np.random.randn(self.r0_single_tile_area,1)
         self.r0[1] = np.random.randn(self.r0_single_tile_area,1)
         self.r0[2] = np.random.randn(self.r0_single_tile_area,1)
-
-        self.r[0] = [self.r0[0], self.r0[1], self.r0[2]]
+        
+        # print('r0.0 is')
+        # print(self.r0[0])
 
         # initialize first 'true' r layer, 3 modules
         # hidden_sizes must be evenly-divisible by 3 for this to work
@@ -819,18 +824,30 @@ class TiledPredictiveCodingClassifier:
         self.r1[0] = np.random.randn(int(self.p.hidden_sizes[0]/3),1)
         self.r1[1] = np.random.randn(int(self.p.hidden_sizes[0]/3),1)
         self.r1[2] = np.random.randn(int(self.p.hidden_sizes[0]/3),1)
-
-        self.r[1] = [self.r1[0], self.r1[1], self.r1[2]]
+        
+        # make all three modules accessible through one primary index (r[1]) for main train() loop
+        self.r[1] = np.array([self.r1[0], self.r1[1], self.r1[2]])
+        print('shape of r[1] init is {}'.format(self.r[1].shape))
+        
+        # synaptic weights controlling reconstruction in the network
+        # U1 is its own list with U1[0] = U1.1, U1[1] = U1.2, and U1[2] = U1.3
+        self.U1 = np.zeros((3,self.r0_single_tile_area,int(self.p.hidden_sizes[0]/3)))
+        # self.U1 will = self.U[1] once filled
+        self.U = {}
 
         # initialize first U layer, 3 modules
         # in 24x24 image example, with 3 tiles, and 6 offset (each tile = 12x24, or 288 pixels), and r1 modules size = 32
         # each U1 module should be size (288 (tile pixels), 32 (number of neurons in each r1 module))
+       
 
         self.U1[0] = np.random.randn(len(self.r0[0]),len(self.r1[0]))
         self.U1[1] = np.random.randn(len(self.r0[1]),len(self.r1[1]))
         self.U1[2] = np.random.randn(len(self.r0[2]),len(self.r1[2]))
-
-        self.U[1] = [self.U1[0], self.U1[1], self.U1[2]]
+        
+        # make all three modules accessible through one primary index (U[1]) for main train() loop
+        # for a total of (864,96)
+        self.U[1] = np.array([self.U1[0], self.U1[1], self.U1[2]])
+        print('shape of U[1] init is {}'.format(self.U[1].shape))
 
         # print('\n')
         # print("*** Predictive Coding Classifier ***")
@@ -840,25 +857,111 @@ class TiledPredictiveCodingClassifier:
         # print("r[0] shape is " + str(np.shape(self.r[0])))
         # print('\n')
 
-        # dict to contain number of neural network parameters per layer comprising the model
-        self.nn_parameters_dict = {}
-
         # initialize r's and U's for hidden layers number 2 to n (i.e. excluding 0th (image) and 1st (tiled) layers)
-        # also calculate number of network parameters per layer
 
         for i in range(2,self.n_non_input_layers):
             self.r[i] = np.random.randn(self.p.hidden_sizes[i-1],1)
             self.U[i] = np.random.randn(len(self.r[i-1]),len(self.r[i]))
+            
+            
+        # dict to contain number of neural network parameters per layer comprising the model
+        self.nn_parameters_dict = {}
+        
+        print('shape of each layer is')
+        
+        # fill number of parameters dictionary
+        for layer in range(0,self.n_non_input_layers):
+            
+            num_r_params = 1
+            num_U_params = 1
+            
+            
+            if layer < 1:
+                
+                for rdim in np.shape(self.r[layer]):
+                
+                    num_r_params *= rdim
+                    
+                ri = "r_{}".format(layer)
+                    
+                self.nn_parameters_dict[ri] = num_r_params
+            
+         
+                print("r[{}] shape is ".format(layer) + str(np.shape(self.r[layer])))
+                print('\n')
+          
+            elif layer == 1:
+                
+                for rdim in np.shape(self.r[layer]):
+                
+                    num_r_params *= rdim
+                
+                for Udim in np.shape(self.U[layer]):
+                
+                    num_U_params *= Udim
+                    
+                ri = "r_{}".format(layer)
+                Ui = "U_{}".format(layer)
+                    
+                self.nn_parameters_dict[ri] = num_r_params
+                self.nn_parameters_dict[Ui] = num_U_params
+                
+                print("r[{}] shape is ".format(layer) + str(np.shape(self.r[layer])))
+                print('\n')
+                print("U[{}] shape is ".format(layer) + str(np.shape(self.U[layer])))
+                print('\n')
+                
+            elif layer == 2:
+                
+                for rdim in np.shape(self.r[layer]):
+                
+                    num_r_params *= rdim
+                
+                for Udim in np.shape(self.U[layer]):
+                
+                    num_U_params *= Udim
+                    
+                ri = "r_{}".format(layer)
+                Ui = "U_{}".format(layer)
+                    
+                self.nn_parameters_dict[ri] = num_r_params
+                self.nn_parameters_dict[Ui] = num_U_params
+     
+                print("r[{}] shape is ".format(layer) + str(np.shape(self.r[layer])))
+                print('\n')
+                print("U[{}] shape is ".format(layer) + str(np.shape(self.U[layer])))
+                print('\n')
+                
+            elif layer >= 3:
+                
+                for rdim in np.shape(self.r[layer]):
+                
+                    num_r_params *= rdim
+                
+                for Udim in np.shape(self.U[layer]):
+                
+                    num_U_params *= Udim
+                    
+                ri = "r_{}".format(layer)
+                Ui = "U_{}".format(layer)
+                    
+                self.nn_parameters_dict[ri] = num_r_params
+                self.nn_parameters_dict[Ui] = num_U_params
+                
+                print("r[{}] shape is ".format(layer) + str(np.shape(self.r[layer])))
+                print('\n')
+                print("U[{}] shape is ".format(layer) + str(np.shape(self.U[layer])))
+                print('\n')
+                
+            
+            else:
+                print("num layers must be natural number")
+                
+        
+        print('number of parameters by layer is')
+        print(self.nn_parameters_dict)
+        print('\n')
 
-            # ri = "r_{}".format(i)
-            # Ui = "U_{}".format(i)
-            # self.nn_parameters_dict[ri] = len(self.r[i])
-            # self.nn_parameters_dict[Ui] = np.shape(self.U[i])[0]*np.shape(self.U[i])[1]
-
-            # print("r[{}] shape is ".format(i) + str(np.shape(self.r[i])))
-            # print('\n')
-            # print("U[{}] shape is ".format(i) + str(np.shape(self.U[i])))
-            # print('\n')
 
         # print("len(self.r): " + str(len(self.r)))
         # print('\n')
@@ -875,6 +978,8 @@ class TiledPredictiveCodingClassifier:
 
         # calculate total number of network parameters comprising the model (hidden layers only)
         self.n_model_parameters = sum(self.nn_parameters_dict.values())
+        print('total number of model_parameters is {}'.format(self.n_model_parameters))
+        print('\n')
 
         # print("*** Network Parameters ***")
         # print('\n')
@@ -905,7 +1010,7 @@ class TiledPredictiveCodingClassifier:
 
 
 
-    def tiled_rep_cost(self):
+    def rep_cost(self):
         '''
         Uses current r/U states to compute the least squares portion of the error
         (concerned with accurate reconstruction of the input).
@@ -922,7 +1027,7 @@ class TiledPredictiveCodingClassifier:
 
 
 
-    def tiled_class_cost_1(self,label):
+    def class_cost_1(self,label):
         """ Calculates the classification portion of the cost function output of a training
         image using classification method C1. """
         n = self.n_hidden_layers
@@ -931,14 +1036,14 @@ class TiledPredictiveCodingClassifier:
 
 
 
-    def tiled_class_cost_2(self,label):
+    def class_cost_2(self,label):
         """ Calculates the classification portion of the cost function output of a training
         image using classification method C2, uninclusive of the prior term. """
         n = self.n_hidden_layers
         C2 = -1*label[None,:].dot(np.log(softmax((self.U_o.dot(self.r[n])))))[0,0]
         return C2
 
-    def tiled_prediction_error(self,layer_number):
+    def prediction_error(self,layer_number):
         """ Calculates the normed prediction error of a layer (in [i,n]), i.e. the difference between a
         the layer's image prediction ("r^td") and the image representation from the layer below ("r"). """
         pe = math.sqrt((self.r[layer_number-1]-self.f(self.U[layer_number].dot(self.r[layer_number]))[0]).T\
@@ -947,7 +1052,7 @@ class TiledPredictiveCodingClassifier:
 
 
 
-    def tiled_train(self,X,Y):
+    def train(self,X,Y):
         '''
         X: matrix of input patterns (N_patterns x input_size)
         Y: matrix of output/target patterns (N_patterns x output_size)
@@ -958,6 +1063,12 @@ class TiledPredictiveCodingClassifier:
 
         # number of hidden layers
         n = self.n_hidden_layers
+        
+        """
+        FIX n > 2
+        later 
+        2021.06.10
+        """
         
         if n > 2:
 
@@ -975,7 +1086,7 @@ class TiledPredictiveCodingClassifier:
     
                 # number of training images
                 self.n_training_images = X_shuffled.shape[0]
-    
+
                 # we compute average cost per epoch (batch size = 1); separate classification
                 #   and representation costs so we can compare OOM sizes
                 E = 0
@@ -1015,6 +1126,7 @@ class TiledPredictiveCodingClassifier:
                     self.r[0][0] = squeezed_tile1[:,None]
                     self.r[0][1] = squeezed_tile2[:,None]
                     self.r[0][2] = squeezed_tile3[:,None]
+                    
     
                     # initialize new r's
                     for layer in range(1,self.n_non_input_layers):
@@ -1111,11 +1223,23 @@ class TiledPredictiveCodingClassifier:
                 self.acc_per_epoch.append(acc_per_epoch)
                 
                 
-        elif: n <= 2:
+                """
+                +++
+                ***
+                !!!
+                STUFF BELOW THIS IS 
+                HL (n) <= 2
+                !!!
+                ***
+                +++
+                """
+            
+        
+        elif n <= 2:
             
             print("*** Training ***")
             print('\n')
-    
+            
             # loop through training image dataset num_epochs times
             for epoch in range(0,self.p.num_epochs):
                 # shuffle order of training set input image / output vector pairs each epoch
@@ -1181,54 +1305,58 @@ class TiledPredictiveCodingClassifier:
                     # designate label vector
                     label = Y_shuffled[image,:]
                     
+                    # update r/U in each module and each layer
                     
-    
-    
-                    # loop through intermediate layers (will fail if number of hidden layers is 1)
-                    # r,U updates written symmetrically for all layers including output
-                 
-                    
-                    for i in range(2,n):
-    
+                    for i in range(0,len(self.r[0])):
+                        
+                        # update r1.1-3 and U1.1-3 before moving on to r2/U2 (this is HL1 in the 2HL model special case)
     
                         # NOTE: self.p.k_r learning rate
                         # r[i] update
-                        self.r[i] = self.r[i] + (k_r / self.p.sigma_sq[i]) \
-                        * self.U[i].T.dot(self.f(self.U[i].dot(self.r[i]))[1].dot(self.r[i-1] - self.f(self.U[i].dot(self.r[i]))[0])) \
-                        + (k_r / self.p.sigma_sq[i+1]) * (self.f(self.U[i+1].dot(self.r[i+1]))[0] - self.r[i]) \
-                        - (k_r / 2) * self.g(self.r[i],self.p.alpha[i])[1]
+                        self.r[1][i] = self.r[1][i] + (k_r / self.p.sigma_sq[1]) \
+                        * self.U[1][i].T.dot(self.f(self.U[1][i].dot(self.r[1][i]))[1].dot(self.r[0][i] - self.f(self.U[1][i].dot(self.r[1][i]))[0])) \
+                        + (k_r / self.p.sigma_sq[2]) * (self.f(self.U[2].dot(self.r[2]))[0] - self.r[1][i]) \
+                        - (k_r / 2) * self.g(self.r[1][i],self.p.alpha[1])[1]
     
     
                         # U[i] update
-                        self.U[i] = self.U[i] + (k_U / self.p.sigma_sq[i]) \
-                        * (self.f(self.U[i].dot(self.r[i]))[1].dot(self.r[i-1] - self.f(self.U[i].dot(self.r[i]))[0])).dot(self.r[i].T) \
-                        - (k_U / 2) * self.h(self.U[i],self.p.lam[i])[1]
+                        self.U[1][i] = self.U[1][i] + (k_U / self.p.sigma_sq[1]) \
+                        * (self.f(self.U[1][i].dot(self.r[1][i]))[1].dot(self.r[0][i] - self.f(self.U[1][i].dot(self.r[1][i]))[0])).dot(self.r[1][i].T) \
+                        - (k_U / 2) * self.h(self.U[1][i],self.p.lam[1])[1]
     
-    
-                    """ r(n) update (C1) """
-                    self.r[n] = self.r[n] + (k_r / self.p.sigma_sq[n]) \
-                    * self.U[n].T.dot(self.f(self.U[n].dot(self.r[n]))[1].dot(self.r[n-1] - self.f(self.U[n].dot(self.r[n]))[0])) \
-                    - (k_r / 2) * self.g(self.r[n],self.p.alpha[n])[1] \
-                    # # classification term
-                    # + (k_o / 2) * (label[:,None] - softmax(self.r[n]))
-    
-                    # """ r(n) update (C2) """
-                    # self.r[n] = self.r[n] + (k_r / self.p.sigma_sq[n]) \
-                    # * self.U[n].T.dot(self.f(self.U[n].dot(self.r[n]))[1].dot(self.r[n-1] - self.f(self.U[n].dot(self.r[n]))[0])) \
-                    # - (k_r / 2) * self.g(self.r[n],self.p.alpha[n])[1] \
-                    # # classification term
-                    # + (k_r / 2) * (self.U_o.T.dot(label[:,None]) - self.U_o.T.dot(softmax(self.U_o.dot(self.r[n]))))
-    
-    
+                        # this is HL2 in the 2HL model special case
+        
+                        # """ r(n) update (C1) """
+                        # self.r[2] = self.r[2] + (k_r / self.p.sigma_sq[2]) \
+                        # * self.U[2].T.dot(self.f(self.U[2].dot(self.r[2]))[1].dot(self.r[1][i] - self.f(self.U[2].dot(self.r[2]))[0])) \
+                        # - (k_r / 2) * self.g(self.r[2],self.p.alpha[2])[1] \
+                        # # # classification term
+                        # # + (k_o / 2) * (label[:,None] - softmax(self.r[2]))
+                        
+                     # concatenated r1 should be 96,1
+                    self.r[1] = np.concatenate((self.r1[0], self.r1[1], self.r1[2]),axis=None)
+                    print("self.r[1] shape after concat is {}".format(self.r[1].shape))
+                    
+                    self.U[1] = np.concatenate(self.U[1][0],self.U[1][1],self.U[1][2])
+                    print("self.U[1] shape after concat is {}".format(self.U[1].shape))
+        
+                    """ r(n) update (C2) """
+                    self.r[2] = self.r[2] + (k_r / self.p.sigma_sq[2]) \
+                    * self.U[2].T.dot(self.f(self.U[2].dot(self.r[2]))[1].dot(self.r[1] - self.f(self.U[2].dot(self.r[2]))[0])) \
+                    - (k_r / 2) * self.g(self.r[2],self.p.alpha[2])[1] \
+                    # classification term
+                    + (k_r / 2) * (self.U_o.T.dot(label[:,None]) - self.U_o.T.dot(softmax(self.U_o.dot(self.r[2]))))
+
+
                     # U[n] update (C1, C2) (identical to U[i], except index numbers)
-                    self.U[n] = self.U[n] + (k_U / self.p.sigma_sq[n]) \
-                    * (self.f(self.U[n].dot(self.r[n]))[1].dot(self.r[n-1] - self.f(self.U[n].dot(self.r[n]))[0])).dot(self.r[n].T) \
-                    - (k_U / 2) * self.h(self.U[n],self.p.lam[n])[1]
+                    self.U[2] = self.U[2] + (k_U / self.p.sigma_sq[2]) \
+                    * (self.f(self.U[2].dot(self.r[2]))[1].dot(self.r[1] - self.f(self.U[2].dot(self.r[2]))[0])).dot(self.r[2].T) \
+                    - (k_U / 2) * self.h(self.U[2],self.p.lam[2])[1]
+
     
-    
-                    # """ U_o update (C2) """
-                    # self.o = np.exp(self.U_o.dot(self.r[n]))
-                    # self.U_o = self.U_o + label[:,None].dot(self.r[n].T) - len(label)*softmax((self.U_o.dot(self.r[n])).dot(self.r[n].T))
+                    """ U_o update (C2) """
+                    self.o = np.exp(self.U_o.dot(self.r[2]))
+                    self.U_o = self.U_o + label[:,None].dot(self.r[2].T) - len(label)*softmax((self.U_o.dot(self.r[2])).dot(self.r[2].T))
     
     
                     # Loss function E
@@ -1262,11 +1390,13 @@ class TiledPredictiveCodingClassifier:
                 self.C_avg_per_epoch.append(C_avg_per_epoch)
                 self.acc_per_epoch.append(acc_per_epoch)
             
-
+        # else:
+        #     print('number of hidden layers must be a natural number')
+        
         return
 
 
-    def tiled_predict(self,X):
+    def predict(self,X):
         '''
         Given one or more inputs, produce one or more outputs. X should be a matrix of shape [n_pred_images,:,:]
         or a single image of size [:,:]. Predict returns a list of predictions (self.prediction), i.e.
@@ -1471,7 +1601,7 @@ class TiledPredictiveCodingClassifier:
 
         return self.prediction
 
-    def tiled_evaluate(self,X,Y,eval_class_type='C2'):
+    def evaluate(self,X,Y,eval_class_type='C2'):
 
         """ evaluates model's E, C and classification accuracy in any state (trained, untrained)
         using any input data. X should be a matrix of shape [n_pred_images,:,:] or a single image of size [:,:]
