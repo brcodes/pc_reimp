@@ -43,8 +43,11 @@ MUST comment-in 'P' and a pred_dataset for predPEs plot
 
 #model size
 # model_size = '[32.10]'
-model_size = '[32.32]'
+# model_size = '[32.32]'
 # model_size = '[128.32]'
+# model_size = '[96.32]'
+model_size = '[192.32]'
+
 
 
 #transformation function
@@ -52,8 +55,8 @@ transform_type = 'tanh'
 # transform_type = 'linear'
 
 #prior type
-prior_type = 'gauss'
-# prior_type = 'kurt'
+# prior_type = 'gauss'
+prior_type = 'kurt'
 
 #classification method
 class_type = 'NC'
@@ -71,7 +74,8 @@ num_epochs = '100e'
 # num_epochs = '-'
 
 #dataset trained on if trained (if not, use -)
-training_dataset = 'tanh100x10'
+# training_dataset = 'tanh100x10'
+training_dataset = 'tanh100x10_size_24x24'
 # training_dataset = 'tanh10x10'
 # training_dataset = '-'
 
@@ -81,6 +85,7 @@ evaluated = 'ne'
 
 #images evaluated against, if evaluated (if not, use -)
 # eval_dataset = 'tanh100x10'
+# training_dataset = 'tanh100x10_size24x24'
 # eval_dataset = 'tanh10x10'
 eval_dataset = '-'
 
@@ -100,7 +105,8 @@ pred_dataset = '-'
 # extra_tag = 'randUo'
 # extra_tag = 'scaled_ppixel'
 # extra_tag = 'pipeline_test'
-extra_tag = '-'
+extra_tag = 'tile_offset_6'
+# extra_tag = '-'
 
 
 """
@@ -154,6 +160,15 @@ def plot(plot_type,model_size,transform_type,prior_type,class_type,\
             lr_U = pcmod.lr_U
             num_epochs = pcmod.p.num_epochs
             num_epochs = range(1,num_epochs+1)
+            
+            # # tiling stuff
+            # is_tiled = pcmod.is_tiled
+            # tile_offset = pcmod.p.tile_offset
+            
+            # if is_tiled == True:
+            #     tiling = "tile_offset {}".format(tile_offset)
+            # else:
+            #     tiling = " "
     
     
             # loss after completion of one epoch
@@ -167,7 +182,7 @@ def plot(plot_type,model_size,transform_type,prior_type,class_type,\
     
             # set title
             fig, ax = plt.subplots(1)
-            fig.suptitle("{}  {}  {}     ".format(transform_function,prior_type,classification_type_during_training)+\
+            fig.suptitle("{}  {}  {}   ".format(transform_function,prior_type,classification_type_during_training)+\
             "lr_r={} ".format(lr_r)+"lr_U={} ".format(lr_U)+'\n'\
             +'E1={} '.format(E1)+'Emin={} '.format(Emin))
     
@@ -175,7 +190,7 @@ def plot(plot_type,model_size,transform_type,prior_type,class_type,\
             plotE = ax.plot(num_epochs, representation_cost_by_epoch, '#000000', label="Avg E")
     
             # set E scale
-            ax.set_ylim(0, 0.7)
+            ax.set_ylim(0, 5)
     
             # set axis names
             ax.set_xlabel("Epoch")
@@ -259,6 +274,15 @@ def plot(plot_type,model_size,transform_type,prior_type,class_type,\
             accuracy = pcmod.acc_per_epoch
             class_type = pcmod.class_type
             prior_type = pcmod.p.r_prior
+            
+            # tiling stuff
+            is_tiled = pcmod.is_tiled
+            tile_offset = pcmod.p.tile_offset
+            
+            if is_tiled == True:
+                tiling = "tile_offset {}".format(tile_offset)
+            else:
+                tiling = " "
     
     
             """
@@ -270,7 +294,7 @@ def plot(plot_type,model_size,transform_type,prior_type,class_type,\
             # split into vertically-stacked subplots
     
             fig, (axE, axC) = plt.subplots(2)
-            fig.suptitle("{}  {}  {}     ".format(pcmod.p.unit_act,prior_type,class_type)+"lr_r={} ".format(pcmod.lr_r)+"lr_U={} ".format(pcmod.lr_U)+"lr_o={}".format(pcmod.lr_o)+'\n'\
+            fig.suptitle("{}  {}  {}  {}  ".format(pcmod.p.unit_act,prior_type,class_type,tiling)+"lr_r={} ".format(pcmod.lr_r)+"lr_U={} ".format(pcmod.lr_U)+"lr_o={}".format(pcmod.lr_o)+'\n'\
             +'E1={} '.format(round_epoch1)+'Emin={} '.format(round_min)\
             +'Cmax={} '.format(C_round_max)+'Cmin={} '.format(C_round_min) + 'Amax={} '.format(acc_max))
     
@@ -383,6 +407,15 @@ def plot(plot_type,model_size,transform_type,prior_type,class_type,\
             accuracy = pcmod.acc_per_epoch
             class_type = pcmod.class_type
             prior_type = pcmod.p.r_prior
+            
+            # tiling stuff
+            is_tiled = pcmod.is_tiled
+            tile_offset = pcmod.p.tile_offset
+            
+            if is_tiled == True:
+                tiling = "tile_offset {}".format(tile_offset)
+            else:
+                tiling = " "
     
     
             """
@@ -390,7 +423,7 @@ def plot(plot_type,model_size,transform_type,prior_type,class_type,\
             """
     
             fig, (axE) = plt.subplots(1)
-            fig.suptitle("{}  {}  {}  {}  ".format(pcmod.p.unit_act,prior_type,class_type,pcmod.p.hidden_sizes)+'\n'\
+            fig.suptitle("{}  {}  {}  {}  {}".format(pcmod.p.unit_act,prior_type,class_type,tiling,pcmod.p.hidden_sizes)+'\n'\
             +'E1={} '.format(round_epoch1)+'Emin={} '.format(round_min)\
             +'Cmax={} '.format(C_round_max)+'Cmin={} '.format(C_round_min) + 'Amax={} '.format(acc_max))
     
@@ -484,6 +517,15 @@ def plot(plot_type,model_size,transform_type,prior_type,class_type,\
             # general variables
             eval_class_type = pcmod.eval_class_type
             prior_type = pcmod.p.r_prior
+            
+            # tiling stuff
+            is_tiled = pcmod.is_tiled
+            tile_offset = pcmod.p.tile_offset
+            
+            if is_tiled == True:
+                tiling = "tile_offset {}".format(tile_offset)
+            else:
+                tiling = " "
     
             """
             Plot
@@ -491,7 +533,7 @@ def plot(plot_type,model_size,transform_type,prior_type,class_type,\
     
     
             fig, (axE, axC) = plt.subplots(2)
-            fig.suptitle("{}  {}  eval classif type={}     ".format(pcmod.p.unit_act,prior_type,eval_class_type)+'\n'\
+            fig.suptitle("{}  {}  {} eval classif type={}     ".format(pcmod.p.unit_act,prior_type,tiling,eval_class_type)+'\n'\
             +'Eavg={} '.format(Eavg)+'Emin={} '.format(Emin)+ 'Cavg={} '.format(Cavg) +'Cmin={} '.format(Cmin)+ 'Acc={} '.format(Acc))
     
     
@@ -593,6 +635,15 @@ def plot(plot_type,model_size,transform_type,prior_type,class_type,\
             # general variables
             eval_class_type = pcmod.eval_class_type
             prior_type = pcmod.p.r_prior
+            
+            # tiling stuff
+            is_tiled = pcmod.is_tiled
+            tile_offset = pcmod.p.tile_offset
+            
+            if is_tiled == True:
+                tiling = "tile_offset {}".format(tile_offset)
+            else:
+                tiling = " "
     
     
             """
@@ -600,7 +651,7 @@ def plot(plot_type,model_size,transform_type,prior_type,class_type,\
             """
     
             fig, (axE) = plt.subplots(1)
-            fig.suptitle("{}  {}  eval_class_type={}  {}  ".format(pcmod.p.unit_act,prior_type,eval_class_type,pcmod.p.hidden_sizes)+'\n'\
+            fig.suptitle("{}  {}  {} eval_class_type={}  {}  ".format(pcmod.p.unit_act,prior_type,tiling,eval_class_type,pcmod.p.hidden_sizes)+'\n'\
             +'Eavg={} '.format(Eavg)+'Emin={} '.format(Emin)\
             +'Cavg={} '.format(Cavg)+'Cmin={} '.format(Cmin) + 'Acc={} '.format(Acc))
     
@@ -668,6 +719,15 @@ def plot(plot_type,model_size,transform_type,prior_type,class_type,\
             classification_type_during_training = pcmod.class_type
             prior_type = pcmod.p.r_prior
             num_updates = range(1,pcmod.n_pred_updates+1)
+            
+            # tiling stuff
+            is_tiled = pcmod.is_tiled
+            tile_offset = pcmod.p.tile_offset
+            
+            if is_tiled == True:
+                tiling = "tile_offset {}".format(tile_offset)
+            else:
+                tiling = " "
     
     
             print(pcmod.prediction_errors_l1[0])
@@ -691,7 +751,7 @@ def plot(plot_type,model_size,transform_type,prior_type,class_type,\
     
     
                 fig, ax = plt.subplots(1)
-                fig.suptitle("{}  {}  {}  pred_img {}  ".format(pcmod.p.unit_act,pcmod.class_type,prior_type,prediction_image+1)+'\n'\
+                fig.suptitle("{}  {}  {}  {} pred_img {}  ".format(pcmod.p.unit_act,pcmod.class_type,prior_type,tiling,prediction_image+1)+'\n'\
                 +'pe_1_first={} '.format(pe_1_first)+'pe_1_last={} '.format(pe_1_last)\
                 + 'pe_2_first={} '.format(pe_2_first) + 'pe_2_last={} '.format(pe_2_last))
     

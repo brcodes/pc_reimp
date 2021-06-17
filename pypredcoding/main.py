@@ -31,7 +31,7 @@ def main():
     #kurtotic priors
     #r 0.05, U 0.05 o 0.05
     p = ModelParameters(unit_act='tanh',r_prior = 'kurtotic', U_prior = 'kurtotic', input_size=576,
-        hidden_sizes = [96,32], tile_offset = 6, num_epochs = 100,
+        hidden_sizes = [192,32], tile_offset = 6, num_epochs = 100,
         k_r_sched = {'constant':{'initial':0.05}},
         k_U_sched = {'constant':{'initial':0.05}},
         k_o_sched = {'constant':{'initial':0.0005}})
@@ -111,7 +111,9 @@ def main():
     # model_size = '[32.10]'
     # model_size = '[32.32]'
     # model_size = '[128.32]'
-    model_size = '[96.32]'
+    # model_size = '[96.32]'
+    model_size = '[192.32]'
+
 
     #transformation function
     transform_type = 'tanh'
@@ -138,7 +140,7 @@ def main():
 
     #dataset trained on if trained (if not, use -)
     # training_dataset = 'tanh100x10'
-    training_dataset = 'tanh100x10_size24x24'
+    training_dataset = 'tanh100x10_size_24x24'
     # training_dataset = 'tanh10x10'
     # training_dataset = '-'
 
@@ -163,7 +165,9 @@ def main():
     #extra identifier for any particular or unique qualities of the model object
     # extra_tag = 'randUo'
     # extra_tag = 'pipeline_test'
-    extra_tag = 'tiled_offset_6'
+    extra_tag = 'tile_offset_6'
+    # extra_tag = 'tile_offset_8'
+    # extra_tag = 'tile_offset_0'
     # extra_tag = '-'
 
     """

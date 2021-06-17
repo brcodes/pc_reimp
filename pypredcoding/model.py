@@ -815,6 +815,9 @@ class TiledPredictiveCodingClassifier:
         self.r0[1] = np.random.randn(self.r0_single_tile_area,1)
         self.r0[2] = np.random.randn(self.r0_single_tile_area,1)
         
+        self.r[0] = np.array([self.r0[0], self.r0[1], self.r0[2]])
+        print('shape of r[0] init is {}'.format(self.r[0].shape))
+        
         # print('r0.0 is')
         # print(self.r0[0])
 
@@ -845,24 +848,31 @@ class TiledPredictiveCodingClassifier:
         self.U1[2] = np.random.randn(len(self.r0[2]),len(self.r1[2]))
         
         # make all three modules accessible through one primary index (U[1]) for main train() loop
-        # for a total of (864,96)
+        # for a total of (864,32) when stacked vertically (axis=0)
         self.U[1] = np.array([self.U1[0], self.U1[1], self.U1[2]])
+        
         print('shape of U[1] init is {}'.format(self.U[1].shape))
 
-        # print('\n')
-        # print("*** Predictive Coding Classifier ***")
-        # print('\n')
-        # print("*** Layer shapes ***")
-        # print('\n')
-        # print("r[0] shape is " + str(np.shape(self.r[0])))
-        # print('\n')
+        print('\n')
+        print("*** Predictive Coding Classifier ***")
+        print('\n')
+        print("*** Layer shapes ***")
+        print('\n')
+        print("r[0] shape is " + str(np.shape(self.r[0])))
+        print('\n')
 
         # initialize r's and U's for hidden layers number 2 to n (i.e. excluding 0th (image) and 1st (tiled) layers)
 
         for i in range(2,self.n_non_input_layers):
-            self.r[i] = np.random.randn(self.p.hidden_sizes[i-1],1)
-            self.U[i] = np.random.randn(len(self.r[i-1]),len(self.r[i]))
+            if i == 2:
+                self.r[i] = np.random.randn(self.p.hidden_sizes[i-1],1)
+                self.U[i] = np.random.randn(len(self.r[i-1])*self.r[i-1].shape[1],len(self.r[i]))
+                
+            elif i >= 3:
+                self.r[i] = np.random.randn(self.p.hidden_sizes[i-1],1)
+                self.U[i] = np.random.randn(len(self.r[i-1]),len(self.r[i]))
             
+
             
         # dict to contain number of neural network parameters per layer comprising the model
         self.nn_parameters_dict = {}
@@ -888,7 +898,6 @@ class TiledPredictiveCodingClassifier:
             
          
                 print("r[{}] shape is ".format(layer) + str(np.shape(self.r[layer])))
-                print('\n')
           
             elif layer == 1:
                 
@@ -907,9 +916,7 @@ class TiledPredictiveCodingClassifier:
                 self.nn_parameters_dict[Ui] = num_U_params
                 
                 print("r[{}] shape is ".format(layer) + str(np.shape(self.r[layer])))
-                print('\n')
                 print("U[{}] shape is ".format(layer) + str(np.shape(self.U[layer])))
-                print('\n')
                 
             elif layer == 2:
                 
@@ -928,9 +935,8 @@ class TiledPredictiveCodingClassifier:
                 self.nn_parameters_dict[Ui] = num_U_params
      
                 print("r[{}] shape is ".format(layer) + str(np.shape(self.r[layer])))
-                print('\n')
                 print("U[{}] shape is ".format(layer) + str(np.shape(self.U[layer])))
-                print('\n')
+         
                 
             elif layer >= 3:
                 
@@ -949,7 +955,6 @@ class TiledPredictiveCodingClassifier:
                 self.nn_parameters_dict[Ui] = num_U_params
                 
                 print("r[{}] shape is ".format(layer) + str(np.shape(self.r[layer])))
-                print('\n')
                 print("U[{}] shape is ".format(layer) + str(np.shape(self.U[layer])))
                 print('\n')
                 
@@ -960,7 +965,6 @@ class TiledPredictiveCodingClassifier:
         
         print('number of parameters by layer is')
         print(self.nn_parameters_dict)
-        print('\n')
 
 
         # print("len(self.r): " + str(len(self.r)))
@@ -1016,13 +1020,57 @@ class TiledPredictiveCodingClassifier:
         (concerned with accurate reconstruction of the input).
         '''
         E = 0
+        
+        # when rep_cost is being run, r1 and U1 have already been concatenated in train() (starting directly post-HL1 update)
+        # (their concatenated versions are used in HL2 update)
+        # therefore we use indexing by thirds instead of referencing 3 separate module objects
+        
+        num_modules = self.r[0].shape[0]
         # LSQ cost
         for i in range(0,len(self.r)-1):
-            v = (self.r[i] - self.f(self.U[i+1].dot(self.r[i+1]))[0])
-            E = E + ((1 / self.p.sigma_sq[i+1]) * v.T.dot(v))[0,0]
+            if i == 0:
+                # in range(0,num_modules)
+                for module in range(0,num_modules):
+                    rthird = int(self.r[i+1].shape[0]/3)
+                    Uthird = int(self.U[i+1].shape[0]/3)
+                    rindex1 = 0
+                    rindex2 = rthird
+                    Uindex1 = 0
+                    Uindex2 = Uthird
+                    v = (self.r[i][module] - self.f(self.U[i+1][Uindex1:Uindex2].dot(self.r[i+1][rindex1:rindex2]))[0])
+                    E = E + ((1 / self.p.sigma_sq[i+1]) * v.T.dot(v))[0,0]
+                    rindex1 += rthird
+                    rindex2 += rthird
+                    Uindex1 += Uthird
+                    Uindex2 += Uthird
+            elif i == 1:
+                # in range(0,num_modules)
+                for module in range(0,num_modules):
+                    rthird = int(self.r[i].shape[0]/3)
+                    Uthird = int(self.U[i+1].shape[0]/3)
+                    rindex1 = 0
+                    rindex2 = rthird
+                    Uindex1 = 0
+                    Uindex2 = Uthird
+                    v = (self.r[i][rindex1:rindex2] - self.f(self.U[i+1][Uindex1:Uindex2].dot(self.r[i+1]))[0])
+                    E = E + ((1 / self.p.sigma_sq[i+1]) * v.T.dot(v))[0,0]
+                    rindex1 += rthird
+                    rindex2 += rthird
+                    Uindex1 += Uthird
+                    Uindex2 += Uthird
+            elif i >= 2:
+                v = (self.r[i] - self.f(self.U[i+1].dot(self.r[i+1]))[0])
+                E = E + ((1 / self.p.sigma_sq[i+1]) * v.T.dot(v))[0,0]
+            else:
+                print('i must be natural number')
+                
         # priors on r[1],...,r[n]; U[1],...,U[n]
         for i in range(1,len(self.r)):
-            E = E + (self.h(self.U[i],self.p.lam[i])[0] + self.g(np.squeeze(self.r[i]),self.p.alpha[i])[0])
+            if i == 1:
+                for module in range(0,num_modules):
+                    E = E + (self.h(self.U[i][module],self.p.lam[i])[0] + self.g(np.squeeze(self.r[i][module]),self.p.alpha[i])[0])
+            elif i >= 2:
+                E = E + (self.h(self.U[i],self.p.lam[i])[0] + self.g(np.squeeze(self.r[i]),self.p.alpha[i])[0])
         return E
 
 
@@ -1272,18 +1320,22 @@ class TiledPredictiveCodingClassifier:
     
                 # loop through training images
                 for image in range(0, self.n_training_images):
-    
+                    
+                    # print('\n')
+                    # print('image {}'.format(image+1))
+                    # print('\n')
     
                     # copy image tiles into r[0]
                     # turn (576,) image into (1,576) and inflate to (1,24,24)
                     image_expanded = data.inflate_vectors(X_shuffled[image,:][None,:])
-                    print('image expanded shape is {}'.format(image_expanded.shape))
+                    # print('image expanded shape is {}'.format(image_expanded.shape))
                     image_squeezed = np.squeeze(image_expanded)
-                    print('image squeezed shape is {}'.format(image_squeezed.shape))
+                    # print('image squeezed shape is {}'.format(image_squeezed.shape))
                     cut_image = data.cut(image_squeezed,tile_offset=6)
-                    print('cut image tuple length is {}'.format(len(cut_image)))
-                    print('cut image[0] shape is {}'.format(cut_image[0].shape))
-                    print('squeezed cut image[0] shape is {}'.format(np.squeeze(cut_image[0]).shape))
+                    # print('cut image tuple length is {}'.format(len(cut_image)))
+                    # print('cut image[0] shape is {}'.format(cut_image[0].shape))
+                    # print('squeezed cut image[0] shape is {}'.format(np.squeeze(cut_image[0]).shape))
+                    # print('\n')
                     squeezed_tile1 = np.squeeze(cut_image[0])
                     squeezed_tile2 = np.squeeze(cut_image[1])
                     squeezed_tile3 = np.squeeze(cut_image[2])
@@ -1291,11 +1343,48 @@ class TiledPredictiveCodingClassifier:
                     self.r[0][0] = squeezed_tile1[:,None]
                     self.r[0][1] = squeezed_tile2[:,None]
                     self.r[0][2] = squeezed_tile3[:,None]
+                    
+                    # print('shape of r[0][0] image loop is {}'.format(self.r[0][0].shape))
+                    # print('shape of r[0][1] image loop is {}'.format(self.r[0][1].shape))
+                    # print('shape of r[0][2] image loop is {}'.format(self.r[0][2].shape))
+                    # print('shape of r[0] image loop is {}'.format(self.r[0].shape))
+                    # print('\n')
+                    
+                    # print('shape of r[1][0] image loop is {}'.format(self.r[1][0].shape))
+                    # print('shape of r[1][1] image loop is {}'.format(self.r[1][1].shape))
+                    # print('shape of r[1][2] image loop is {}'.format(self.r[1][2].shape))
+                    # print('shape of r[1] image loop is {}'.format(self.r[1].shape))
+                    # print('\n')
+                    
+                    # print('shape of r[2] image loop is {}'.format(self.r[2].shape))
+                    # print('\n')
+                    
+                    # print('shape of U[1][0] image loop is {}'.format(self.U[1][0].shape))
+                    # print('shape of U[1][1] image loop is {}'.format(self.U[1][1].shape))
+                    # print('shape of U[1][2] image loop is {}'.format(self.U[1][2].shape))
+                    # print('shape of U[1] image loop is {}'.format(self.U[1].shape))
+                    # print('\n')
+                    
+                    # print('shape of U[2][0] image loop is {}'.format(self.U[2][0].shape))
+                    # print('shape of U[2] image loop is {}'.format(self.U[2].shape))
+                    # print('\n')
     
                     # initialize new r's
                     for layer in range(1,self.n_non_input_layers):
-                        # self state per layer
-                        self.r[layer] = np.random.randn(self.p.hidden_sizes[layer-1],1)
+                        if layer == 1:
+                            self.r[layer] = np.zeros((3,int(self.p.hidden_sizes[0]/3),1))
+                            for module in range(0,self.r[1].shape[0]):
+                                # self state per layer
+                                self.r[layer][module] = np.random.randn(int(self.p.hidden_sizes[layer-1]/3),1)
+                                # print('shape of reinitialized r[{}][{}] is {}'.format(layer, module, self.r[layer][module].shape))
+                            # print('shape of total reinitialized r[{}] is {}'.format(layer, self.r[layer].shape))
+                        elif layer >= 2:
+                            # self state per layer
+                            self.r[layer] = np.random.randn(self.p.hidden_sizes[layer-1],1)
+                            # print('shape of reinitialized r[{}] is {}'.format(layer, self.r[layer].shape))
+                            
+                        else:
+                            print('new rs in every image start numbered at 1 and go to n. num layers must be natural number')
     
     
                     # initialize "output" layer o (for classification method 2 (C2))
@@ -1305,18 +1394,46 @@ class TiledPredictiveCodingClassifier:
                     # designate label vector
                     label = Y_shuffled[image,:]
                     
+                    
+                    U2third = int(self.U[2].shape[0]/3)
+                    U2index1 = 0
+                    U2index2 = U2third
+                    
                     # update r/U in each module and each layer
                     
-                    for i in range(0,len(self.r[0])):
+                    num_modules = self.r[0].shape[0]
+                    
+                    for i in range(0,num_modules):
                         
                         # update r1.1-3 and U1.1-3 before moving on to r2/U2 (this is HL1 in the 2HL model special case)
+                        
+                        # print('\n')
+                        # print("start module {} update".format(i+1))
+                        # print('\n')
+                        
+                        # print('shape of r[0][{}] update loop pre-update is {}'.format(i, self.r[0][i].shape))
+                        # print('shape of r[1][{}] update loop pre-update is {}'.format(i, self.r[1][i].shape))
+                        # print('shape of r[2] update loop pre-update is {}'.format(self.r[2].shape))
+                        # print('shape of U[1][{}] update loop pre-update is {}'.format(i, self.U[1][i].shape))
+                        # print('shape of U[2] update loop pre-update is {}'.format(self.U[2].shape))
+                        # print('shape of U[2][{}] update loop pre-update is {}'.format(i, self.U[2][i].shape))
+                        
+                        # print('self.p.alpha[1] is {}'.format(self.p.alpha[1]))
     
                         # NOTE: self.p.k_r learning rate
                         # r[i] update
                         self.r[1][i] = self.r[1][i] + (k_r / self.p.sigma_sq[1]) \
                         * self.U[1][i].T.dot(self.f(self.U[1][i].dot(self.r[1][i]))[1].dot(self.r[0][i] - self.f(self.U[1][i].dot(self.r[1][i]))[0])) \
-                        + (k_r / self.p.sigma_sq[2]) * (self.f(self.U[2].dot(self.r[2]))[0] - self.r[1][i]) \
+                        + (k_r / self.p.sigma_sq[2]) * (self.f(self.U[2][U2index1:U2index2].dot(self.r[2]))[0] - self.r[1][i]) \
                         - (k_r / 2) * self.g(self.r[1][i],self.p.alpha[1])[1]
+                        
+                        # print('shape of U[2][{}:{}] update loop pre-update is {}'.format(U2index1,U2index2,self.U[2][U2index1:U2index2].shape))
+                      
+                        
+                        U2index1 += U2third
+                        U2index2 += U2third
+                        
+                        # print('shape of U[2] update loop post-update is {}'.format(self.U[2].shape))
     
     
                         # U[i] update
@@ -1333,12 +1450,14 @@ class TiledPredictiveCodingClassifier:
                         # # # classification term
                         # # + (k_o / 2) * (label[:,None] - softmax(self.r[2]))
                         
-                     # concatenated r1 should be 96,1
-                    self.r[1] = np.concatenate((self.r1[0], self.r1[1], self.r1[2]),axis=None)
-                    print("self.r[1] shape after concat is {}".format(self.r[1].shape))
+                    # concatenated r1 should be 96,1
+                    self.r[1] = np.concatenate((self.r1[0], self.r1[1], self.r1[2]),axis=None)[:,None]
+                    # print("self.r[1] shape after concat is {}".format(self.r[1].shape))
                     
-                    self.U[1] = np.concatenate(self.U[1][0],self.U[1][1],self.U[1][2])
-                    print("self.U[1] shape after concat is {}".format(self.U[1].shape))
+                    # concatenated U1 should be 864,32 (stacked vertically)
+                    self.U[1] = np.concatenate((self.U[1][0],self.U[1][1],self.U[1][2]),axis=0)
+                    
+                    # print("self.U[1] shape after concat is {}".format(self.U[1].shape))
         
                     """ r(n) update (C2) """
                     self.r[2] = self.r[2] + (k_r / self.p.sigma_sq[2]) \
@@ -1379,6 +1498,18 @@ class TiledPredictiveCodingClassifier:
                     # C = self.class_cost_2(label)
                     # E = E + C
                     # self.class_type = 'C2'
+                    
+                    #split U[1] back up into an array of (1/3rd-sized) arrays
+                    
+                    Uthird = int(self.U[1].shape[0]/3)
+                    Uindex1 = 0
+                    Uindex2 = Uindex1 + Uthird
+                    Uindex3 = Uindex2 + Uthird
+                    Uindex4 = Uindex3 + Uthird
+                    
+                    self.U[1] = np.array([self.U[1][Uindex1:Uindex2],self.U[1][Uindex2:Uindex3],self.U[1][Uindex3:Uindex4]])
+                    # print("self.U[1] shape after splitting is {}".format(self.U[1].shape))
+                    
     
     
                 # store average costs and accuracy per epoch
