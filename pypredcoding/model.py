@@ -821,7 +821,7 @@ class TiledPredictiveCodingClassifier:
         # print('r0.0 is')
         # print(self.r0[0])
 
-        # initialize first 'true' r layer, 3 modules
+        # initialize first 'true' (non-0) r layer, 3 modules
         # hidden_sizes must be evenly-divisible by 3 for this to work
         # i.e. if hidden_sizes = 96, every r1 module will = size 32,1
         self.r1[0] = np.random.randn(int(self.p.hidden_sizes[0]/3),1)
@@ -832,15 +832,17 @@ class TiledPredictiveCodingClassifier:
         self.r[1] = np.array([self.r1[0], self.r1[1], self.r1[2]])
         print('shape of r[1] init is {}'.format(self.r[1].shape))
         
+        # initialize first U layer, 3 modules
         # synaptic weights controlling reconstruction in the network
         # U1 is its own list with U1[0] = U1.1, U1[1] = U1.2, and U1[2] = U1.3
         self.U1 = np.zeros((3,self.r0_single_tile_area,int(self.p.hidden_sizes[0]/3)))
         # self.U1 will = self.U[1] once filled
         self.U = {}
 
-        # initialize first U layer, 3 modules
+
         # in 24x24 image example, with 3 tiles, and 6 offset (each tile = 12x24, or 288 pixels), and r1 modules size = 32
         # each U1 module should be size (288 (tile pixels), 32 (number of neurons in each r1 module))
+        # could have also initialized them like above: ...randn(self.r0_single_tile_area,int(self.p.hidden_sizes[0]/3))
        
 
         self.U1[0] = np.random.randn(len(self.r0[0]),len(self.r1[0]))
@@ -1029,14 +1031,16 @@ class TiledPredictiveCodingClassifier:
         # LSQ cost
         for i in range(0,len(self.r)-1):
             if i == 0:
+                rthird = int(self.r[i+1].shape[0]/3)
+                Uthird = int(self.U[i+1].shape[0]/3)
+                rindex1 = 0
+                rindex2 = rthird
+                Uindex1 = 0
+                Uindex2 = Uthird
                 # in range(0,num_modules)
                 for module in range(0,num_modules):
-                    rthird = int(self.r[i+1].shape[0]/3)
-                    Uthird = int(self.U[i+1].shape[0]/3)
-                    rindex1 = 0
-                    rindex2 = rthird
-                    Uindex1 = 0
-                    Uindex2 = Uthird
+                    # print('lsq self.U[{}][{}:{}] shape is {}'.format(i+1,Uindex1,Uindex2,self.U[i+1][Uindex1:Uindex2].shape))
+                    # print('lsq self.r[{}][{}:{}] shape is {}'.format(i+1,rindex1,rindex2,self.r[i+1][rindex1:rindex2].shape))
                     v = (self.r[i][module] - self.f(self.U[i+1][Uindex1:Uindex2].dot(self.r[i+1][rindex1:rindex2]))[0])
                     E = E + ((1 / self.p.sigma_sq[i+1]) * v.T.dot(v))[0,0]
                     rindex1 += rthird
@@ -1044,14 +1048,16 @@ class TiledPredictiveCodingClassifier:
                     Uindex1 += Uthird
                     Uindex2 += Uthird
             elif i == 1:
+                rthird = int(self.r[i].shape[0]/3)
+                Uthird = int(self.U[i+1].shape[0]/3)
+                rindex1 = 0
+                rindex2 = rthird
+                Uindex1 = 0
+                Uindex2 = Uthird
                 # in range(0,num_modules)
                 for module in range(0,num_modules):
-                    rthird = int(self.r[i].shape[0]/3)
-                    Uthird = int(self.U[i+1].shape[0]/3)
-                    rindex1 = 0
-                    rindex2 = rthird
-                    Uindex1 = 0
-                    Uindex2 = Uthird
+                    # print('lsq self.U[{}][{}:{}] shape is {}'.format(i+1,Uindex1,Uindex2,self.U[i+1][Uindex1:Uindex2].shape))
+                    # print('lsq self.r[{}][{}:{}] shape is {}'.format(i,rindex1,rindex2,self.r[i][rindex1:rindex2].shape))
                     v = (self.r[i][rindex1:rindex2] - self.f(self.U[i+1][Uindex1:Uindex2].dot(self.r[i+1]))[0])
                     E = E + ((1 / self.p.sigma_sq[i+1]) * v.T.dot(v))[0,0]
                     rindex1 += rthird
@@ -1067,8 +1073,20 @@ class TiledPredictiveCodingClassifier:
         # priors on r[1],...,r[n]; U[1],...,U[n]
         for i in range(1,len(self.r)):
             if i == 1:
+                rthird = int(self.r[i].shape[0]/3)
+                Uthird = int(self.U[i].shape[0]/3)
+                rindex1 = 0
+                rindex2 = rthird
+                Uindex1 = 0
+                Uindex2 = Uthird
                 for module in range(0,num_modules):
-                    E = E + (self.h(self.U[i][module],self.p.lam[i])[0] + self.g(np.squeeze(self.r[i][module]),self.p.alpha[i])[0])
+                    # print('prior self.U[{}][{}:{}] shape is {}'.format(i,Uindex1,Uindex2,self.U[i][Uindex1:Uindex2].shape))
+                    # print('prior self.r[{}][{}:{}] shape is {}'.format(i,rindex1,rindex2,self.r[i][rindex1:rindex2].shape))
+                    E = E + (self.h(self.U[i][Uindex1:Uindex2],self.p.lam[i])[0] + self.g(np.squeeze(self.r[i][rindex1:rindex2]),self.p.alpha[i])[0])
+                    rindex1 += rthird
+                    rindex2 += rthird
+                    Uindex1 += Uthird
+                    Uindex2 += Uthird
             elif i >= 2:
                 E = E + (self.h(self.U[i],self.p.lam[i])[0] + self.g(np.squeeze(self.r[i]),self.p.alpha[i])[0])
         return E
