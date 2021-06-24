@@ -150,7 +150,7 @@ def zca_filter(image_array, epsilon=0.1):
     zca_imgs = inflate_vectors(images_ZCA)
     return zca_imgs
 
-def cut(image_array, tile_offset):
+def cut(image_array, tile_offset, flat=True):
     '''
     Designed to take a 24x24 image array (an MNIST image downsampled from native 28x28) and cut it
     into three (rectangle) tiles whose size and amount of overlap depend on their horizontal (L -> R)
@@ -161,26 +161,55 @@ def cut(image_array, tile_offset):
 
     returns a tuple.
     '''
+    
+    if flat == True:
 
-    image_width = image_array.shape[1]
-
-    t1_index1 = 0
-    t1_index2 = image_width - (tile_offset*2)
-
-    # take all rows (:) within some horizontal slice
-    tile1 = image_array[:,t1_index1:t1_index2]
-    tile1flat = flatten_images(tile1[None,:,:])
-
-    t2_index1 = t1_index1 + tile_offset
-    t2_index2 = image_width - tile_offset
-
-    tile2 = image_array[:,t2_index1:t2_index2]
-    tile2flat = flatten_images(tile2[None,:,:])
-
-    t3_index1 = t2_index1 + tile_offset
-    t3_index2 = image_width
-
-    tile3 = image_array[:,t3_index1:t3_index2]
-    tile3flat = flatten_images(tile3[None,:,:])
-
-    return (tile1flat, tile2flat, tile3flat)
+        image_width = image_array.shape[1]
+    
+        t1_index1 = 0
+        t1_index2 = image_width - (tile_offset*2)
+    
+        # take all rows (:) within some horizontal slice
+        tile1 = image_array[:,t1_index1:t1_index2]
+        tile1flat = flatten_images(tile1[None,:,:])
+    
+        t2_index1 = t1_index1 + tile_offset
+        t2_index2 = image_width - tile_offset
+    
+        tile2 = image_array[:,t2_index1:t2_index2]
+        tile2flat = flatten_images(tile2[None,:,:])
+    
+        t3_index1 = t2_index1 + tile_offset
+        t3_index2 = image_width
+    
+        tile3 = image_array[:,t3_index1:t3_index2]
+        tile3flat = flatten_images(tile3[None,:,:])
+    
+        return (tile1flat, tile2flat, tile3flat)
+    
+    elif flat == False:
+        
+        image_width = image_array.shape[1]
+    
+        t1_index1 = 0
+        t1_index2 = image_width - (tile_offset*2)
+    
+        # take all rows (:) within some horizontal slice
+        tile1 = image_array[:,t1_index1:t1_index2]
+    
+        t2_index1 = t1_index1 + tile_offset
+        t2_index2 = image_width - tile_offset
+    
+        tile2 = image_array[:,t2_index1:t2_index2]
+    
+        t3_index1 = t2_index1 + tile_offset
+        t3_index2 = image_width
+    
+        tile3 = image_array[:,t3_index1:t3_index2]
+    
+        return (tile1, tile2, tile3)
+    
+    else:
+        
+        print('flat must = True or False bool')
+        return

@@ -45,14 +45,14 @@ MUST comment-in 'P' and a pred_dataset for predPEs plot
 # model_size = '[32.10]'
 # model_size = '[32.32]'
 # model_size = '[128.32]'
-# model_size = '[96.32]'
-model_size = '[192.32]'
+model_size = '[96.32]'
+# model_size = '[192.32]'
 
 
 
 #transformation function
-transform_type = 'tanh'
-# transform_type = 'linear'
+# transform_type = 'tanh'
+transform_type = 'linear'
 
 #prior type
 # prior_type = 'gauss'
@@ -69,13 +69,17 @@ trained = 'T'
 
 #number of epochs if trained (if not, use -)
 # num_epochs = '1000e'
-num_epochs = '100e'
+# num_epochs = '200e'
+# num_epochs = '100e'
 # num_epochs = '50e'
+num_epochs = '40e'
+# num_epochs = '25e'
 # num_epochs = '-'
 
 #dataset trained on if trained (if not, use -)
 # training_dataset = 'tanh100x10'
-training_dataset = 'tanh100x10_size_24x24'
+# training_dataset = 'tanh100x10_size_24x24'
+training_dataset = 'linear100x10_size_24x24'
 # training_dataset = 'tanh10x10'
 # training_dataset = '-'
 
@@ -105,7 +109,20 @@ pred_dataset = '-'
 # extra_tag = 'randUo'
 # extra_tag = 'scaled_ppixel'
 # extra_tag = 'pipeline_test'
-extra_tag = 'tile_offset_6'
+# extra_tag = 'tile_offset_6'
+# extra_tag = 'tile_offset_6_lr_0.5_lU_0.005'
+# extra_tag = 'tile_offset_6_lr_0.5_lU_0.0005'
+# extra_tag = 'tile_offset_6_lr_0.05_lU_0.001'
+# extra_tag = 'tile_offset_6_lr_0.05_lU_0.005'
+# extra_tag = 'tile_offset_6_lr_0.005_lU_0.005'
+# extra_tag = 'tile_offset_6_lr_0.0005_lU_0.0005'
+# extra_tag = 'tile_offset_6_poly_lr_0.05_lU_0.005_me40_pp1'
+# extra_tag = 'poly_lr_0.05_lU_0.005_me40_pp1'
+# extra_tag = 'tile_offset_6_poly_lr_0.05_lU_0.005_me20_pp1'
+# extra_tag = 'tile_offset_6_poly_0.05_pp1'
+# extra_tag = 'tile_offset_6_step_lr_0.05_lU_0.005_df0.9_10'
+# extra_tag = 'tile_offset_6_step_0.005_df0.9_10'
+extra_tag = 'const_lr_0.0005'
 # extra_tag = '-'
 
 

@@ -7,6 +7,7 @@ from learning import *
 from functools import partial
 import math
 import data
+import cv2
 
 # activation functions
 def linear_trans(U_dot_r):
@@ -1346,17 +1347,57 @@ class TiledPredictiveCodingClassifier:
                     # copy image tiles into r[0]
                     # turn (576,) image into (1,576) and inflate to (1,24,24)
                     image_expanded = data.inflate_vectors(X_shuffled[image,:][None,:])
+                    
+                    
                     # print('image expanded shape is {}'.format(image_expanded.shape))
                     image_squeezed = np.squeeze(image_expanded)
+                    
+                    # plt.imshow(image_squeezed, cmap='Greys'),plt.title('image #{} post inflation'.format(image+1))
+                    # plt.show()
+                    
                     # print('image squeezed shape is {}'.format(image_squeezed.shape))
-                    cut_image = data.cut(image_squeezed,tile_offset=6)
+                    cut_image = data.cut(image_squeezed,tile_offset=6,flat=True)
+                    
                     # print('cut image tuple length is {}'.format(len(cut_image)))
                     # print('cut image[0] shape is {}'.format(cut_image[0].shape))
                     # print('squeezed cut image[0] shape is {}'.format(np.squeeze(cut_image[0]).shape))
                     # print('\n')
+                    
                     squeezed_tile1 = np.squeeze(cut_image[0])
                     squeezed_tile2 = np.squeeze(cut_image[1])
                     squeezed_tile3 = np.squeeze(cut_image[2])
+                    
+                    # tile1inf = data.inflate_vectors(cut_image[0],shape_2d=(24,12))
+                    # tile2inf = data.inflate_vectors(cut_image[1],shape_2d=(24,12))
+                    # tile3inf = data.inflate_vectors(cut_image[2],shape_2d=(24,12))
+                    
+                    # tile1img = np.squeeze(tile1inf)
+                    # tile2img = np.squeeze(tile2inf)
+                    # tile3img = np.squeeze(tile3inf)
+                    
+                    # # plot
+                    # plt.subplot(131),plt.imshow(tile1img, cmap='Greys'),plt.title('image {} tile #1'.format(image+1))
+                    # plt.xticks([]), plt.yticks([])
+                    # # plt.colorbar(fraction=0.046, pad=0.04)
+                    # plt.subplot(132),plt.imshow(tile2img, cmap='Greys'),plt.title('image {} tile #2'.format(image+1))
+                    # plt.xticks([]), plt.yticks([])
+                    # # plt.colorbar(fraction=0.046, pad=0.04)
+                    # plt.subplot(133),plt.imshow(tile3img, cmap='Greys'),plt.title('image {} tile #3'.format(image+1))
+                    # plt.xticks([]), plt.yticks([])
+                    # # plt.colorbar(fraction=0.046, pad=0.04)
+                    # plt.show()
+                    
+                    # # plot
+                    # plt.subplot(131),plt.imshow(cut_image[0], cmap='Greys'),plt.title('image {} tile #1'.format(image+1))
+                    # plt.xticks([]), plt.yticks([])
+                    # # plt.colorbar(fraction=0.046, pad=0.04)
+                    # plt.subplot(132),plt.imshow(cut_image[1], cmap='Greys'),plt.title('image {} tile #2'.format(image+1))
+                    # plt.xticks([]), plt.yticks([])
+                    # # plt.colorbar(fraction=0.046, pad=0.04)
+                    # plt.subplot(133),plt.imshow(cut_image[2], cmap='Greys'),plt.title('image {} tile #3'.format(image+1))
+                    # plt.xticks([]), plt.yticks([])
+                    # # plt.colorbar(fraction=0.046, pad=0.04)
+                    # plt.show()
                     
                     self.r[0][0] = squeezed_tile1[:,None]
                     self.r[0][1] = squeezed_tile2[:,None]
