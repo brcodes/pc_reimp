@@ -16,13 +16,13 @@ Comment-in the plot type
 """
 
 
-plot_type = 'trainingE'
+# plot_type = 'trainingE'
 
 # # for models with different E,C scales
 # plot_type = 'trainingECAsplitplot'
 
 # # for models with same E,C scale
-# plot_type = 'trainingECAoneplot'
+plot_type = 'trainingECAoneplot'
 
 # # for models with different E,C scales
 # plot_type = 'evalECAsplitplot'
@@ -44,24 +44,25 @@ MUST comment-in 'P' and a pred_dataset for predPEs plot
 #model size
 # model_size = '[32.10]'
 # model_size = '[32.32]'
+model_size = '[36.32]'
 # model_size = '[128.32]'
-model_size = '[96.32]'
+# model_size = '[96.32]'
 # model_size = '[192.32]'
 
 
 
 #transformation function
-# transform_type = 'tanh'
-transform_type = 'linear'
+transform_type = 'tanh'
+# transform_type = 'linear'
 
 #prior type
-# prior_type = 'gauss'
-prior_type = 'kurt'
+prior_type = 'gauss'
+# prior_type = 'kurt'
 
 #classification method
-class_type = 'NC'
+# class_type = 'NC'
 # class_type = 'C1'
-# class_type = 'C2'
+class_type = 'C2'
 
 #trained or untrained
 trained = 'T'
@@ -78,8 +79,8 @@ num_epochs = '40e'
 
 #dataset trained on if trained (if not, use -)
 # training_dataset = 'tanh100x10'
-# training_dataset = 'tanh100x10_size_24x24'
-training_dataset = 'linear100x10_size_24x24'
+training_dataset = 'tanh100x10_size_24x24'
+# training_dataset = 'linear100x10_size_24x24'
 # training_dataset = 'tanh10x10'
 # training_dataset = '-'
 
@@ -116,13 +117,13 @@ pred_dataset = '-'
 # extra_tag = 'tile_offset_6_lr_0.05_lU_0.005'
 # extra_tag = 'tile_offset_6_lr_0.005_lU_0.005'
 # extra_tag = 'tile_offset_6_lr_0.0005_lU_0.0005'
-# extra_tag = 'tile_offset_6_poly_lr_0.05_lU_0.005_me40_pp1'
+extra_tag = 'tile_offset_6_poly_lr_0.05_lU_0.005_me40_pp1'
 # extra_tag = 'poly_lr_0.05_lU_0.005_me40_pp1'
 # extra_tag = 'tile_offset_6_poly_lr_0.05_lU_0.005_me20_pp1'
 # extra_tag = 'tile_offset_6_poly_0.05_pp1'
 # extra_tag = 'tile_offset_6_step_lr_0.05_lU_0.005_df0.9_10'
 # extra_tag = 'tile_offset_6_step_0.005_df0.9_10'
-extra_tag = 'const_lr_0.0005'
+# extra_tag = 'const_lr_0.0005'
 # extra_tag = '-'
 
 
@@ -292,14 +293,16 @@ def plot(plot_type,model_size,transform_type,prior_type,class_type,\
             class_type = pcmod.class_type
             prior_type = pcmod.p.r_prior
             
-            # tiling stuff
-            is_tiled = pcmod.is_tiled
-            tile_offset = pcmod.p.tile_offset
+            # # tiling stuff
+            # is_tiled = pcmod.is_tiled
+            # tile_offset = pcmod.p.tile_offset
             
-            if is_tiled == True:
-                tiling = "tile_offset {}".format(tile_offset)
-            else:
-                tiling = " "
+            # if is_tiled == True:
+            #     tiling = "tile_offset {}".format(tile_offset)
+            # else:
+            #     tiling = " "
+                
+            tiling = " "
     
     
             """
@@ -425,14 +428,16 @@ def plot(plot_type,model_size,transform_type,prior_type,class_type,\
             class_type = pcmod.class_type
             prior_type = pcmod.p.r_prior
             
-            # tiling stuff
-            is_tiled = pcmod.is_tiled
-            tile_offset = pcmod.p.tile_offset
+            # # tiling stuff
+            # is_tiled = pcmod.is_tiled
+            # tile_offset = pcmod.p.tile_offset
             
-            if is_tiled == True:
-                tiling = "tile_offset {}".format(tile_offset)
-            else:
-                tiling = " "
+            # if is_tiled == True:
+            #     tiling = "tile_offset {}".format(tile_offset)
+            # else:
+                # tiling = " "
+                
+            tiling = ' '
     
     
             """
@@ -455,8 +460,8 @@ def plot(plot_type,model_size,transform_type,prior_type,class_type,\
             # set limits for and label x,y-axes for both subplots
     
             # axE.set_xlim(0, 2)
-            axE.set_ylim(0, 1)
-            twinEA.set_ylim(0, 100)
+            axE.set_ylim(0, 2)
+            twinEA.set_ylim(0, 150)
     
             axE.set_xlabel("Epoch")
             axE.set_ylabel("Avg E, Avg C")
@@ -535,15 +540,17 @@ def plot(plot_type,model_size,transform_type,prior_type,class_type,\
             eval_class_type = pcmod.eval_class_type
             prior_type = pcmod.p.r_prior
             
-            # tiling stuff
-            is_tiled = pcmod.is_tiled
-            tile_offset = pcmod.p.tile_offset
+            # # tiling stuff
+            # is_tiled = pcmod.is_tiled
+            # tile_offset = pcmod.p.tile_offset
             
-            if is_tiled == True:
-                tiling = "tile_offset {}".format(tile_offset)
-            else:
-                tiling = " "
-    
+            # if is_tiled == True:
+            #     tiling = "tile_offset {}".format(tile_offset)
+            # else:
+            #     tiling = " "
+                
+            tiling = " "
+            
             """
             Plot
             """

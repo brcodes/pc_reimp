@@ -19,7 +19,8 @@ MUST comment-in desired naming parameters
 #model size
 # model_size = '[32.10]'
 # model_size = '[32.32]'
-model_size = '[128.32]'
+model_size = '[36.32]'
+# model_size = '[128.32]'
 
 
 #transformation function
@@ -27,8 +28,8 @@ transform_type = 'tanh'
 # transform_type = 'linear'
 
 #prior type
-# prior_type = 'gauss'
-prior_type = 'kurt'
+prior_type = 'gauss'
+# prior_type = 'kurt'
 
 #classification method
 class_type = 'NC'
@@ -41,12 +42,14 @@ trained = 'T'
 
 #number of epochs if trained (if not, use -)
 # num_epochs = '1000e'
-num_epochs = '100e'
+# num_epochs = '100e'
 # num_epochs = '50e'
+num_epochs = '40e'
 # num_epochs = '-'
 
 #dataset trained on if trained (if not, use -)
-training_dataset = 'tanh100x10'
+# training_dataset = 'tanh100x10'
+training_dataset = 'tanh100x10_size_24x24'
 # training_dataset = 'tanh10x10'
 # training_dataset = '-'
 
@@ -55,7 +58,8 @@ evaluated = 'E'
 # evaluated = 'ne'
 
 #images evaluated against, if evaluated (if not, use -)
-eval_dataset = 'tanh100x10'
+# eval_dataset = 'tanh100x10'
+eval_dataset = 'tanh100x10_size_24x24'
 # eval_dataset = 'tanh10x10'
 # eval_dataset = '-'
 
@@ -71,7 +75,8 @@ pred_dataset = '-'
 #extra identifier for any particular or unique qualities of the model object
 # extra_tag = 'randUo'
 # extra_tag = 'pipeline_test'
-extra_tag = '-'
+extra_tag = 'tile_offset_6_poly_lr_0.05_lU_0.005_me40_pp1'
+# extra_tag = '-'
 
 
 # SOME CONDITIONAL LOGIC:
@@ -117,10 +122,15 @@ comment-in correct image set
 # X_train, y_train, training_img, non_training_img, scrm_training_img, lena_pw, lena_zoom = pickle.load(tanh_data_in)
 # tanh_data_in.close()
 
+# # prediction dataset
+# tanh_data_in = open('tanh_100x10.pydb','rb')
+# X_train, y_train, training_img, non_training_img, scrm_training_img, lena_pw, lena_zoom = pickle.load(tanh_data_in)
+# tanh_data_in.close()
+
 # prediction dataset
-tanh_data_in = open('tanh_100x10.pydb','rb')
-X_train, y_train, training_img, non_training_img, scrm_training_img, lena_pw, lena_zoom = pickle.load(tanh_data_in)
-tanh_data_in.close()
+tanh_tile_data_in = open('tanh_100x10_size_24x24.pydb','rb')
+X_train, y_train, training_img, non_training_img, scrm_training_img, lena_pw, lena_zoom = pickle.load(tanh_tile_data_in)
+tanh_tile_data_in.close()
 
 # # prediction dataset
 # tanh_data_in = open('tanh_1000x10.pydb','rb')
@@ -193,7 +203,10 @@ print(training_img.shape)
 
 
 # instantiate empty anchor vector to stack on
-combined_pred_imgs_vec = np.zeros(shape=(1,28,28))
+# # for non tiled
+# combined_pred_imgs_vec = np.zeros(shape=(1,24,24))
+#for tiled
+combined_pred_imgs_vec = np.zeros(shape=(1,24,24))
 
 # count
 n_pred_images = 0
@@ -202,7 +215,10 @@ n_pred_images = 0
 
 for image in prediction_image_set:
     if len(image.shape) == 2:
-        reshaped = image.reshape(1,28,28)
+        # #for non-tiled
+        # reshaped = image.reshape(1,28,28)
+        #for tiled
+        reshaped = image.reshape(1,24,24)
         combined_pred_imgs_vec = np.vstack((combined_pred_imgs_vec, reshaped))
         n_pred_images += 1
     elif len(image.shape) == 3:
@@ -249,7 +265,8 @@ used_for_pred = 'P'
 #images predicted, if used for prediction (if not, use -)
 #images 1-5 from April/May 2021 exps
 # pred_dataset = '5imgs'
-pred_dataset = '0-9_minE_128.32_kurt'
+# pred_dataset = '0-9_minE_128.32_kurt'
+pred_dataset = '0-9_minE_36.32'
 # pred_dataset = '0-9_maxE_128.32_kurt'
 
 

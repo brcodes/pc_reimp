@@ -16,33 +16,27 @@ def main():
 
     # create and modify model parameters
 
-    # #constant learning rates, optimal for linear model without classification
-    # #r 0.0005, U 0.005, o 0.0005; (these values are ModelParameters() default values)
-    # p = ModelParameters(unit_act='linear',hidden_sizes = [32,10], num_epochs = 100)
-
-    #constant learning rates, optimal for tanh model without classification
+    # # TANH NON-TILED constant
     #r 0.05, U 0.05 o 0.05
-    # p = ModelParameters(unit_act='tanh',
-    #     hidden_sizes = [128,32], num_epochs = 100,
+    # p = ModelParameters(unit_act='tanh',r_prior = 'gaussian', U_prior = 'gaussian', input_size=784,
+    #     hidden_sizes = [36,32], num_epochs = 40,
     #     k_r_sched = {'constant':{'initial':0.05}},
     #     k_U_sched = {'constant':{'initial':0.05}},
     #     k_o_sched = {'constant':{'initial':0.0005}})
-
-    #kurtotic priors
-    #r 0.05, U 0.05 o 0.05
-    p = ModelParameters(unit_act='linear',r_prior = 'kurtotic', U_prior = 'kurtotic', input_size=576,
-        hidden_sizes = [96,32], num_epochs = 40,
-        k_r_sched = {'constant':{'initial':0.0005}},
-        k_U_sched = {'constant':{'initial':0.0005}},
-        k_o_sched = {'constant':{'initial':0.0005}}) 
     
-    # #gaussian priors
-    # #r 0.05, U 0.05 o 0.05
-    # p = ModelParameters(unit_act='linear',r_prior = 'gaussian', U_prior = 'gaussian', input_size=576,
-    #     hidden_sizes = [96,32], tile_offset = 6, num_epochs = 40,
-    #     k_r_sched = {'constant':{'initial':0.05}},
-    #     k_U_sched = {'constant':{'initial':0.005}},
-    #     k_o_sched = {'constant':{'initial':0.0005}})
+    # TANH TILED polynomial
+    p = ModelParameters(unit_act='tanh',r_prior = 'gaussian', U_prior = 'gaussian', input_size=576,
+        hidden_sizes = [36,32], num_epochs = 40, tile_offset = 6,
+        k_r_sched = {'poly':{'initial':0.05,'max_epochs':40,'poly_power':1}},
+        k_U_sched = {'poly':{'initial':0.005,'max_epochs':40,'poly_power':1}},
+        k_o_sched = {'poly':{'initial':0.0005,'max_epochs':40,'poly_power':1}})
+    
+    
+    
+    
+    
+    
+    
 
     # #step decay learning rates for tanh model (has not been optimized)
     # p = ModelParameters(unit_act='tanh',r_prior = 'kurtotic', U_prior = 'kurtotic', input_size=576,
@@ -51,24 +45,6 @@ def main():
     #     k_U_sched = {'step':{'initial':0.005,'drop_factor':0.9,'drop_every':10}},
     #     k_o_sched = {'step':{'initial':0.05,'drop_factor':0.9,'drop_every':10}})
 
-    # #step decay learning rates for linear model (has not been optimized)
-    # p = ModelParameters(unit_act='linear',hidden_sizes = [32,32], num_epochs = 400,
-    #     k_r_sched = {'step':{'initial':0.05,'drop_factor':0.9,'drop_every':10}},
-    #     k_U_sched = {'step':{'initial':0.05,'drop_factor':0.9,'drop_every':10}},
-    #     k_o_sched = {'step':{'initial':0.05,'drop_factor':0.9,'drop_every':10}})
-
-    # polynomial decay learning rates for tanh model (has not been optimized)
-    # p = ModelParameters(unit_act='tanh',r_prior = 'kurtotic', U_prior = 'kurtotic', input_size=576,
-    #     hidden_sizes = [96,32], num_epochs = 40,
-    #     k_r_sched = {'poly':{'initial':0.05,'max_epochs':40,'poly_power':1}},
-    #     k_U_sched = {'poly':{'initial':0.005,'max_epochs':40,'poly_power':1}},
-    #     k_o_sched = {'poly':{'initial':0.05,'max_epochs':40,'poly_power':1}})
-
-    # #polynomial decay learning rates for linear model (has not been optimized)
-    # p = ModelParameters(unit_act='linear',hidden_sizes = [32,32], num_epochs = 400,
-    #     k_r_sched = {'poly':{'initial':0.05,'max_epochs':100,'poly_power':1}},
-    #     k_U_sched = {'poly':{'initial':0.05,'max_epochs':100,'poly_power':1}},
-    #     k_o_sched = {'poly':{'initial':0.05,'max_epochs':100,'poly_power':1}})
 
     """
     PCMOD OBJECT NAMING FORMAT
@@ -120,23 +96,24 @@ def main():
     #model size
     # model_size = '[32.10]'
     # model_size = '[32.32]'
+    model_size = '[36.32]'
     # model_size = '[128.32]'
-    model_size = '[96.32]'
+    # model_size = '[96.32]'
     # model_size = '[192.32]'
 
 
     #transformation function
-    # transform_type = 'tanh'
-    transform_type = 'linear'
+    transform_type = 'tanh'
+    # transform_type = 'linear'
 
     #prior type
-    # prior_type = 'gauss'
-    prior_type = 'kurt'
+    prior_type = 'gauss'
+    # prior_type = 'kurt'
 
     #classification method
-    class_type = 'NC'
+    # class_type = 'NC'
     # class_type = 'C1'
-    # class_type = 'C2'
+    class_type = 'C2'
 
     #will be trained or untrained
     trained = 'T'
@@ -153,8 +130,8 @@ def main():
 
     #dataset trained on if trained (if not, use -)
     # training_dataset = 'tanh100x10'
-    # training_dataset = 'tanh100x10_size_24x24'
-    training_dataset = 'linear100x10_size_24x24'
+    training_dataset = 'tanh100x10_size_24x24'
+    # training_dataset = 'linear100x10_size_24x24'
     # training_dataset = 'tanh10x10'
     # training_dataset = '-'
 
@@ -187,12 +164,13 @@ def main():
     # extra_tag = 'tile_offset_6_lr_0.0005_lU_0.0005'
     # extra_tag = 'tile_offset_6_poly_0.05_pp1'
     # extra_tag = 'tile_offset_6_poly_0.005_pp1'
-    # extra_tag = 'tile_offset_6_poly_lr_0.05_lU_0.005_me40_pp1'
+    extra_tag = 'tile_offset_6_poly_lr_0.05_lU_0.005_me40_pp1'
+    # extra_tag = 'tile_offset_6_const_lr_0.05'
     # extra_tag = 'poly_lr_0.05_lU_0.005_me40_pp1'
     # extra_tag = 'tile_offset_6_poly_lr_0.05_lU_0.005_me20_pp1'
     # extra_tag = 'tile_offset_6_step_0.005_df0.9_10'
     # extra_tag = 'tile_offset_6_step_lr_0.05_lU_0.005_df0.9_10'
-    extra_tag = 'const_lr_0.0005'
+    # extra_tag = 'const_lr_0.0005'
     # extra_tag = 'tile_offset_6'
     # extra_tag = 'tile_offset_8'
     # extra_tag = 'tile_offset_0'
@@ -211,9 +189,9 @@ def main():
     # X_train, y_train, training_img, non_training_img, scrm_training_img, lena_pw, lena_zoom = pickle.load(linear_data_in)
     # linear_data_in.close()
     
-    linear_data_in = open('linear_100x10_size_24x24.pydb','rb')
-    X_train, y_train, training_img, non_training_img, scrm_training_img, lena_pw, lena_zoom = pickle.load(linear_data_in)
-    linear_data_in.close()
+    # linear_tile_data_in = open('linear_100x10_size_24x24.pydb','rb')
+    # X_train, y_train, training_img, non_training_img, scrm_training_img, lena_pw, lena_zoom = pickle.load(linear_tile_data_in)
+    # linear_tile_data_in.close()
 
     # for a tanh model training on a tanh-optimized training set of 10digs x 10imgs open "tanh_10x10.pydb"
     # for 100x10, use the associated tanh_100x10.pydb
@@ -223,10 +201,14 @@ def main():
     # tanh_data_in = open('tanh_10x10.pydb','rb')
     # X_train, y_train, training_img, non_training_img, scrm_training_img, lena_pw, lena_zoom = pickle.load(tanh_data_in)
     # tanh_data_in.close()
-
-    # tanh_data_in = open('tanh_100x10_size_24x24.pydb','rb')
+    
+    # tanh_data_in = open('tanh_100x10.pydb','rb')
     # X_train, y_train, training_img, non_training_img, scrm_training_img, lena_pw, lena_zoom = pickle.load(tanh_data_in)
     # tanh_data_in.close()
+
+    tanh_tile_data_in = open('tanh_100x10_size_24x24.pydb','rb')
+    X_train, y_train, training_img, non_training_img, scrm_training_img, lena_pw, lena_zoom = pickle.load(tanh_tile_data_in)
+    tanh_tile_data_in.close()
 
     # tanh_data_in = open('tanh_1000x10.pydb','rb')
     # X_train, y_train, training_img, non_training_img, scrm_training_img, lena_pw, lena_zoom = pickle.load(tanh_data_in)
@@ -243,17 +225,17 @@ def main():
 
     # NOTE: comment out pcmod.train() line below to leave model untrained
 
-    # # instantiate model
-    pcmod = PredictiveCodingClassifier(p)
-    # train on training set
-    pcmod.train(X_train, y_train)
+    # # # instantiate model
+    # pcmod = PredictiveCodingClassifier(p)
+    # # train on training set
+    # pcmod.train(X_train, y_train)
 
-    # # instantiate and train tiled model
-    # tiled_pcmod = TiledPredictiveCodingClassifier(p)
+    # instantiate and train tiled model
+    tiled_pcmod = TiledPredictiveCodingClassifier(p)
     
-    # # safeguard against training a non-tiled model
-    # if tiled_pcmod.is_tiled == True:
-    #     tiled_pcmod.train(X_train, y_train)
+    # safeguard against training a non-tiled model
+    if tiled_pcmod.is_tiled == True:
+        tiled_pcmod.train(X_train, y_train)
 
 
     """
@@ -262,17 +244,17 @@ def main():
 
     # pickle output model
     
-    pcmod_out = open('pc.{}.{}.{}.{}.{}.{}.{}.{}.{}.{}.{}.{}.pydb'.format(model_size,transform_type,prior_type,class_type,\
-        trained,num_epochs,training_dataset, evaluated, eval_dataset, used_for_pred, pred_dataset,extra_tag),'wb')
-    pickle.dump(pcmod, pcmod_out)
-    pcmod_out.close()
+    # pcmod_out = open('pc.{}.{}.{}.{}.{}.{}.{}.{}.{}.{}.{}.{}.pydb'.format(model_size,transform_type,prior_type,class_type,\
+    #     trained,num_epochs,training_dataset, evaluated, eval_dataset, used_for_pred, pred_dataset,extra_tag),'wb')
+    # pickle.dump(pcmod, pcmod_out)
+    # pcmod_out.close()
 
     # pickle tiled output model
 
-    # tiled_pcmod_out = open('pc.{}.{}.{}.{}.{}.{}.{}.{}.{}.{}.{}.{}.pydb'.format(model_size,transform_type,prior_type,class_type,\
-    #     trained,num_epochs,training_dataset, evaluated, eval_dataset, used_for_pred, pred_dataset,extra_tag),'wb')
-    # pickle.dump(tiled_pcmod, tiled_pcmod_out)
-    # tiled_pcmod_out.close()
+    tiled_pcmod_out = open('pc.{}.{}.{}.{}.{}.{}.{}.{}.{}.{}.{}.{}.pydb'.format(model_size,transform_type,prior_type,class_type,\
+        trained,num_epochs,training_dataset, evaluated, eval_dataset, used_for_pred, pred_dataset,extra_tag),'wb')
+    pickle.dump(tiled_pcmod, tiled_pcmod_out)
+    tiled_pcmod_out.close()
 
 
 

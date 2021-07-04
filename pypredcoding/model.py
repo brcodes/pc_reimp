@@ -282,7 +282,7 @@ class PredictiveCodingClassifier:
             C = 0
 
             # accuracy per epoch: how many images are correctly guessed per epoch
-            num_correct = 0
+            self.num_correct = 0
 
             # set learning rates at the start of each epoch
             k_r = self.k_r_lr(epoch)
@@ -334,19 +334,19 @@ class PredictiveCodingClassifier:
                     - (k_U / 2) * self.h(self.U[i],self.p.lam[i])[1]
 
 
-                """ r(n) update (C1) """
-                self.r[n] = self.r[n] + (k_r / self.p.sigma_sq[n]) \
-                * self.U[n].T.dot(self.f(self.U[n].dot(self.r[n]))[1].dot(self.r[n-1] - self.f(self.U[n].dot(self.r[n]))[0])) \
-                - (k_r / 2) * self.g(self.r[n],self.p.alpha[n])[1] \
-                # # classification term
-                # + (k_o / 2) * (label[:,None] - softmax(self.r[n]))
-
-                # """ r(n) update (C2) """
+                # """ r(n) update (C1) """
                 # self.r[n] = self.r[n] + (k_r / self.p.sigma_sq[n]) \
                 # * self.U[n].T.dot(self.f(self.U[n].dot(self.r[n]))[1].dot(self.r[n-1] - self.f(self.U[n].dot(self.r[n]))[0])) \
                 # - (k_r / 2) * self.g(self.r[n],self.p.alpha[n])[1] \
-                # # classification term
-                # + (k_r / 2) * (self.U_o.T.dot(label[:,None]) - self.U_o.T.dot(softmax(self.U_o.dot(self.r[n]))))
+                # # # classification term
+                # # + (k_o / 2) * (label[:,None] - softmax(self.r[n]))
+
+                """ r(n) update (C2) """
+                self.r[n] = self.r[n] + (k_r / self.p.sigma_sq[n]) \
+                * self.U[n].T.dot(self.f(self.U[n].dot(self.r[n]))[1].dot(self.r[n-1] - self.f(self.U[n].dot(self.r[n]))[0])) \
+                - (k_r / 2) * self.g(self.r[n],self.p.alpha[n])[1] \
+                # classification term
+                + (k_r / 2) * (self.U_o.T.dot(label[:,None]) - self.U_o.T.dot(softmax(self.U_o.dot(self.r[n]))))
 
 
                 # U[n] update (C1, C2) (identical to U[i], except index numbers)
@@ -355,9 +355,9 @@ class PredictiveCodingClassifier:
                 - (k_U / 2) * self.h(self.U[n],self.p.lam[n])[1]
 
 
-                # """ U_o update (C2) """
-                # self.o = np.exp(self.U_o.dot(self.r[n]))
-                # self.U_o = self.U_o + label[:,None].dot(self.r[n].T) - len(label)*softmax((self.U_o.dot(self.r[n])).dot(self.r[n].T))
+                """ U_o update (C2) """
+                self.o = np.exp(self.U_o.dot(self.r[n]))
+                self.U_o = self.U_o + label[:,None].dot(self.r[n].T) - len(label)*softmax((self.U_o.dot(self.r[n])).dot(self.r[n].T))
 
 
                 # Loss function E
@@ -376,16 +376,36 @@ class PredictiveCodingClassifier:
                 # self.class_type = 'C1'
 
 
-                # """ Classifying using C2 """
-                # C = self.class_cost_2(label)
-                # E = E + C
-                # self.class_type = 'C2'
+                """ Classifying using C2 """
+                C = self.class_cost_2(label)
+                E = E + C
+                self.class_type = 'C2'
+                
+                # Classification Accuracy
+
+                # if index of the max value in final representation vector
+                # = index of the 1 in associated one hot label vector
+                # then the model classified the image correctly
+                # and add 1 to num_correct
+
+
+                # """ C1 method """
+                # if np.argmax(softmax(self.r[n])) == np.argmax(label[:,None]):
+                #     num_correct += 1
+
+
+                """ C2 method """
+                c2_output = self.U_o.dot(self.r[n])
+
+                if np.argmax(softmax(c2_output)) == np.argmax(label[:,None]):
+                    self.num_correct += 1
+
 
 
             # store average costs and accuracy per epoch
             E_avg_per_epoch = E/self.n_training_images
             C_avg_per_epoch = C/self.n_training_images
-            acc_per_epoch = round((num_correct/self.n_training_images)*100)
+            acc_per_epoch = round((self.num_correct/self.n_training_images)*100)
 
             self.E_avg_per_epoch.append(E_avg_per_epoch)
             self.C_avg_per_epoch.append(C_avg_per_epoch)
@@ -1029,70 +1049,149 @@ class TiledPredictiveCodingClassifier:
         # therefore we use indexing by thirds instead of referencing 3 separate module objects
         
         num_modules = self.r[0].shape[0]
+        # print('num modules in rep cost is {}'.format(num_modules))
         # LSQ cost
-        for i in range(0,len(self.r)-1):
-            if i == 0:
-                rthird = int(self.r[i+1].shape[0]/3)
-                Uthird = int(self.U[i+1].shape[0]/3)
-                rindex1 = 0
-                rindex2 = rthird
-                Uindex1 = 0
-                Uindex2 = Uthird
-                # in range(0,num_modules)
-                for module in range(0,num_modules):
-                    # print('lsq self.U[{}][{}:{}] shape is {}'.format(i+1,Uindex1,Uindex2,self.U[i+1][Uindex1:Uindex2].shape))
-                    # print('lsq self.r[{}][{}:{}] shape is {}'.format(i+1,rindex1,rindex2,self.r[i+1][rindex1:rindex2].shape))
-                    v = (self.r[i][module] - self.f(self.U[i+1][Uindex1:Uindex2].dot(self.r[i+1][rindex1:rindex2]))[0])
+        
+        # normal case
+        if len(self.r[0].shape) == 2:
+            for i in range(0,len(self.r)-1):
+                if i == 0:
+                    rthird = int(self.r[i+1].shape[0]/3)
+                    Uthird = int(self.U[i+1].shape[0]/3)
+                    rindex1 = 0
+                    rindex2 = rthird
+                    Uindex1 = 0
+                    Uindex2 = Uthird
+                    print('shape of r[0] in rep cost LSQ is {}'.format(self.r[0].shape))
+                    # in range(0,num_modules)
+                    for module in range(0,num_modules):
+                        print('shape of r[0][{}] in rep cost LSQ is {}'.format(module, self.r[i][module].shape))
+                        print('shape of r[1][{}:{}] in rep cost LSQ is {}'.format(rindex1,rindex2,self.r[1][rindex1:rindex2].shape))
+                        print('shape of U[1][{}:{}] in rep cost LSQ is {}'.format(Uindex1,Uindex2,self.U[1][Uindex1:Uindex2].shape))
+                        # print('lsq self.U[{}][{}:{}] shape is {}'.format(i+1,Uindex1,Uindex2,self.U[i+1][Uindex1:Uindex2].shape))
+                        # print('lsq self.r[{}][{}:{}] shape is {}'.format(i+1,rindex1,rindex2,self.r[i+1][rindex1:rindex2].shape))
+                        v = (self.r[i][module] - self.f(self.U[i+1][Uindex1:Uindex2].dot(self.r[i+1][rindex1:rindex2]))[0])
+                        E = E + ((1 / self.p.sigma_sq[i+1]) * v.T.dot(v))[0,0]
+                        rindex1 += rthird
+                        rindex2 += rthird
+                        Uindex1 += Uthird
+                        Uindex2 += Uthird
+                elif i == 1:
+                    rthird = int(self.r[i].shape[0]/3)
+                    Uthird = int(self.U[i+1].shape[0]/3)
+                    rindex1 = 0
+                    rindex2 = rthird
+                    Uindex1 = 0
+                    Uindex2 = Uthird
+                    # in range(0,num_modules)
+                    for module in range(0,num_modules):
+                        # print('lsq self.U[{}][{}:{}] shape is {}'.format(i+1,Uindex1,Uindex2,self.U[i+1][Uindex1:Uindex2].shape))
+                        # print('lsq self.r[{}][{}:{}] shape is {}'.format(i,rindex1,rindex2,self.r[i][rindex1:rindex2].shape))
+                        v = (self.r[i][rindex1:rindex2] - self.f(self.U[i+1][Uindex1:Uindex2].dot(self.r[i+1]))[0])
+                        E = E + ((1 / self.p.sigma_sq[i+1]) * v.T.dot(v))[0,0]
+                        rindex1 += rthird
+                        rindex2 += rthird
+                        Uindex1 += Uthird
+                        Uindex2 += Uthird
+                elif i >= 2:
+                    v = (self.r[i] - self.f(self.U[i+1].dot(self.r[i+1]))[0])
                     E = E + ((1 / self.p.sigma_sq[i+1]) * v.T.dot(v))[0,0]
-                    rindex1 += rthird
-                    rindex2 += rthird
-                    Uindex1 += Uthird
-                    Uindex2 += Uthird
-            elif i == 1:
-                rthird = int(self.r[i].shape[0]/3)
-                Uthird = int(self.U[i+1].shape[0]/3)
-                rindex1 = 0
-                rindex2 = rthird
-                Uindex1 = 0
-                Uindex2 = Uthird
-                # in range(0,num_modules)
-                for module in range(0,num_modules):
-                    # print('lsq self.U[{}][{}:{}] shape is {}'.format(i+1,Uindex1,Uindex2,self.U[i+1][Uindex1:Uindex2].shape))
-                    # print('lsq self.r[{}][{}:{}] shape is {}'.format(i,rindex1,rindex2,self.r[i][rindex1:rindex2].shape))
-                    v = (self.r[i][rindex1:rindex2] - self.f(self.U[i+1][Uindex1:Uindex2].dot(self.r[i+1]))[0])
+                else:
+                    print('i must be natural number')
+                    
+            # priors on r[1],...,r[n]; U[1],...,U[n]
+            for i in range(1,len(self.r)):
+                if i == 1:
+                    rthird = int(self.r[i].shape[0]/3)
+                    Uthird = int(self.U[i].shape[0]/3)
+                    rindex1 = 0
+                    rindex2 = rthird
+                    Uindex1 = 0
+                    Uindex2 = Uthird
+                    for module in range(0,num_modules):
+                        # print('prior self.U[{}][{}:{}] shape is {}'.format(i,Uindex1,Uindex2,self.U[i][Uindex1:Uindex2].shape))
+                        # print('prior self.r[{}][{}:{}] shape is {}'.format(i,rindex1,rindex2,self.r[i][rindex1:rindex2].shape))
+                        E = E + (self.h(self.U[i][Uindex1:Uindex2],self.p.lam[i])[0] + self.g(np.squeeze(self.r[i][rindex1:rindex2]),self.p.alpha[i])[0])
+                        rindex1 += rthird
+                        rindex2 += rthird
+                        Uindex1 += Uthird
+                        Uindex2 += Uthird
+                elif i >= 2:
+                    E = E + (self.h(self.U[i],self.p.lam[i])[0] + self.g(np.squeeze(self.r[i]),self.p.alpha[i])[0])
+            return E
+        
+        # the case when called in evaluate()
+        elif len(self.r[0].shape) == 3:
+            for i in range(0,len(self.r)-1):
+                if i == 0:
+                    rthird = int(self.r[i+1].shape[0]/3)
+                    # Uthird = int(self.U[i+1].shape[0]/3)
+                    rindex1 = 0
+                    rindex2 = rthird
+                    # Uindex1 = 0
+                    # Uindex2 = Uthird
+                    # print('shape of r[0] in rep cost LSQ is {}'.format(self.r[0].shape))
+                    # in range(0,num_modules)
+                    for module in range(0,num_modules):
+                        # print('shape of r[0][{}] in rep cost LSQ is {}'.format(module, self.r[i][module].shape))
+                        # print('shape of r[1][{}:{}] in rep cost LSQ is {}'.format(rindex1,rindex2,self.r[1][rindex1:rindex2].shape))
+                        # print('Uthird is {}'.format(Uthird))
+                        # print('shape of U[1][{}:{}] in rep cost LSQ is {}'.format(Uindex1,Uindex2,self.U[1][Uindex1:Uindex2].shape))
+                        # print('lsq self.U[{}][{}:{}] shape is {}'.format(i+1,Uindex1,Uindex2,self.U[i+1][Uindex1:Uindex2].shape))
+                        # print('lsq self.r[{}][{}:{}] shape is {}'.format(i+1,rindex1,rindex2,self.r[i+1][rindex1:rindex2].shape))
+                        v = (self.r[i][module] - self.f(self.U[i+1][module].dot(self.r[i+1][rindex1:rindex2]))[0])
+                        E = E + ((1 / self.p.sigma_sq[i+1]) * v.T.dot(v))[0,0]
+                        rindex1 += rthird
+                        rindex2 += rthird
+                        # Uindex1 += Uthird
+                        # Uindex2 += Uthird
+                elif i == 1:
+                    rthird = int(self.r[i].shape[0]/3)
+                    Uthird = int(self.U[i+1].shape[0]/3)
+                    rindex1 = 0
+                    rindex2 = rthird
+                    Uindex1 = 0
+                    Uindex2 = Uthird
+                    # in range(0,num_modules)
+                    for module in range(0,num_modules):
+                        # print('lsq self.U[{}][{}:{}] shape is {}'.format(i+1,Uindex1,Uindex2,self.U[i+1][Uindex1:Uindex2].shape))
+                        # print('lsq self.r[{}][{}:{}] shape is {}'.format(i,rindex1,rindex2,self.r[i][rindex1:rindex2].shape))
+                        v = (self.r[i][rindex1:rindex2] - self.f(self.U[i+1][Uindex1:Uindex2].dot(self.r[i+1]))[0])
+                        E = E + ((1 / self.p.sigma_sq[i+1]) * v.T.dot(v))[0,0]
+                        rindex1 += rthird
+                        rindex2 += rthird
+                        Uindex1 += Uthird
+                        Uindex2 += Uthird
+                elif i >= 2:
+                    v = (self.r[i] - self.f(self.U[i+1].dot(self.r[i+1]))[0])
                     E = E + ((1 / self.p.sigma_sq[i+1]) * v.T.dot(v))[0,0]
-                    rindex1 += rthird
-                    rindex2 += rthird
-                    Uindex1 += Uthird
-                    Uindex2 += Uthird
-            elif i >= 2:
-                v = (self.r[i] - self.f(self.U[i+1].dot(self.r[i+1]))[0])
-                E = E + ((1 / self.p.sigma_sq[i+1]) * v.T.dot(v))[0,0]
-            else:
-                print('i must be natural number')
-                
-        # priors on r[1],...,r[n]; U[1],...,U[n]
-        for i in range(1,len(self.r)):
-            if i == 1:
-                rthird = int(self.r[i].shape[0]/3)
-                Uthird = int(self.U[i].shape[0]/3)
-                rindex1 = 0
-                rindex2 = rthird
-                Uindex1 = 0
-                Uindex2 = Uthird
-                for module in range(0,num_modules):
-                    # print('prior self.U[{}][{}:{}] shape is {}'.format(i,Uindex1,Uindex2,self.U[i][Uindex1:Uindex2].shape))
-                    # print('prior self.r[{}][{}:{}] shape is {}'.format(i,rindex1,rindex2,self.r[i][rindex1:rindex2].shape))
-                    E = E + (self.h(self.U[i][Uindex1:Uindex2],self.p.lam[i])[0] + self.g(np.squeeze(self.r[i][rindex1:rindex2]),self.p.alpha[i])[0])
-                    rindex1 += rthird
-                    rindex2 += rthird
-                    Uindex1 += Uthird
-                    Uindex2 += Uthird
-            elif i >= 2:
-                E = E + (self.h(self.U[i],self.p.lam[i])[0] + self.g(np.squeeze(self.r[i]),self.p.alpha[i])[0])
-        return E
-
-
+                else:
+                    print('i must be natural number')
+                    
+            # priors on r[1],...,r[n]; U[1],...,U[n]
+            for i in range(1,len(self.r)):
+                if i == 1:
+                    rthird = int(self.r[i].shape[0]/3)
+                    Uthird = int(self.U[i].shape[0]/3)
+                    rindex1 = 0
+                    rindex2 = rthird
+                    Uindex1 = 0
+                    Uindex2 = Uthird
+                    for module in range(0,num_modules):
+                        # print('prior self.U[{}][{}:{}] shape is {}'.format(i,Uindex1,Uindex2,self.U[i][Uindex1:Uindex2].shape))
+                        # print('prior self.r[{}][{}:{}] shape is {}'.format(i,rindex1,rindex2,self.r[i][rindex1:rindex2].shape))
+                        E = E + (self.h(self.U[i][Uindex1:Uindex2],self.p.lam[i])[0] + self.g(np.squeeze(self.r[i][rindex1:rindex2]),self.p.alpha[i])[0])
+                        rindex1 += rthird
+                        rindex2 += rthird
+                        Uindex1 += Uthird
+                        Uindex2 += Uthird
+                elif i >= 2:
+                    E = E + (self.h(self.U[i],self.p.lam[i])[0] + self.g(np.squeeze(self.r[i]),self.p.alpha[i])[0])
+            return E
+        
+        else:
+            print('len r0.shape needs to be 2 or 3')
+            return
 
     def class_cost_1(self,label):
         """ Calculates the classification portion of the cost function output of a training
@@ -1113,11 +1212,158 @@ class TiledPredictiveCodingClassifier:
     def prediction_error(self,layer_number):
         """ Calculates the normed prediction error of a layer (in [i,n]), i.e. the difference between a
         the layer's image prediction ("r^td") and the image representation from the layer below ("r"). """
-        pe = math.sqrt((self.r[layer_number-1]-self.f(self.U[layer_number].dot(self.r[layer_number]))[0]).T\
-        .dot(self.r[layer_number-1]-self.f(self.U[layer_number].dot(self.r[layer_number]))[0]))
-        return pe
+        num_modules = self.U[1].shape[0]
+        
+        # for case of first predict() update
+        if len(self.r[1].shape) == 3:
+            if layer_number == 1:
+                # print('layer 1')
+                # print('r[0] shape is {}'.format(self.r[layer_number-1].shape))
+                # print('r[1] shape is {}'.format(self.r[layer_number].shape))
+                # print('r[2] shape is {}'.format(self.r[layer_number+1].shape))
+                # print('U[1] shape is {}'.format(self.U[layer_number].shape))
+                # print('U[2] shape is {}'.format(self.U[layer_number+1].shape))
+                pe = 0
+                # rthird = int(self.r[layer_number].shape[0]/3)
+                # rindex1 = 0
+                # rindex2 = rthird
+                for mod in range(0,num_modules):
+                    # print('r[0][{}] shape is {}'.format(mod,self.r[layer_number-1][mod].shape))
+                    # print('r[1][{}:{}] shape is {}'.format(rindex1,rindex2,self.r[layer_number][rindex1:rindex2].shape))
+                    # print()
+                    pe = pe + math.sqrt((self.r[layer_number-1][mod]-self.f(self.U[layer_number][mod].dot(self.r[layer_number][mod]))[0]).T\
+                    .dot(self.r[layer_number-1][mod]-self.f(self.U[layer_number][mod].dot(self.r[layer_number][mod]))[0]))
+                    # rindex1 += rthird
+                    # rindex2 += rthird
+                return pe
+            
+            elif layer_number == 2:
+                
+                # print('layer 2')
+                # print('r[0] shape is {}'.format(self.r[layer_number-2].shape))
+                # print('r[1] shape is {}'.format(self.r[layer_number-1].shape))
+                # print('r[2] shape is {}'.format(self.r[layer_number].shape))
+                # print('U[1] shape is {}'.format(self.U[layer_number-1].shape))
+                # print('U[2] shape is {}'.format(self.U[layer_number].shape))
+                pe = 0
+                
+                # Uthird1 = int(self.U[layer_number-1].shape[0]/3)
+                # rindex1_1 = 0
+                # rindex1_2 = rthird1
+                # rthird2 = int(self.r[layer_number].shape[0]/3)
+                # rindex2_1 = 0
+                # rindex2_2 = rthird2
+                
+                # concatenate r1
+                self.r[layer_number-1] = np.concatenate((self.r[layer_number-1][0], self.r[layer_number-1][1], self.r[layer_number-1][2]),axis=None)[:,None]
+                # print("self.r[1] shape after concat is {}".format(self.r[1].shape)) 
+                
+                for mod in range(0,num_modules):
+                    pe = pe + math.sqrt((self.r[layer_number-1]-self.f(self.U[layer_number].dot(self.r[layer_number]))[0]).T\
+                    .dot(self.r[layer_number-1]-self.f(self.U[layer_number].dot(self.r[layer_number]))[0]))
+                
+                #split r[1] back up into an array of (1/3rd-sized) arrays
+                
+                # print("self.r[1] shape before splitting is {}".format(self.r[1].shape))
+                        
+                rthird = int(self.r[1].shape[0]/3)
+                # print('rthird is {}'.format(rthird))
+                rindex1 = 0
+                rindex2 = rindex1 + rthird
+                rindex3 = rindex2 + rthird
+                rindex4 = rindex3 + rthird
+                
+                self.r[1] = np.array([self.r[1][rindex1:rindex2],self.r[1][rindex2:rindex3],self.r[1][rindex3:rindex4]])
+                # print("self.r[1] shape after splitting is {}".format(self.r[1].shape))
+                
+                return pe
+            else:
+                print('layer_number must be 1 or 2')
+                return
+           
+        # for the cases of all subsequent predict() updates where r1 has been concatenated
+        elif len(self.r[1].shape) == 2:
+            if layer_number == 1:
+                # print('layer 1')
+                # print('r[0] shape is {}'.format(self.r[layer_number-1].shape))
+                # print('r[1] shape is {}'.format(self.r[layer_number].shape))
+                # print('r[2] shape is {}'.format(self.r[layer_number+1].shape))
+                # print('U[1] shape is {}'.format(self.U[layer_number].shape))
+                # print('U[2] shape is {}'.format(self.U[layer_number+1].shape))
+                
+                # print("self.r[1] shape before splitting is {}".format(self.r[1].shape))
+                    
+                rthird = int(self.r[1].shape[0]/3)
+                # print('rthird is {}'.format(rthird))
+                rindex1 = 0
+                rindex2 = rindex1 + rthird
+                rindex3 = rindex2 + rthird
+                rindex4 = rindex3 + rthird
+                
+                self.r[1] = np.array([self.r[1][rindex1:rindex2],self.r[1][rindex2:rindex3],self.r[1][rindex3:rindex4]])
+                # print("self.r[1] shape after splitting is {}".format(self.r[1].shape))
+                
+                pe = 0
+                # rthird = int(self.r[layer_number].shape[0]/3)
+                # rindex1 = 0
+                # rindex2 = rthird
+                for mod in range(0,num_modules):
+                    # print('r[0][{}] shape is {}'.format(mod,self.r[layer_number-1][mod].shape))
+                    # print('r[1][{}:{}] shape is {}'.format(rindex1,rindex2,self.r[layer_number][rindex1:rindex2].shape))
+                    # print()
+                    pe = pe + math.sqrt((self.r[layer_number-1][mod]-self.f(self.U[layer_number][mod].dot(self.r[layer_number][mod]))[0]).T\
+                    .dot(self.r[layer_number-1][mod]-self.f(self.U[layer_number][mod].dot(self.r[layer_number][mod]))[0]))
+                    # rindex1 += rthird
+                    # rindex2 += rthird
+                return pe
+            
+            elif layer_number == 2:
+                    
+                # print('layer 2')
+                # print('r[0] shape is {}'.format(self.r[layer_number-2].shape))
+                # print('r[1] shape is {}'.format(self.r[layer_number-1].shape))
+                # print('r[2] shape is {}'.format(self.r[layer_number].shape))
+                # print('U[1] shape is {}'.format(self.U[layer_number-1].shape))
+                # print('U[2] shape is {}'.format(self.U[layer_number].shape))
+                pe = 0
+                
+                # Uthird1 = int(self.U[layer_number-1].shape[0]/3)
+                # rindex1_1 = 0
+                # rindex1_2 = rthird1
+                # rthird2 = int(self.r[layer_number].shape[0]/3)
+                # rindex2_1 = 0
+                # rindex2_2 = rthird2
+                
+                # concatenate r1
+                self.r[layer_number-1] = np.concatenate((self.r[layer_number-1][0], self.r[layer_number-1][1], self.r[layer_number-1][2]),axis=None)[:,None]
+                # print("self.r[1] shape after concat is {}".format(self.r[1].shape)) 
+                
+                for mod in range(0,num_modules):
+                    pe = pe + math.sqrt((self.r[layer_number-1]-self.f(self.U[layer_number].dot(self.r[layer_number]))[0]).T\
+                    .dot(self.r[layer_number-1]-self.f(self.U[layer_number].dot(self.r[layer_number]))[0]))
+                
+                #split r[1] back up into an array of (1/3rd-sized) arrays
+                
+                # print("self.r[1] shape before splitting is {}".format(self.r[1].shape))
+                        
+                rthird = int(self.r[1].shape[0]/3)
+                # print('rthird is {}'.format(rthird))
+                rindex1 = 0
+                rindex2 = rindex1 + rthird
+                rindex3 = rindex2 + rthird
+                rindex4 = rindex3 + rthird
+                
+                self.r[1] = np.array([self.r[1][rindex1:rindex2],self.r[1][rindex2:rindex3],self.r[1][rindex3:rindex4]])
+                # print("self.r[1] shape after splitting is {}".format(self.r[1].shape))
+                
+                return pe
+            else:
+                print('layer_number must be 1 or 2')
+                return
 
-
+        else:
+            print('len shape of r1 should be 2 or 3')
+            return
 
     def train(self,X,Y):
         '''
@@ -1325,7 +1571,7 @@ class TiledPredictiveCodingClassifier:
                 C = 0
     
                 # accuracy per epoch: how many images are correctly guessed per epoch
-                num_correct = 0
+                self.num_correct = 0
     
                 # set learning rates at the start of each epoch
                 k_r = self.k_r_lr(epoch)
@@ -1509,8 +1755,8 @@ class TiledPredictiveCodingClassifier:
                         # # # classification term
                         # # + (k_o / 2) * (label[:,None] - softmax(self.r[2]))
                         
-                    # concatenated r1 should be 96,1
-                    self.r[1] = np.concatenate((self.r1[0], self.r1[1], self.r1[2]),axis=None)[:,None]
+                    # concatenate r1
+                    self.r[1] = np.concatenate((self.r[1][0], self.r[1][1], self.r[1][2]),axis=None)[:,None]
                     # print("self.r[1] shape after concat is {}".format(self.r[1].shape))
                     
                     # concatenated U1 should be 864,32 (stacked vertically)
@@ -1523,7 +1769,7 @@ class TiledPredictiveCodingClassifier:
                     * self.U[2].T.dot(self.f(self.U[2].dot(self.r[2]))[1].dot(self.r[1] - self.f(self.U[2].dot(self.r[2]))[0])) \
                     - (k_r / 2) * self.g(self.r[2],self.p.alpha[2])[1] \
                     # classification term
-                    + (k_r / 2) * (self.U_o.T.dot(label[:,None]) - self.U_o.T.dot(softmax(self.U_o.dot(self.r[2]))))
+                    # + (k_r / 2) * (self.U_o.T.dot(label[:,None]) - self.U_o.T.dot(softmax(self.U_o.dot(self.r[2]))))
 
 
                     # U[n] update (C1, C2) (identical to U[i], except index numbers)
@@ -1553,10 +1799,32 @@ class TiledPredictiveCodingClassifier:
                     # self.class_type = 'C1'
     
     
-                    # """ Classifying using C2 """
-                    # C = self.class_cost_2(label)
-                    # E = E + C
-                    # self.class_type = 'C2'
+                    """ Classifying using C2 """
+                    C = self.class_cost_2(label)
+                    E = E + C
+                    self.class_type = 'C2'
+                    
+                    
+                    # Classification Accuracy
+
+                    # if index of the max value in final representation vector
+                    # = index of the 1 in associated one hot label vector
+                    # then the model classified the image correctly
+                    # and add 1 to num_correct
+    
+    
+                    # """ C1 method """
+                    # if np.argmax(softmax(self.r[n])) == np.argmax(label[:,None]):
+                    #     num_correct += 1
+    
+    
+                    """ C2 method """
+                    c2_output = self.U_o.dot(self.r[n])
+    
+                    if np.argmax(softmax(c2_output)) == np.argmax(label[:,None]):
+                        self.num_correct += 1
+
+                    
                     
                     #split U[1] back up into an array of (1/3rd-sized) arrays
                     
@@ -1574,7 +1842,7 @@ class TiledPredictiveCodingClassifier:
                 # store average costs and accuracy per epoch
                 E_avg_per_epoch = E/self.n_training_images
                 C_avg_per_epoch = C/self.n_training_images
-                acc_per_epoch = round((num_correct/self.n_training_images)*100)
+                acc_per_epoch = round((self.num_correct/self.n_training_images)*100)
     
                 self.E_avg_per_epoch.append(E_avg_per_epoch)
                 self.C_avg_per_epoch.append(C_avg_per_epoch)
@@ -1619,14 +1887,14 @@ class TiledPredictiveCodingClassifier:
         # i.e if the input is multiple images
         if len(X.shape) == 3:
 
-            print("using predict(3-dim_vec_input)")
+            # print("using predict(3-dim_vec_input)")
 
             self.n_pred_images = X.shape[0]
             print("npredimages")
             print(self.n_pred_images)
 
-            # get from [n,28,28] input to [n,784] so that self.r[0] instantiation below
-            # can convert to and call each image as a [784,1] vector
+            # get from [n,24,24] input to [n,576] so that self.r[0] instantiation below
+            # can convert to and call each image as a [576,1] vector
             X_flat = data.flatten_images(X)
 
 
@@ -1645,7 +1913,7 @@ class TiledPredictiveCodingClassifier:
                 # copy first image into r[0]
 
                 # print(X[image].shape)
-                # convert [1,784] image to one [784,1] image
+                # convert [1,576] image to one [576,1] image
                 self.r[0] = X_flat[image,:][:,None]
 
                 # print(X[image].shape)
@@ -1657,14 +1925,26 @@ class TiledPredictiveCodingClassifier:
 
                 # initialize new r's
                 for layer in range(1,self.n_non_input_layers):
-                    # self state per layer
-                    self.r[layer] = np.random.randn(self.p.hidden_sizes[layer-1],1)
-                    # print('rlayer')
-                    # print(self.r[layer].shape)
+                    if layer == 1:
+                        self.r[layer] = np.zeros((3,int(self.p.hidden_sizes[0]/3),1))
+                        for module in range(0,self.r[1].shape[0]):
+                            # self state per layer
+                            self.r[layer][module] = np.random.randn(int(self.p.hidden_sizes[layer-1]/3),1)
+                            # print('shape of reinitialized r[{}][{}] is {}'.format(layer, module, self.r[layer][module].shape))
+                        # print('shape of total reinitialized r[{}] is {}'.format(layer, self.r[layer].shape))
+                    elif layer >= 2:
+                        # self state per layer
+                        self.r[layer] = np.random.randn(self.p.hidden_sizes[layer-1],1)
+                        # print('shape of reinitialized r[{}] is {}'.format(layer, self.r[layer].shape))
+                        
+                    else:
+                        print('new rs in every image start numbered at 1 and go to n. num layers must be natural number')
+
 
 
                 for update in range(0,self.n_pred_updates):
 
+                    # print('prediction update {}'.format(update+1))
                     # magnitude (normed) prediction errors each "layer" (i.e. error between r0,r1, and r1,r2)
 
                     pe_1 = self.prediction_error(1)
@@ -1672,22 +1952,39 @@ class TiledPredictiveCodingClassifier:
 
                     self.pe_1.append(pe_1)
                     self.pe_2.append(pe_2)
-
-                    # loop through intermediate layers (will fail if number of hidden layers is 1)
-                    # r,U updates written symmetrically for all layers including output
-                    for i in range(1,n):
-
+                    
+                    
+                    # update r/U in each module and each layer
+                    
+                    num_modules = self.r[1].shape[0]
+                    # print('num_modules is {}'.format(num_modules))
+                    
+                    U2third = int(self.U[2].shape[0]/3)
+                    U2index1 = 0
+                    U2index2 = U2third
+                    
+                    
+                    for i in range(0,num_modules):
 
                         # r[i] update
-                        self.r[i] = self.r[i] + (k_r / self.p.sigma_sq[i]) \
-                        * self.U[i].T.dot(self.f(self.U[i].dot(self.r[i]))[1].dot(self.r[i-1] - self.f(self.U[i].dot(self.r[i]))[0])) \
-                        + (k_r / self.p.sigma_sq[i+1]) * (self.f(self.U[i+1].dot(self.r[i+1]))[0] - self.r[i]) \
-                        - (k_r / 2) * self.g(self.r[i],self.p.alpha[i])[1]
+                        
+                        # print('self.r[1] shape is {}'.format(self.r[1].shape))
+                        self.r[1][i] = self.r[1][i] + (k_r / self.p.sigma_sq[1]) \
+                        * self.U[1][i].T.dot(self.f(self.U[1][i].dot(self.r[1][i]))[1].dot(self.r[0][i] - self.f(self.U[1][i].dot(self.r[1][i]))[0])) \
+                        + (k_r / self.p.sigma_sq[2]) * (self.f(self.U[2][U2index1:U2index2].dot(self.r[2]))[0] - self.r[1][i]) \
+                        - (k_r / 2) * self.g(self.r[1][i],self.p.alpha[1])[1]
+                     
+                        U2index1 += U2third
+                        U2index2 += U2third
+                        
+                    # concatenate r1
+                    self.r[1] = np.concatenate((self.r1[0], self.r1[1], self.r1[2]),axis=None)[:,None]
+                    # print("self.r[1] shape after concat is {}".format(self.r[1].shape))
 
 
-                    self.r[n] = self.r[n] + (k_r / self.p.sigma_sq[n]) \
-                    * self.U[n].T.dot(self.f(self.U[n].dot(self.r[n]))[1].dot(self.r[n-1] - self.f(self.U[n].dot(self.r[n]))[0])) \
-                    - (k_r / 2) * self.g(self.r[n],self.p.alpha[n])[1]
+                    self.r[2] = self.r[2] + (k_r / self.p.sigma_sq[2]) \
+                    * self.U[2].T.dot(self.f(self.U[2].dot(self.r[2]))[1].dot(self.r[1] - self.f(self.U[2].dot(self.r[2]))[0])) \
+                    - (k_r / 2) * self.g(self.r[2],self.p.alpha[2])[1] 
 
 
                 # return final predictions
@@ -1706,13 +2003,13 @@ class TiledPredictiveCodingClassifier:
         # of shape [:,:]
         elif len(X.shape) == 2:
 
-            print("Xshape is")
-            print(X.shape)
+            # print("Xshape is")
+            # print(X.shape)
 
             self.n_pred_images = 1
 
-            # get from [28,28] input to [1,784] so that self.r[0] instantiation below
-            # can convert to and call the image as a [784,1] vector
+            # get from [24,24] input to [1,576] so that self.r[0] instantiation below
+            # can convert to and call the image as a [576,1] vector
             X_flat = data.flatten_images(X[None,:,:])
 
             # print("Xflat is")
@@ -1727,12 +2024,22 @@ class TiledPredictiveCodingClassifier:
                 # representation costs for zeroth and nth layers
                 self.pe_1 = []
                 self.pe_2 = []
-
-                # copy first image into r[0]
-
-                # print(X[image].shape)
-                # convert [1,784] image to one [784,1] image
-                self.r[0] = X_flat[image,:][:,None]
+                
+                # copy image tiles into r[0]
+                # turn (576,) image into (1,576) and inflate to (1,24,24)
+                image_expanded = data.inflate_vectors(X_flat)
+                
+                image_squeezed = np.squeeze(image_expanded)
+                
+                cut_image = data.cut(image_squeezed,tile_offset=6,flat=True)
+                
+                squeezed_tile1 = np.squeeze(cut_image[0])
+                squeezed_tile2 = np.squeeze(cut_image[1])
+                squeezed_tile3 = np.squeeze(cut_image[2])
+                
+                self.r[0][0] = squeezed_tile1[:,None]
+                self.r[0][1] = squeezed_tile2[:,None]
+                self.r[0][2] = squeezed_tile3[:,None]
 
                 # print(X[image].shape)
                 # print(X[image][:,None].shape)
@@ -1743,13 +2050,30 @@ class TiledPredictiveCodingClassifier:
 
                 # initialize new r's
                 for layer in range(1,self.n_non_input_layers):
-                    # self state per layer
-                    self.r[layer] = np.random.randn(self.p.hidden_sizes[layer-1],1)
-                    # print('rlayer')
-                    # print(self.r[layer].shape)
+                    if layer == 1:
+                        self.r[layer] = np.zeros((3,int(self.p.hidden_sizes[0]/3),1))
+                        for module in range(0,self.r[1].shape[0]):
+                            # self state per layer
+                            self.r[layer][module] = np.random.randn(int(self.p.hidden_sizes[layer-1]/3),1)
+                            # print('shape of reinitialized r[{}][{}] is {}'.format(layer, module, self.r[layer][module].shape))
+                        # print('shape of total reinitialized r[{}] is {}'.format(layer, self.r[layer].shape))
+                    elif layer >= 2:
+                        # self state per layer
+                        self.r[layer] = np.random.randn(self.p.hidden_sizes[layer-1],1)
+                        # print('shape of reinitialized r[{}] is {}'.format(layer, self.r[layer].shape))
+                        
+                    else:
+                        print('new rs in every image start numbered at 1 and go to n. num layers must be natural number')
 
+                # print('re initialized self.r[1] shape is {}'.format(self.r[1].shape))
+                
+                # print('\n')
+                # print('STARTING UPDATES')
+                # print('\n')
 
                 for update in range(0,self.n_pred_updates):
+                    
+                    # print('prediction update {}'.format(update+1))
 
                     # magnitude (normed) prediction errors each "layer" (i.e. error between r0,r1, and r1,r2)
 
@@ -1759,22 +2083,43 @@ class TiledPredictiveCodingClassifier:
                     self.pe_1.append(pe_1)
                     self.pe_2.append(pe_2)
 
-                    # loop through intermediate layers (will fail if number of hidden layers is 1)
-                    # r,U updates written symmetrically for all layers including output
-                    for i in range(1,n):
-
+                    # update r/U in each module and each layer
+                    
+                    num_modules = self.r[0].shape[0]
+                    
+                    U2third = int(self.U[2].shape[0]/3)
+                    U2index1 = 0
+                    U2index2 = U2third
+                    
+                    # print('after prediction error calcs')
+                    # print('r[0] shape is {}'.format(self.r[0].shape))
+                    # print('r[1] shape is {}'.format(self.r[1].shape))
+                    # print('r[2] shape is {}'.format(self.r[2].shape))
+                    # print('U[1] shape is {}'.format(self.U[1].shape))
+                    # print('U[2] shape is {}'.format(self.U[2].shape))
+                    
+                    for i in range(0,num_modules):
+                        
+                        # print('self.r[1] shape is {}'.format(self.r[1].shape))
+                        # print('self.r[1][{}] shape is {}'.format(i, self.r[1][i].shape))
 
                         # r[i] update
-                        self.r[i] = self.r[i] + (k_r / self.p.sigma_sq[i]) \
-                        * self.U[i].T.dot(self.f(self.U[i].dot(self.r[i]))[1].dot(self.r[i-1] - self.f(self.U[i].dot(self.r[i]))[0])) \
-                        + (k_r / self.p.sigma_sq[i+1]) * (self.f(self.U[i+1].dot(self.r[i+1]))[0] - self.r[i]) \
-                        - (k_r / 2) * self.g(self.r[i],self.p.alpha[i])[1]
+                        self.r[1][i] = self.r[1][i] + (k_r / self.p.sigma_sq[1]) \
+                        * self.U[1][i].T.dot(self.f(self.U[1][i].dot(self.r[1][i]))[1].dot(self.r[0][i] - self.f(self.U[1][i].dot(self.r[1][i]))[0])) \
+                        + (k_r / self.p.sigma_sq[2]) * (self.f(self.U[2][U2index1:U2index2].dot(self.r[2]))[0] - self.r[1][i]) \
+                        - (k_r / 2) * self.g(self.r[1][i],self.p.alpha[1])[1]
+                     
+                        U2index1 += U2third
+                        U2index2 += U2third
+                        
+                    # concatenate r1
+                    self.r[1] = np.concatenate((self.r[1][0], self.r[1][1], self.r[1][2]),axis=None)[:,None]
+                    # print("self.r[1] shape after concat is {}".format(self.r[1].shape))
 
 
-                    self.r[n] = self.r[n] + (k_r / self.p.sigma_sq[n]) \
-                    * self.U[n].T.dot(self.f(self.U[n].dot(self.r[n]))[1].dot(self.r[n-1] - self.f(self.U[n].dot(self.r[n]))[0])) \
-                    - (k_r / 2) * self.g(self.r[n],self.p.alpha[n])[1]
-
+                    self.r[2] = self.r[2] + (k_r / self.p.sigma_sq[2]) \
+                    * self.U[2].T.dot(self.f(self.U[2].dot(self.r[2]))[1].dot(self.r[1] - self.f(self.U[2].dot(self.r[2]))[0])) \
+                    - (k_r / 2) * self.g(self.r[2],self.p.alpha[2])[1] 
 
                 # return final prediction (r[n]) and final r[1]
 

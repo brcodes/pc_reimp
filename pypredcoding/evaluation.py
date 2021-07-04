@@ -17,8 +17,9 @@ MUST comment-in desired naming parameters
 #model size
 # model_size = '[32.10]'
 # model_size = '[32.32]'
+model_size = '[36.32]'
 # model_size = '[128.32]'
-model_size = '[96.32]'
+# model_size = '[96.32]'
 
 
 #transformation function
@@ -26,8 +27,8 @@ transform_type = 'tanh'
 # transform_type = 'linear'
 
 #prior type
-# prior_type = 'gauss'
-prior_type = 'kurt'
+prior_type = 'gauss'
+# prior_type = 'kurt'
 
 #classification method
 class_type = 'NC'
@@ -40,7 +41,8 @@ trained = 'T'
 
 #number of epochs if trained (if not, use -)
 # num_epochs = '1000e'
-num_epochs = '100e'
+# num_epochs = '100e'
+num_epochs = '40e'
 # num_epochs = '50e'
 # num_epochs = '-'
 
@@ -71,7 +73,8 @@ pred_dataset = '-'
 #extra identifier for any particular or unique qualities of the model object
 # extra_tag = 'randUo'
 # extra_tag = 'pipeline_test
-extra_tag = 'tile_offset_6'
+# extra_tag = 'tile_offset_6'
+extra_tag = 'tile_offset_6_poly_lr_0.05_lU_0.005_me40_pp1'
 # extra_tag = 'tile_offset_8'
 # extra_tag = 'tile_offset_0'
 # extra_tag = '-'
@@ -82,10 +85,15 @@ pcmod_in = open('pc.{}.{}.{}.{}.{}.{}.{}.{}.{}.{}.{}.{}.pydb'.format(model_size,
 pcmod = pickle.load(pcmod_in)
 pcmod_in.close()
 
+# # load data to evaluate against
+# tanh_data_in = open('tanh_100x10.pydb','rb')
+# X_train, y_train, training_img, non_training_img, scrm_training_img, lena_pw, lena_zoom = pickle.load(tanh_data_in)
+# tanh_data_in.close()
+
 # load data to evaluate against
-tanh_data_in = open('tanh_100x10_size_24x24.pydb','rb')
-X_train, y_train, training_img, non_training_img, scrm_training_img, lena_pw, lena_zoom = pickle.load(tanh_data_in)
-tanh_data_in.close()
+tanh_tile_data_in = open('tanh_100x10_size_24x24.pydb','rb')
+X_train, y_train, training_img, non_training_img, scrm_training_img, lena_pw, lena_zoom = pickle.load(tanh_tile_data_in)
+tanh_tile_data_in.close()
 
 #output pickle naming
 
