@@ -396,12 +396,18 @@ class PredictiveCodingClassifier:
 
                 """ C2 method """
                 c2_output = self.U_o.dot(self.r[n])
+                # print('c2_output first five lines')
+                # print(c2_output[:5])
 
                 if np.argmax(softmax(c2_output)) == np.argmax(label[:,None]):
                     self.num_correct += 1
+                    # print('self.num_correct')
+                    # print(self.num_correct)
 
 
-
+            print('self.num_correct non tiled epoch {}'.format(epoch+1))
+            print(self.num_correct)
+             
             # store average costs and accuracy per epoch
             E_avg_per_epoch = E/self.n_training_images
             C_avg_per_epoch = C/self.n_training_images
@@ -1769,7 +1775,7 @@ class TiledPredictiveCodingClassifier:
                     * self.U[2].T.dot(self.f(self.U[2].dot(self.r[2]))[1].dot(self.r[1] - self.f(self.U[2].dot(self.r[2]))[0])) \
                     - (k_r / 2) * self.g(self.r[2],self.p.alpha[2])[1] \
                     # classification term
-                    # + (k_r / 2) * (self.U_o.T.dot(label[:,None]) - self.U_o.T.dot(softmax(self.U_o.dot(self.r[2]))))
+                    + (k_r / 2) * (self.U_o.T.dot(label[:,None]) - self.U_o.T.dot(softmax(self.U_o.dot(self.r[2]))))
 
 
                     # U[n] update (C1, C2) (identical to U[i], except index numbers)
@@ -1819,11 +1825,21 @@ class TiledPredictiveCodingClassifier:
     
     
                     """ C2 method """
-                    c2_output = self.U_o.dot(self.r[n])
+                    c2_output = self.U_o.dot(self.r[2])
+                    # print('c2_output first five lines')
+                    # print(c2_output[:5])
+                    
     
+                    # print('np.argmax(softmax(c2_output))')
+                    # print(np.argmax(softmax(c2_output)))
+                    # print('np.argmax(label)')
+                    # print(np.argmax(label[:,None]))
+                    
+                    # print('n_training_images')
+                    # print(self.n_training_images)
+                    
                     if np.argmax(softmax(c2_output)) == np.argmax(label[:,None]):
                         self.num_correct += 1
-
                     
                     
                     #split U[1] back up into an array of (1/3rd-sized) arrays
@@ -1837,12 +1853,14 @@ class TiledPredictiveCodingClassifier:
                     self.U[1] = np.array([self.U[1][Uindex1:Uindex2],self.U[1][Uindex2:Uindex3],self.U[1][Uindex3:Uindex4]])
                     # print("self.U[1] shape after splitting is {}".format(self.U[1].shape))
                     
-    
+                    
+                print('self.num_correct epoch {}'.format(epoch+1))
+                print(self.num_correct)
     
                 # store average costs and accuracy per epoch
                 E_avg_per_epoch = E/self.n_training_images
                 C_avg_per_epoch = C/self.n_training_images
-                acc_per_epoch = round((self.num_correct/self.n_training_images)*100)
+                acc_per_epoch = (self.num_correct/self.n_training_images)*100
     
                 self.E_avg_per_epoch.append(E_avg_per_epoch)
                 self.C_avg_per_epoch.append(C_avg_per_epoch)
@@ -1887,7 +1905,7 @@ class TiledPredictiveCodingClassifier:
         # i.e if the input is multiple images
         if len(X.shape) == 3:
 
-            # print("using predict(3-dim_vec_input)")
+            print("predicting a 3-dimensional (multi-image) vector")
 
             self.n_pred_images = X.shape[0]
             print("npredimages")
@@ -1978,7 +1996,7 @@ class TiledPredictiveCodingClassifier:
                         U2index2 += U2third
                         
                     # concatenate r1
-                    self.r[1] = np.concatenate((self.r1[0], self.r1[1], self.r1[2]),axis=None)[:,None]
+                    self.r[1] = np.concatenate((self.r[1][0], self.r[1][1], self.r[1][2]),axis=None)[:,None]
                     # print("self.r[1] shape after concat is {}".format(self.r[1].shape))
 
 
@@ -1991,7 +2009,11 @@ class TiledPredictiveCodingClassifier:
                 # i.e. r[n]'s
 
                 r1 = self.r[1]
+                print('first five lines of r1')
+                print(r1[:5])
                 prediction = self.r[n]
+                print('first five lines of prediction (r2)')
+                print(prediction[:5])
 
                 self.r1s.append(r1)
                 self.prediction.append(prediction)
@@ -2002,7 +2024,8 @@ class TiledPredictiveCodingClassifier:
         # if X is a single image
         # of shape [:,:]
         elif len(X.shape) == 2:
-
+            
+            print("predicting a 2-dimensional (single-image) vector")
             # print("Xshape is")
             # print(X.shape)
 

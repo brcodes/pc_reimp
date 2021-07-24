@@ -17,7 +17,7 @@ def main():
     # create and modify model parameters
 
     # # TANH NON-TILED constant
-    #r 0.05, U 0.05 o 0.05
+    # # r 0.05, U 0.05 o 0.05
     # p = ModelParameters(unit_act='tanh',r_prior = 'gaussian', U_prior = 'gaussian', input_size=784,
     #     hidden_sizes = [36,32], num_epochs = 40,
     #     k_r_sched = {'constant':{'initial':0.05}},
@@ -251,10 +251,10 @@ def main():
 
     # pickle tiled output model
 
-    tiled_pcmod_out = open('pc.{}.{}.{}.{}.{}.{}.{}.{}.{}.{}.{}.{}.pydb'.format(model_size,transform_type,prior_type,class_type,\
-        trained,num_epochs,training_dataset, evaluated, eval_dataset, used_for_pred, pred_dataset,extra_tag),'wb')
-    pickle.dump(tiled_pcmod, tiled_pcmod_out)
-    tiled_pcmod_out.close()
+    # tiled_pcmod_out = open('pc.{}.{}.{}.{}.{}.{}.{}.{}.{}.{}.{}.{}.pydb'.format(model_size,transform_type,prior_type,class_type,\
+    #     trained,num_epochs,training_dataset, evaluated, eval_dataset, used_for_pred, pred_dataset,extra_tag),'wb')
+    # pickle.dump(tiled_pcmod, tiled_pcmod_out)
+    # tiled_pcmod_out.close()
 
 
 

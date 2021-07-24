@@ -428,6 +428,11 @@ def plot(plot_type,model_size,transform_type,prior_type,class_type,\
             class_type = pcmod.class_type
             prior_type = pcmod.p.r_prior
             
+            print("classification cost per epoch")
+            print(classification_cost)
+            print("accuracy")
+            print(accuracy)
+            
             # # tiling stuff
             # is_tiled = pcmod.is_tiled
             # tile_offset = pcmod.p.tile_offset
