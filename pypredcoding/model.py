@@ -356,8 +356,8 @@ class PredictiveCodingClassifier:
 
 
                 """ U_o update (C2) """
-                self.o = np.exp(self.U_o.dot(self.r[n]))
-                self.U_o = self.U_o + label[:,None].dot(self.r[n].T) - len(label)*softmax((self.U_o.dot(self.r[n])).dot(self.r[n].T))
+                # self.o = np.exp(self.U_o.dot(self.r[n]))
+                # self.U_o = self.U_o + label[:,None].dot(self.r[n].T) - len(label)*softmax((self.U_o.dot(self.r[n])).dot(self.r[n].T))
 
 
                 # Loss function E
@@ -1785,8 +1785,8 @@ class TiledPredictiveCodingClassifier:
 
     
                     """ U_o update (C2) """
-                    self.o = np.exp(self.U_o.dot(self.r[2]))
-                    self.U_o = self.U_o + label[:,None].dot(self.r[2].T) - len(label)*softmax((self.U_o.dot(self.r[2])).dot(self.r[2].T))
+                    # self.o = np.exp(self.U_o.dot(self.r[2]))
+                    # self.U_o = self.U_o + label[:,None].dot(self.r[2].T) - len(label)*softmax((self.U_o.dot(self.r[2])).dot(self.r[2].T))
     
     
                     # Loss function E
