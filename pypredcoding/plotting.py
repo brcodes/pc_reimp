@@ -43,9 +43,14 @@ MUST comment-in 'P' and a pred_dataset for predPEs plot
 
 #model size
 # model_size = '[32.10]'
+# model_size = '[1.32]'
+# model_size = '[5.32]'
+# model_size = '[10.32]'
 # model_size = '[32.32]'
-# model_size = '[36.32]'
-model_size = '[36.10]'
+model_size = '[36.32]'
+# model_size = '[36.5]'
+# model_size = '[36.1]'
+# model_size = '[36.10]'
 # model_size = '[128.32]'
 # model_size = '[96.32]'
 # model_size = '[192.32]'
@@ -80,7 +85,9 @@ num_epochs = '40e'
 
 #dataset trained on if trained (if not, use -)
 training_dataset = 'tanh100x10'
+# training_dataset = 'tanh1000x10'
 # training_dataset = 'tanh100x10_size_24x24'
+# training_dataset = 'tanh1000x10_size_24x24'
 # training_dataset = 'linear100x10_size_24x24'
 # training_dataset = 'tanh10x10'
 # training_dataset = '-'
@@ -92,6 +99,8 @@ evaluated = 'ne'
 #images evaluated against, if evaluated (if not, use -)
 # eval_dataset = 'tanh100x10'
 # training_dataset = 'tanh100x10_size24x24'
+# eval_dataset = 'tanh_100x10_fashion_mnist'
+# eval_dataset = 'tanh_100x10_cifar10'
 # eval_dataset = 'tanh10x10'
 eval_dataset = '-'
 
@@ -108,7 +117,7 @@ used_for_pred = 'np'
 pred_dataset = '-'
 
 #extra identifier for any particular or unique qualities of the model object
-extra_tag = 'randUo'
+# extra_tag = 'randUo'
 # extra_tag = 'scaled_ppixel'
 # extra_tag = 'pipeline_test'
 # extra_tag = 'tile_offset_6'
@@ -118,7 +127,7 @@ extra_tag = 'randUo'
 # extra_tag = 'tile_offset_6_lr_0.05_lU_0.005'
 # extra_tag = 'tile_offset_6_lr_0.005_lU_0.005'
 # extra_tag = 'tile_offset_6_lr_0.0005_lU_0.0005'
-# extra_tag = 'tile_offset_6_poly_lr_0.05_lU_0.005_me40_pp1'
+extra_tag = 'tile_offset_6_poly_lr_0.05_lU_0.005_me40_pp1'
 # extra_tag = 'tile_offset_6_poly_lr_0.005_lU_0.005_me40_pp1'
 # extra_tag = 'tile_offset_6_poly_lr_0.005_lU_0.005_me40_pp1_randUo'
 # extra_tag = 'poly_lr_0.05_lU_0.005_me40_pp1'
@@ -127,6 +136,8 @@ extra_tag = 'randUo'
 # extra_tag = 'tile_offset_6_step_lr_0.05_lU_0.005_df0.9_10'
 # extra_tag = 'tile_offset_6_step_0.005_df0.9_10'
 # extra_tag = 'const_lr_0.0005'
+# extra_tag = 'Uo_update_in_eval'
+# extra_tag = 'eavg_bugfix'
 # extra_tag = '-'
 
 
@@ -194,6 +205,9 @@ def plot(plot_type,model_size,transform_type,prior_type,class_type,\
     
             # loss after completion of one epoch
             E1 = round(representation_cost_by_epoch[1],2)
+            # loss before start of 1st epoch
+            E0 = round(representation_cost_by_epoch[0],2)
+            print('E0 is {}'.format(E0))
             # loss min
             Emin = round(min(representation_cost_by_epoch),2)
     
@@ -211,7 +225,7 @@ def plot(plot_type,model_size,transform_type,prior_type,class_type,\
             plotE = ax.plot(num_epochs, representation_cost_by_epoch, '#000000', label="Avg E")
     
             # set E scale
-            ax.set_ylim(0, 5)
+            ax.set_ylim(0, 2000)
     
             # set axis names
             ax.set_xlabel("Epoch")
@@ -526,10 +540,10 @@ def plot(plot_type,model_size,transform_type,prior_type,class_type,\
             n_eval_images = range(1,n_eval_images+1)
     
             # # double check that evaluation objects contain the right values
-            # print(E)
-            # print(C)
-            # print(Classif_success_by_img)
-            # print(Acc)
+            print('E is {}'.format(E))
+            print('C is {}'.format(C))
+            print(Classif_success_by_img)
+            print(Acc)
     
             # E
     
@@ -566,7 +580,7 @@ def plot(plot_type,model_size,transform_type,prior_type,class_type,\
     
             fig, (axE, axC) = plt.subplots(2)
             fig.suptitle("{}  {}  {} eval classif type={}     ".format(pcmod.p.unit_act,prior_type,tiling,eval_class_type)+'\n'\
-            +'Eavg={} '.format(Eavg)+'Emin={} '.format(Emin)+ 'Cavg={} '.format(Cavg) +'Cmin={} '.format(Cmin)+ 'Acc={} '.format(Acc))
+            +'Eavg={} '.format(Eavg)+'Emin={} '.format(Emin)+ 'Cavg={} '.format(Cavg) +'Cmin={} '.format(Cmin)+ 'Acc={} '.format(round(Acc,2)))
     
     
             # create labeled plot objects
@@ -580,7 +594,7 @@ def plot(plot_type,model_size,transform_type,prior_type,class_type,\
             # E plotting range is around 2000 if model is untrained; if trained on 100 images, E ~ 10; if trained on 1000 images, E ~ 1.
             axE.set_ylim(0, 2000)
             # C plotting range is around 20 if model is untrained; if trained on 100 images, E ~ 0.15; if trained on 1000 images, E ~ 0.05.
-            axC.set_ylim(0, 20)
+            axC.set_ylim(0, 35)
     
     
             axE.set_xlabel("Evaluation Image")
@@ -668,14 +682,14 @@ def plot(plot_type,model_size,transform_type,prior_type,class_type,\
             eval_class_type = pcmod.eval_class_type
             prior_type = pcmod.p.r_prior
             
-            # tiling stuff
-            is_tiled = pcmod.is_tiled
-            tile_offset = pcmod.p.tile_offset
+            # # tiling stuff
+            # is_tiled = pcmod.is_tiled
+            # tile_offset = pcmod.p.tile_offset
             
-            if is_tiled == True:
-                tiling = "tile_offset {}".format(tile_offset)
-            else:
-                tiling = " "
+            # if is_tiled == True:
+            #     tiling = "tile_offset {}".format(tile_offset)
+            # else:
+            #     tiling = " "
     
     
             """
@@ -683,9 +697,9 @@ def plot(plot_type,model_size,transform_type,prior_type,class_type,\
             """
     
             fig, (axE) = plt.subplots(1)
-            fig.suptitle("{}  {}  {} eval_class_type={}  {}  ".format(pcmod.p.unit_act,prior_type,tiling,eval_class_type,pcmod.p.hidden_sizes)+'\n'\
+            fig.suptitle("{}  {} eval_class_type={}  {}  ".format(pcmod.p.unit_act,prior_type,eval_class_type,pcmod.p.hidden_sizes)+'\n'\
             +'Eavg={} '.format(Eavg)+'Emin={} '.format(Emin)\
-            +'Cavg={} '.format(Cavg)+'Cmin={} '.format(Cmin) + 'Acc={} '.format(Acc))
+            +'Cavg={} '.format(Cavg)+'Cmin={} '.format(Cmin) + 'Acc={} '.format(round(Acc,2)))
     
     
             # set colors

@@ -31,9 +31,9 @@ prior_type = 'gauss'
 # prior_type = 'kurt'
 
 #classification method
-class_type = 'NC'
+# class_type = 'NC'
 # class_type = 'C1'
-# class_type = 'C2'
+class_type = 'C2'
 
 #trained or untrained
 trained = 'T'
@@ -47,8 +47,10 @@ num_epochs = '40e'
 # num_epochs = '-'
 
 #dataset trained on if trained (if not, use -)
-# training_dataset = 'tanh100x10'
-training_dataset = 'tanh100x10_size_24x24'
+training_dataset = 'tanh100x10'
+# training_dataset = 'tanh1000x10'
+# training_dataset = 'tanh_1000x10_size_24x24'
+# training_dataset = 'tanh100x10_size_24x24'
 # training_dataset = 'tanh10x10'
 # training_dataset = '-'
 
@@ -74,10 +76,13 @@ pred_dataset = '-'
 # extra_tag = 'randUo'
 # extra_tag = 'pipeline_test
 # extra_tag = 'tile_offset_6'
-extra_tag = 'tile_offset_6_poly_lr_0.05_lU_0.005_me40_pp1'
+# extra_tag = 'tile_offset_6_poly_lr_0.05_lU_0.005_me40_pp1'
+# extra_tag = 'tile_offset_6_poly_lr_0.005_lU_0.005_me40_pp1'
 # extra_tag = 'tile_offset_8'
 # extra_tag = 'tile_offset_0'
-# extra_tag = '-'
+# extra_tag = 'Uo_update_in_eval'
+extra_tag = '-'
+
 
 # load it
 pcmod_in = open('pc.{}.{}.{}.{}.{}.{}.{}.{}.{}.{}.{}.{}.pydb'.format(model_size,transform_type,prior_type,class_type,\
@@ -85,21 +90,33 @@ pcmod_in = open('pc.{}.{}.{}.{}.{}.{}.{}.{}.{}.{}.{}.{}.pydb'.format(model_size,
 pcmod = pickle.load(pcmod_in)
 pcmod_in.close()
 
-# # load data to evaluate against
+# # 1,000 MNIST images, 28x28
 # tanh_data_in = open('tanh_100x10.pydb','rb')
 # X_train, y_train, training_img, non_training_img, scrm_training_img, lena_pw, lena_zoom = pickle.load(tanh_data_in)
 # tanh_data_in.close()
 
-# load data to evaluate against
-tanh_tile_data_in = open('tanh_100x10_size_24x24.pydb','rb')
-X_train, y_train, training_img, non_training_img, scrm_training_img, lena_pw, lena_zoom = pickle.load(tanh_tile_data_in)
-tanh_tile_data_in.close()
+# # 1,000 FASHION MNIST images, 28x28
+# tanh_data_in = open('tanh_100x10_fashion_mnist.pydb','rb')
+# X_train, y_train, training_img, non_training_img, scrm_training_img, lena_pw, lena_zoom = pickle.load(tanh_data_in)
+# tanh_data_in.close()
+
+# 1,000 CIFAR-10 images, 28x28
+tanh_data_in = open('tanh_100x10_cifar10.pydb','rb')
+X_train, y_train, training_img, non_training_img, scrm_training_img, lena_pw, lena_zoom = pickle.load(tanh_data_in)
+tanh_data_in.close()
+
+# # 1,000 MNIST images, 24x24 (TILED)
+# tanh_tile_data_in = open('tanh_100x10_size_24x24.pydb','rb')
+# X_train, y_train, training_img, non_training_img, scrm_training_img, lena_pw, lena_zoom = pickle.load(tanh_tile_data_in)
+# tanh_tile_data_in.close()
 
 #output pickle naming
 
 #images evaluated against (must match tanh_data_in]
 # eval_dataset = 'tanh100x10'
-eval_dataset = 'tanh100x10_size_24x24'
+# eval_dataset = 'tanh100x10_size_24x24'
+# eval_dataset = 'tanh_100x10_fashion_mnist'
+eval_dataset = 'tanh_100x10_cifar10'
 # eval_dataset = 'tanh10x10'
 
 # print(X_train.shape)
@@ -133,6 +150,10 @@ do not touch evaluated = 'E'
 
 #evaluated is now true
 evaluated = 'E'
+
+# evaluating effectiveness of Uo update in eval loop
+extra_tag = 'Uo_update_in_eval'
+# extra_tag = '-'
 
 
 evaluation_out = open('pc.{}.{}.{}.{}.{}.{}.{}.{}.{}.{}.{}.{}.pydb'.format(model_size,transform_type,prior_type,class_type,\

@@ -1,35 +1,76 @@
-from keras.datasets import mnist
+from keras.datasets import mnist, cifar10, fashion_mnist
 from keras.utils import np_utils
 import cv2
 import numpy as np
 
 
-def get_mnist_data(frac_samp=None,return_test=False):
+def get_keras_data(dataset='mnist',frac_samp=None,return_test=False):
     '''
-    Returns MNIST training examples (and potentially test) data.  Images (X_train and
-    X_test) are returned in an array of n_samples x 28 x 28, and target patterns
-    (y_train and y_test) are n_samples x num_classes-length one hot vectors.
+    Returns MNIST, Fashion MNIST, or CIFAR-10 training examples (and potentially test) data.  
+    Images (X_train and X_test) are returned in an array of n_samples x 28 x 28 (CIFAR-10: n x 32 x 32), 
+    and target patterns (y_train and y_test) are n_samples x num_classes-length one hot vectors.
 
-    keras's mnist load returns 60,000 training samples and 10,000 test samples.
+    keras's mnist and fashion mnist load returns 60,000 training samples and 10,000 test samples.
     Set frac_samp to a number in [0,1] to reduce the proportion of samples
-    returned.
+    returned. CIFAR-10 load returns 50,000 training samples and 10,000 test samples. frac_samp applies
+    the same way here.
     '''
-    # read from Keras
-    (X_train,y_train),(X_test,y_test) = mnist.load_data()
-    # conversion of target patterns to one-hot vectors
-    y_test = np_utils.to_categorical(y_test)
-    y_train = np_utils.to_categorical(y_train)
-    # prune data
-    if frac_samp is not None:
-        n_train = int(np.ceil(frac_samp*X_train.shape[0]))
-        n_test = int(np.ceil(frac_samp*X_test.shape[0]))
+    if dataset == 'mnist':
+        # read from Keras
+        (X_train,y_train),(X_test,y_test) = mnist.load_data()
+        # conversion of target patterns to one-hot vectors
+        y_test = np_utils.to_categorical(y_test)
+        y_train = np_utils.to_categorical(y_train)
+        # prune data
+        if frac_samp is not None:
+            n_train = int(np.ceil(frac_samp*X_train.shape[0]))
+            n_test = int(np.ceil(frac_samp*X_test.shape[0]))
+        else:
+            n_train = X_train.shape[0]
+            n_test = X_test.shape[0]
+        # send it all back
+        if return_test:
+            return (X_train[:n_train,:,:].astype('float64'),y_train[:n_train,:].astype('float64')),(X_test[:n_test,:,:].astype('float64'),y_test[:n_test,:].astype('float64'))
+        return X_train[:n_train,:,:].astype('float64'),y_train[:n_train,:].astype('float64')
+    
+    elif dataset == 'fashion_mnist':
+        # read from Keras
+        (X_train,y_train),(X_test,y_test) = fashion_mnist.load_data()
+        # conversion of target patterns to one-hot vectors
+        y_test = np_utils.to_categorical(y_test)
+        y_train = np_utils.to_categorical(y_train)
+        # prune data
+        if frac_samp is not None:
+            n_train = int(np.ceil(frac_samp*X_train.shape[0]))
+            n_test = int(np.ceil(frac_samp*X_test.shape[0]))
+        else:
+            n_train = X_train.shape[0]
+            n_test = X_test.shape[0]
+        # send it all back
+        if return_test:
+            return (X_train[:n_train,:,:].astype('float64'),y_train[:n_train,:].astype('float64')),(X_test[:n_test,:,:].astype('float64'),y_test[:n_test,:].astype('float64'))
+        return X_train[:n_train,:,:].astype('float64'),y_train[:n_train,:].astype('float64')
+    
+    elif dataset == 'cifar10':
+        # read from Keras
+        (X_train,y_train),(X_test,y_test) = cifar10.load_data()
+        # conversion of target patterns to one-hot vectors
+        y_test = np_utils.to_categorical(y_test)
+        y_train = np_utils.to_categorical(y_train)
+        # prune data
+        if frac_samp is not None:
+            n_train = int(np.ceil(frac_samp*X_train.shape[0]))
+            n_test = int(np.ceil(frac_samp*X_test.shape[0]))
+        else:
+            n_train = X_train.shape[0]
+            n_test = X_test.shape[0]
+        # send it all back
+        if return_test:
+            return (X_train[:n_train,:,:].astype('float64'),y_train[:n_train,:].astype('float64')),(X_test[:n_test,:,:].astype('float64'),y_test[:n_test,:].astype('float64'))
+        return X_train[:n_train,:,:].astype('float64'),y_train[:n_train,:].astype('float64')
+    
     else:
-        n_train = X_train.shape[0]
-        n_test = X_test.shape[0]
-    # send it all back
-    if return_test:
-        return (X_train[:n_train,:,:].astype('float64'),y_train[:n_train,:].astype('float64')),(X_test[:n_test,:,:].astype('float64'),y_test[:n_test,:].astype('float64'))
-    return X_train[:n_train,:,:].astype('float64'),y_train[:n_train,:].astype('float64')
+        print("get_keras_data() arg dataset must == 'mnist', 'fashion_mnist', or 'cifar10'")
 
 
 def flatten_images(image_array):
