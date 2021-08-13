@@ -23,20 +23,20 @@ def main():
         k_r_sched = {'constant':{'initial':0.05}},
         k_U_sched = {'constant':{'initial':0.05}},
         k_o_sched = {'constant':{'initial':0.0005}})
-    
+
     # # TANH TILED polynomial
     # p = ModelParameters(unit_act='tanh',r_prior = 'gaussian', U_prior = 'gaussian', input_size=576,
     #     hidden_sizes = [36,32], num_epochs = 40, tile_offset = 6,
     #     k_r_sched = {'poly':{'initial':0.005,'max_epochs':40,'poly_power':1}},
     #     k_U_sched = {'poly':{'initial':0.005,'max_epochs':40,'poly_power':1}},
     #     k_o_sched = {'poly':{'initial':0.0005,'max_epochs':40,'poly_power':1}})
-    
-    
-    
-    
-    
-    
-    
+
+
+
+
+
+
+
 
     # #step decay learning rates for tanh model (has not been optimized)
     # p = ModelParameters(unit_act='tanh',r_prior = 'kurtotic', U_prior = 'kurtotic', input_size=576,
@@ -199,7 +199,7 @@ def main():
     # linear_data_in = open('linear_10x10.pydb','rb')
     # X_train, y_train, training_img, non_training_img, scrm_training_img, lena_pw, lena_zoom = pickle.load(linear_data_in)
     # linear_data_in.close()
-    
+
     # linear_tile_data_in = open('linear_100x10_size_24x24.pydb','rb')
     # X_train, y_train, training_img, non_training_img, scrm_training_img, lena_pw, lena_zoom = pickle.load(linear_tile_data_in)
     # linear_tile_data_in.close()
@@ -212,7 +212,7 @@ def main():
     # tanh_data_in = open('tanh_10x10.pydb','rb')
     # X_train, y_train, training_img, non_training_img, scrm_training_img, lena_pw, lena_zoom = pickle.load(tanh_data_in)
     # tanh_data_in.close()
-    
+
     # tanh_data_in = open('tanh_100x10.pydb','rb')
     # X_train, y_train, training_img, non_training_img, scrm_training_img, lena_pw, lena_zoom = pickle.load(tanh_data_in)
     # tanh_data_in.close()
@@ -224,7 +224,7 @@ def main():
     # tanh_data_in = open('tanh_1000x10.pydb','rb')
     # X_train, y_train, training_img, non_training_img, scrm_training_img, lena_pw, lena_zoom = pickle.load(tanh_data_in)
     # tanh_data_in.close()
-    
+
     # tanh_tile_data_in = open('tanh_1000x10_size_24x24.pydb','rb')
     # X_train, y_train, training_img, non_training_img, scrm_training_img, lena_pw, lena_zoom = pickle.load(tanh_tile_data_in)
     # tanh_tile_data_in.close()
@@ -247,7 +247,7 @@ def main():
 
     # instantiate and train tiled model
     tiled_pcmod = TiledPredictiveCodingClassifier(p)
-    
+
     # safeguard against training a non-tiled model
     if tiled_pcmod.is_tiled == True:
         tiled_pcmod.train(X_train, y_train)
@@ -258,7 +258,7 @@ def main():
     """
 
     # pickle output model
-    
+
     # pcmod_out = open('pc.{}.{}.{}.{}.{}.{}.{}.{}.{}.{}.{}.{}.pydb'.format(model_size,transform_type,prior_type,class_type,\
     #     trained,num_epochs,training_dataset, evaluated, eval_dataset, used_for_pred, pred_dataset,extra_tag),'wb')
     # pickle.dump(pcmod, pcmod_out)
@@ -276,10 +276,21 @@ def main():
 if __name__ == '__main__':
     # for unabridged cProfile readout in bash shell type: 'python -m cProfile main.py'
 
+    #Keep track of time
+    time_start = datetime.datetime.now()
+    print("Training start time: {}".format(time_start))
+
     main()
 
-    # for truncated cProfile readout in IDE, use logic below
+    #Print time taken to train
+    time_end = datetime.datetime.now()
+    time_taken = time_end - time_start
 
+    print("Training end time: {}".format(time_end))
+    print("Training took this much time: {}".format(time_taken))
+
+
+    # for truncated cProfile readout in IDE, use logic below
     # NOTE: fix this
     # pst = pstats.Stats('restats')
     # pst.strip_dirs().sort_stats(-1).print_stats()

@@ -242,12 +242,12 @@ class PredictiveCodingClassifier:
         pe = math.sqrt((self.r[layer_number-1]-self.f(self.U[layer_number].dot(self.r[layer_number]))[0]).T\
         .dot(self.r[layer_number-1]-self.f(self.U[layer_number].dot(self.r[layer_number]))[0]))
         return pe
-    
-    
+
+
     def predict_one_img(self,img_vec_2D):
-        
+
         print("using predict(2-dim_vec_input); single-image vec input at one time")
-        
+
         # print("Xshape is")
         # print(X.shape)
         self.n_pred_images = 1
@@ -324,11 +324,11 @@ class PredictiveCodingClassifier:
             self.prediction.append(prediction)
             self.prediction_errors_l1.append(self.pe_1)
             self.prediction_errors_l2.append(self.pe_2)
-    
+
         return self.prediction
-    
+
     def predict_mult_imgs(self,img_vec_3D):
-    
+
         print("using predict(3-dim_vec_input); multi-image vec input at one time")
 
         self.n_pred_images = img_vec_3D.shape[0]
@@ -401,39 +401,39 @@ class PredictiveCodingClassifier:
             self.prediction.append(prediction)
             self.prediction_errors_l1.append(self.pe_1)
             self.prediction_errors_l2.append(self.pe_2)
-        
+
         return self.prediction
 
 
     def do_not_classify(self,label,predicted_img):
         return None
-    
-       
+
+
     def classify_via_C1(self,label,predicted_img):
-        
+
         if np.argmax(softmax(predicted_img)) == np.argmax(label[:,None]):
             return 1
         else:
             return 0
-        
-        
+
+
     def classify_via_C2(self,label,predicted_img):
-        
+
         c2_output = self.U_o.dot(predicted_img)
-        
+
         if np.argmax(softmax(c2_output)) == np.argmax(label[:,None]):
             return 1
         else:
             return 0
-            
+
     def eval_online_reconstruction(self,image):
-      
+
         # layer 1 reconstruction
         fU1r1_l1 = tanh_trans(self.U[1].dot(self.r1s[0]))[0]
         #test number of r[1]s is correct (should = num prediction images)
         #print(len(pcmod.r1s))
         fU1r1_resize_l1 = fU1r1_l1.reshape(28,28)
-    
+
         # layer 2 reconstruction
         fU2r2 = tanh_trans(self.U[2].dot(self.prediction[0]))[0]
         # tests
@@ -442,12 +442,12 @@ class PredictiveCodingClassifier:
         # print("shape of U1 {}".format(pcmod.U[1]))
         fU1r1_l2 = tanh_trans(self.U[1].dot(fU2r2))[0]
         fU1r1_resize_l2 = fU1r1_l2.reshape(28,28)
-    
+
         # original image
         original_image = image.reshape(28,28)
         # # original image from other source
         # original_image = other_prediction_image_set[image].reshape(28,28)
-    
+
         # plot
         plt.subplot(131),plt.imshow(original_image, cmap='Greys'),plt.title('image #{} Original'.format(i+1))
         plt.xticks([]), plt.yticks([])
@@ -459,14 +459,14 @@ class PredictiveCodingClassifier:
         plt.xticks([]), plt.yticks([])
         # plt.colorbar(fraction=0.046, pad=0.04)
         plt.show()
-        
-        
+
+
     def eval_one_img(self,img_vec_2D,label,class_type='C2'):
-        
+
         self.n_eval_images = 1
         eval_class_types = {'C1':self.classify_via_C1,'C2':self.classify_via_C2}
         eval_class_types[class_type] = eval_classification_check
-        
+
         for i in range(0,self.n_eval_images):
             print("eval image{}".format(i+1))
             image = img_vec_2D
@@ -481,15 +481,15 @@ class PredictiveCodingClassifier:
             self.Classif_success_by_img.append(classif_hit_or_miss)
             #Optional: display image L1/L2 reconstructions online
             #eval_online_reconstruction(image)
-            
+
         num_correct = sum(self.Classif_success_by_img)
         self.acc_evaluation = (num_correct / self.n_eval_images) * 100
-        
+
         return self.E_per_image,self.C_per_image,self.Classif_success_by_img,self.acc_evaluation
-    
-        
+
+
     def eval_mult_imgs(self,img_vec_3D,labels,class_type='C2'):
-        
+
         self.n_eval_images = img_vec_3D.shape[0]
         eval_class_types = {'C1':self.classify_via_C1,'C2':self.classify_via_C2}
         eval_class_types[class_type] = eval_classification_check
@@ -509,13 +509,13 @@ class PredictiveCodingClassifier:
             self.Classif_success_by_img.append(classif_hit_or_miss)
             #Optional: display image L1/L2 reconstructions online
             #eval_online_reconstruction(image)
-            
+
         num_correct = sum(self.Classif_success_by_img)
         self.acc_evaluation = (num_correct / self.n_eval_images) * 100
-        
+
         return self.E_per_image,self.C_per_image,self.Classif_success_by_img,self.acc_evaluation
 
-        
+
     def train(self,X,Y,class_type='C2'):
         '''
         X: matrix of input patterns (N_patterns x input_size)
@@ -528,13 +528,13 @@ class PredictiveCodingClassifier:
         # number of hidden layers
         n = self.n_hidden_layers
         self.class_type = class_type
-        
+
         #Set classification functions
         class_types = {'NC':self.do_not_classify,'C1':self.classify_via_C1,'C2':self.classify_via_C2}
         class_types[class_type] = classification_check
         class_costs = {'NC':self.class_cost_nc,'C1':self.class_cost_1,'C2':self.class_cost_2}
         class_costs[class_type] = classification_cost
-            
+
         print("*** Training ***")
         print('\n')
 
@@ -613,7 +613,7 @@ class PredictiveCodingClassifier:
                 * self.U[n].T.dot(self.f(self.U[n].dot(self.r[n]))[1].dot(self.r[n-1] - self.f(self.U[n].dot(self.r[n]))[0])) \
                 - (k_r / 2) * self.g(self.r[n],self.p.alpha[n])[1] \
                 # classification term
-                + (k_r / 2) * (self.U_o.T.dot(label[:,None]) - self.U_o.T.dot(softmax(self.U_o.dot(self.r[n]))))
+                + (k_o / 2) * (self.U_o.T.dot(label[:,None]) - self.U_o.T.dot(softmax(self.U_o.dot(self.r[n]))))
 
                 # U[n] update (C1, C2) (identical to U[i], except index numbers)
                 self.U[n] = self.U[n] + (k_U / self.p.sigma_sq[n]) \
@@ -638,7 +638,7 @@ class PredictiveCodingClassifier:
                 C = classification_cost(label)
                 E = E + C
                 # print('totalE image {} is {}'.format(image+1,E))
-            
+
                 if classification_check(label,self.r[n]) == 1:
                     self.num_correct += 1
 
@@ -685,13 +685,13 @@ class PredictiveCodingClassifier:
 
         # set learning rate for r
         k_r = 0.05
-        
+
         predict_mult_or_one = {2:self.predict_one_img,3:self.predict_mult_imgs}
-        
+
         predict_mult_or_one[img_vec_dims] = working_predict_fxn
-        
+
         working_predict_fxn(X)
-        
+
         return self.prediction
 
 
@@ -707,11 +707,11 @@ class PredictiveCodingClassifier:
         self.Classif_success_by_img = []
         self.acc_evaluation = 0
         self.eval_class_type = eval_class_type
-        
+
         evaluate_mult_or_one = {2:self.eval_one_img,3:self.eval_mult_imgs}
-        
+
         evaluate_mult_or_one[img_vec_dims] = working_evaluate_fxn
-        
+
         working_evaluate_fxn(X,Y,class_type)
 
         return self.E_per_image,self.C_per_image,self.Classif_success_by_img,self.acc_evaluation
@@ -842,7 +842,7 @@ class TiledPredictiveCodingClassifier:
         # for a total of (864,32) when stacked vertically (axis=0)
         self.U[1] = np.array([self.U1[0], self.U1[1], self.U1[2]])
         print('shape of U[1] init is {}'.format(self.U[1].shape))
-        
+
         print('\n')
         print("*** Predictive Coding Classifier ***")
         print('\n')
