@@ -255,11 +255,13 @@ def cut(image_array, tile_offset, flat=True):
         print('flat must = True or False bool')
         return
 
-def set_model_pkl_name(pc_obj, img_set_attrs, operation='training', extra_tag):
+def set_model_pkl_name(pc_obj, img_set_attrs=(), used_in_which_script='training',name_components_so_far=None, extra_tag):
     """ Sets output pickle name of a PC model object based on its class attributes,
     the image set trained, evaluated or predicted against, and an optional extra tag.
-    Returns a 17 item tuple (the name components). operation tells the function whether
-    to associate img_set_attrs with a training, evaluation, or prediction image set. """
+    Returns a 17 item tuple (the name components). used_in_which_script tells the function whether
+    to associate img_set_attrs with a training, evaluation, or prediction image set. name_components_so_far
+    allow image set name variables to "travel" with the model (e.g. from training to evaluation)
+    and still be included in its name. """
     name_components = []
 
     #1.Tiling
@@ -324,7 +326,7 @@ def set_model_pkl_name(pc_obj, img_set_attrs, operation='training', extra_tag):
     elif type(pc_obj.training_time) == tuple:
         trained = 'T'
     else:
-        print("PC model object training_time must be either 0 (int) or a tuple of datetime objects \
+        print("T or nt: PC model object training_time must be either 0 (int) or a tuple of datetime objects \
         in the format (tstart,tend,telapsed)")
     name_components.append(trained)
 
@@ -338,53 +340,57 @@ def set_model_pkl_name(pc_obj, img_set_attrs, operation='training', extra_tag):
 
     #9.Training image set, if any
     if trained == 'T':
-        tset = ''
-        #Image source
-        if img_set_attrs[0] == 'mnist':
-            tset += 'M'
-        elif img_set_attrs[0] == 'fashion_mnist':
-            tset += 'FM'
-        elif img_set_attrs[0] == 'cifar10':
-            tset += 'C'
+        if used_in_which_script == 'training':
+            tset = ''
+            #Image source
+            if img_set_attrs[0] == 'mnist':
+                tset += 'M'
+            elif img_set_attrs[0] == 'fashion_mnist':
+                tset += 'FM'
+            elif img_set_attrs[0] == 'cifar10':
+                tset += 'C'
+            else:
+                print("tset: img_set_attrs[0] must be 'mnist', 'fashion_mnist', or 'cifar10'")
+            #Preprocessing
+            if img_set_attrs[1] == 'tanh':
+                tset += 't'
+            elif img_set_attrs[1] == 'linear':
+                test += 'l'
+            else:
+                print("tset: img_set_attrs[1] must be either 'tanh' or 'linear'")
+            #Size
+            if img_set_attrs[2] == '28x28':
+                tset += '28'
+            elif img_set_attrs[2] == '24x24':
+                tset += '24'
+            else:
+                print("tset: img_set_attrs[2] must be either '28x28' (for non-tiled model) or '24x24' (for tiled model)")
+            #Number of images
+            total_imgs = img_set_attrs[3]
+            evenly_dist = img_set_attrs[4]
+            num_imgs = ''
+            if evenly_dist == True:
+                num_imgs += str(total_imgs/10) + 'x' + '10'
+            elif evenly_dist == False:
+                num_imgs += str(total_imgs)
+            else:
+                print("tset: img_set_attrs[4] must be either True or False")
+            tset += 'num_imgs'
+            #From Train or Test set
+            #attrs[5] should be 'tr' or 'ts'
+            train_or_test = img_set_attrs[5]
+            tset += train_or_test
+            name_components.append(tset)
+        elif used_in_which_script == 'evaluation' or used_in_which_script == 'prediction' or used_in_which_script == 'plotting':
+            tset = name_components_so_far[8]
+            name_components.append(tset)
         else:
-            print("img_set_attrs[0] must be 'mnist', 'fashion_mnist', or 'cifar10'")
-        #Preprocessing
-        if img_set_attrs[1] == 'tanh':
-            tset += 't'
-        elif img_set_attrs[1] == 'linear':
-            test += 'l'
-        else:
-            print("img_set_attrs[1] must be either 'tanh' or 'linear'")
-        #Size
-        if img_set_attrs[2] == '28x28':
-            tset += '28'
-        elif img_set_attrs[2] == '24x24':
-            tset += '24'
-        else:
-            print("img_set_attrs[2] must be either '28x28' (for non-tiled model) or '24x24' (for tiled model)")
-        #Number of images
-        total_imgs = img_set_attrs[3]
-        evenly_dist = img_set_attrs[4]
-        num_imgs = ''
-        if evenly_dist == True:
-            num_imgs += str(total_imgs/10) + 'x' + '10'
-        elif evenly_dist == False:
-            num_imgs += str(total_imgs)
-        else:
-            print("img_set_attrs[4] must be either True or False")
-        tset += 'num_imgs'
-        #From Train or Test set
-        #attrs[5] should be 'tr' or 'ts'
-        train_or_test = img_set_attrs[5]
-        tset += train_or_test
-        name_components.append(tset)
-
+            print("(training image set portion error) this function must be called in either the 'training' (main.py), 'evaluation', or 'prediction' script")
     elif trained == 'nt':
         tset = '-'
         name_components.append(tset)
-
     else:
-        print("The name component variable named 'trained', as called during Training image set name setup, must be either 'T' or 'nt'")
+        print("Set T-set name: the name component variable named 'trained' must be either 'T' or 'nt'")
 
     #10.Learning rate (called k, or LR) r
     k_r_list = list(self.p.k_r_sched.items())
@@ -488,61 +494,283 @@ def set_model_pkl_name(pc_obj, img_set_attrs, operation='training', extra_tag):
     elif type(pc_obj.evaluation_time) == tuple:
         evaluated = 'E'
     else:
-        print("PC model object evaluation_time must be either 0 (int) or a tuple of datetime objects \
+        print("E or ne: PC model object evaluation_time must be either 0 (int) or a tuple of datetime objects \
         in the format (tstart,tend,telapsed)")
 
     #14.Evaluation image set
     if evaluated == 'E':
-        eset = ''
-        #Image source
-        if img_set_attrs[0] == 'mnist':
-            tset += 'M'
-        elif img_set_attrs[0] == 'fashion_mnist':
-            tset += 'FM'
-        elif img_set_attrs[0] == 'cifar10':
-            tset += 'C'
+        if used_in_which_script == "evaluation":
+            eset = ''
+            #Image source
+            if img_set_attrs[0] == 'mnist':
+                eset += 'M'
+            elif img_set_attrs[0] == 'fashion_mnist':
+                eset += 'FM'
+            elif img_set_attrs[0] == 'cifar10':
+                eset += 'C'
+            else:
+                print("eset: img_set_attrs[0] must be 'mnist', 'fashion_mnist', or 'cifar10'")
+            #Preprocessing
+            if img_set_attrs[1] == 'tanh':
+                eset += 't'
+            elif img_set_attrs[1] == 'linear':
+                eset += 'l'
+            else:
+                print("eset: img_set_attrs[1] must be either 'tanh' or 'linear'")
+            #Size
+            if img_set_attrs[2] == '28x28':
+                eset += '28'
+            elif img_set_attrs[2] == '24x24':
+                eset += '24'
+            else:
+                print("eset: img_set_attrs[2] must be either '28x28' (for non-tiled model) or '24x24' (for tiled model)")
+            #Number of images
+            total_imgs = img_set_attrs[3]
+            evenly_dist = img_set_attrs[4]
+            num_imgs = ''
+            if evenly_dist == True:
+                num_imgs += str(total_imgs/10) + 'x' + '10'
+            elif evenly_dist == False:
+                num_imgs += str(total_imgs)
+            else:
+                print("eset: img_set_attrs[4] must be either True or False")
+            eset += 'num_imgs'
+            #From Train or Test set
+            #attrs[5] should be 'tr' or 'ts'
+            train_or_test = img_set_attrs[5]
+            eset += train_or_test
+            name_components.append(eset)
+        elif: used_in_which_script == 'prediction' or used_in_which_script == 'plotting' or used_in_which_script == 'training':
+            eset = name_components_so_far[13]
+            name_components.append(eset)
         else:
-            print("img_set_attrs[0] must be 'mnist', 'fashion_mnist', or 'cifar10'")
-        #Preprocessing
-        if img_set_attrs[1] == 'tanh':
-            tset += 't'
-        elif img_set_attrs[1] == 'linear':
-            test += 'l'
-        else:
-            print("img_set_attrs[1] must be either 'tanh' or 'linear'")
-        #Size
-        if img_set_attrs[2] == '28x28':
-            tset += '28'
-        elif img_set_attrs[2] == '24x24':
-            tset += '24'
-        else:
-            print("img_set_attrs[2] must be either '28x28' (for non-tiled model) or '24x24' (for tiled model)")
-        #Number of images
-        total_imgs = img_set_attrs[3]
-        evenly_dist = img_set_attrs[4]
-        num_imgs = ''
-        if evenly_dist == True:
-            num_imgs += str(total_imgs/10) + 'x' + '10'
-        elif evenly_dist == False:
-            num_imgs += str(total_imgs)
-        else:
-            print("img_set_attrs[4] must be either True or False")
-        tset += 'num_imgs'
-        #From Train or Test set
-        #attrs[5] should be 'tr' or 'ts'
-        train_or_test = img_set_attrs[5]
-        tset += train_or_test
-        name_components.append(tset)
-
-    elif trained == 'nt':
-        tset = '-'
-        name_components.append(tset)
-
+            print("(evaluation image set portion error) this function must be called in either the 'training' (main.py), 'evaluation', or 'prediction' script")
+    elif evaluated == 'ne':
+        eset = '-'
+        name_components.append(eset)
     else:
-        print("The name component variable named 'trained', as called during Training image set name setup, must be either 'T' or 'nt'")
+        print("The name component variable named 'evaluated', as called during Evaluation image set name setup, must be either 'E' or 'ne'")
 
+    #15.Used for Prediction, or not
+    #prediction_time = 0 unless the model has been used for prediction, in which case it becomes
+    #a tuple of 3 datetime objects.
+    if type(pc_obj.prediction_time) == int:
+        predicted_with = 'np'
+    elif type(pc_obj.prediction_time) == tuple:
+        predicted_with = 'P'
+    else:
+        print("P or np: PC model object prediction_time must be either 0 (int) or a tuple of datetime objects \
+        in the format (tstart,tend,telapsed)")
 
+    #16.Prediction image set
+    if predicted_with == 'P':
+        if used_in_which_script == "prediction":
+            pset = ''
+            #Image source
+            if img_set_attrs[0] == 'mnist':
+                pset += 'M'
+            elif img_set_attrs[0] == 'fashion_mnist':
+                pset += 'FM'
+            elif img_set_attrs[0] == 'cifar10':
+                pset += 'C'
+            else:
+                print("pset: img_set_attrs[0] must be 'mnist', 'fashion_mnist', or 'cifar10'")
+            #Preprocessing
+            if img_set_attrs[1] == 'tanh':
+                pset += 't'
+            elif img_set_attrs[1] == 'linear':
+                pset += 'l'
+            else:
+                print("pset: img_set_attrs[1] must be either 'tanh' or 'linear'")
+            #Size
+            if img_set_attrs[2] == '28x28':
+                pset += '28'
+            elif img_set_attrs[2] == '24x24':
+                pset += '24'
+            else:
+                print("pset: img_set_attrs[2] must be either '28x28' (for non-tiled model) or '24x24' (for tiled model)")
+            #Number of images
+            total_imgs = img_set_attrs[3]
+            evenly_dist = img_set_attrs[4]
+            num_imgs = ''
+            if evenly_dist == True:
+                num_imgs += str(total_imgs/10) + 'x' + '10'
+            elif evenly_dist == False:
+                num_imgs += str(total_imgs)
+            else:
+                print("pset: img_set_attrs[4] must be either True or False")
+            pset += 'num_imgs'
+            #From Train or Test set
+            #attrs[5] should be 'tr' or 'ts'
+            train_or_test = img_set_attrs[5]
+            pset += train_or_test
+            name_components.append(eset)
+        elif: used_in_which_script == 'evaluation' or used_in_which_script == 'training' or used_in_which_script = 'plotting':
+            pset = name_components_so_far[15]
+            name_components.append(pset)
+        else:
+            print("(prediction image set portion error) this function must be called in either the 'training' (main.py), 'evaluation', or 'prediction' script")
+    elif predicted_with == 'np':
+        pset = '-'
+        name_components.append(pset)
+    else:
+        print("The name component variable named 'predicted_with', as called during Prediction image set name setup, must be either 'P' or 'np'")
 
+    #17.Extra tag
+    extra_tag = extra_tag
+    name_components.append(extra_tag)
 
+    #Make immutable
     name_components = tuple(name_components)
+
     return name_components
+
+def import_pickled_pc_model(tiled=False, toffset=6, hlsizes=[32,32],act_fxn='tanh',rprior='g',Uprior='g',class_type='NC',trained=True,batch_size=1,\
+                num_epochs=40,tset='Mt28_100x10tr',kr=('c',0.05,None,None),kU=('c',0.05,None,None),ko=('c',0.05,None,None),evaluated=False,eset='Mt28_100x10tr',\
+                predicted_with=False,pset='Mt28_100x10tr',extra_tag='-'):
+
+    name_components_from_args = []
+
+    #Tiling
+    if tiled == True:
+        tiling = 'TL' + str(toffset)
+    else:
+        tiling = 'ntl'
+    name_components_from_args.append(tiling)
+
+    #HLs
+    hidden_layers = str(hlsizes)
+    name_components_from_args.append(hidden_layers)
+
+    #Activation
+    name_components_from_args.append(act_fxn)
+
+    #Priors
+    priors = 'r'+rprior+'U'+Uprior
+    name_components_from_args.append(priors)
+
+    #Classification type
+    name_components_from_args.append(class_type)
+
+    #Trained or not
+    if trained == True:
+        train = 'T'
+    else:
+        train = 'nt'
+    name_components_from_args.append(train)
+
+    #Batch size
+    batch = 'b'+str(batch_size)
+    name_components_from_args.append(batch)
+
+    #Num epochs
+    epochs = str(num_epochs) + 'e'
+    name_components_from_args.append(epochs)
+
+    #Training set
+    if trained == True:
+        t_set = tset
+    else:
+        t_set = '-'
+    name_components_from_args.append(t_set)
+
+    #Learning rate r
+    if kr[0] == 'c':
+        lr_r = kr[0] + str(kr[1])
+    elif kr[0] == 'p':
+        lr_r = kr[0] + str(kr[1]) + 'm' + str(kr[2]) + 'p' + str(kr[3])
+    else:
+        lr_r = kr[0] + str(kr[1]) + 'd' + str(kr[2]) + 'e' + str(kr[3])
+    name_components_from_args.append(lr_r)
+
+    #Learning rate U
+    if kU[0] == 'c':
+        lr_U = kU[0] + str(kU[1])
+    elif kU[0] == 'p':
+        lr_U = kU[0] + str(kU[1]) + 'm' + str(kU[2]) + 'p' + str(kU[3])
+    else:
+        lr_U = kU[0] + str(kU[1]) + 'd' + str(kU[2]) + 'e' + str(kU[3])
+    name_components_from_args.append(lr_U)
+
+    #Learning rate o
+    if ko[0] == 'c':
+        lr_o = ko[0] + str(ko[1])
+    elif ko[0] == 'p':
+        lr_o = kr[0] + str(ko[1]) + 'm' + str(ko[2]) + 'p' + str(ko[3])
+    else:
+        lr_o = ko[0] + str(ko[1]) + 'd' + str(ko[2]) + 'e' + str(ko[3])
+    name_components_from_args.append(lr_o)
+
+    #Evaluated or not
+    if evaluated == True:
+        eval = 'E'
+    else:
+        eval = 'ne'
+    name_components_from_args.append(eval)
+
+    #Evaluation image set
+    if evaluated == True:
+        e_set = eset
+    else:
+        e_set = '-'
+    name_components_from_args.append(e_set)
+
+    #Predicted with or not
+    if predicted_with == True:
+        pred = 'P'
+    else:
+        pred = 'np'
+    name_components_from_args.append(pred)
+
+    #Prediction image set
+    if predicted_with == True:
+        p_set = pset
+    else:
+        p_set = '-'
+    name_components_from_args.append(p_set)
+
+    #Extra tag
+    name_components_from_args.append(extra_tag)
+
+    model_in = open('pc.pydb','rb')
+    model = pickle.load(model_in)
+    model_in.close()
+
+    name_components_from_args.append(extra_tag)
+
+    name = ''
+    for component in name_components_from_args:
+        name += component + '.'
+
+    model_in = open('pc.{}pydb'.format(name),'rb')
+    model = pickle.load(model_in)
+    model_in.close()
+
+    return model, name_components_from_args
+
+
+def import_pickled_img_set(source='mnist',act_fxn='tanh',size='28x28',num_imgs=1000,evenly_dist=True,train_or_test='tr'):
+
+    if evenly_dist == True:
+        num_classes = 10
+        num_instances = num_imgs / num_classes
+
+        img_set_in = open('{}_{}_{}x{}_{}.pydb'.format(source,act_fxn,num_instances,num_classes,size),'rb')
+        image_set = pickle.load(img_set_in)
+        img_set_in.close()
+
+        img_set_attrs = (source, act_fxn, size, num_imgs, evenly_dist, train_or_test)
+
+        return image_set, img_set_attrs
+
+    elif evenly_dist == False:
+
+        img_set_in = open('{}_{}_{}_{}.pydb'.format(source,act_fxn,num_imgs,size),'rb')
+        image_set = pickle.load(img_set_in)
+        img_set_in.close()
+
+        img_set_attrs = (source, act_fxn, size, num_imgs, evenly_dist, train_or_test)
+
+        return image_set, img_set_attrs
+
+    return image_set, img_set_attrs
