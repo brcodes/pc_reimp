@@ -34,6 +34,8 @@ class ModelParameters(object):
     unit_act = attr.ib(default="linear",validator=attr.validators.in_(['linear','tanh']))
     # classification cost type
     classification = attr.ib(default="NC",validator=attr.validators.in_(['NC','C1','C2']))
+    # classifcation cost boosting parameter
+    c_cost_param = attr.ib(default=1,validator=attr.validators.instance_of(int))
     # learning rate schedulers
     k_r_sched = attr.ib(kw_only=True,default={'constant':{'initial':0.0005}},validator=attr.validators.instance_of(dict))
     k_U_sched = attr.ib(kw_only=True,default={'constant':{'initial':0.005}},validator=attr.validators.instance_of(dict))

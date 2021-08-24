@@ -279,11 +279,6 @@ class PredictiveCodingClassifier:
             # print("fUr shape")
             # print((self.f(self.U[1].dot(self.r[1]))[0]).shape)
 
-            # initialize "output" layer o (for classification method 2 (C2))
-            self.o = np.random.randn(self.p.output_size,1)
-            # and final set of weights U_o to the output (C2)
-            self.U_o = np.random.randn(self.p.output_size,self.p.hidden_sizes[-1])
-
             # initialize new r's
             for layer in range(1,self.n_non_input_layers):
                 # self state per layer
@@ -461,7 +456,7 @@ class PredictiveCodingClassifier:
         plt.show()
 
 
-    def eval_one_img(self,img_vec_2D,label,class_type='C2'):
+    def eval_one_img(self,img_vec_2D,label,class_type=self.p.classification):
 
         self.n_eval_images = 1
         eval_class_types = {'C1':self.classify_via_C1,'C2':self.classify_via_C2}
@@ -488,7 +483,7 @@ class PredictiveCodingClassifier:
         return self.E_per_image,self.C_per_image,self.Classif_success_by_img,self.acc_evaluation
 
 
-    def eval_mult_imgs(self,img_vec_3D,labels,class_type='C2'):
+    def eval_mult_imgs(self,img_vec_3D,labels,class_type=self.p.classification):
 
         self.n_eval_images = img_vec_3D.shape[0]
         eval_class_types = {'C1':self.classify_via_C1,'C2':self.classify_via_C2}
@@ -515,8 +510,23 @@ class PredictiveCodingClassifier:
 
         return self.E_per_image,self.C_per_image,self.Classif_success_by_img,self.acc_evaluation
 
+    def rn_c_update_term(self,label,class_type=self.p.classification):
 
-    def train(self,X,Y,class_type='C2'):
+        c1_update_term = (k_o / 2) * (label[:,None] - softmax(self.r[n]))
+        c2_update_term = (k_o / 2) * (self.U_o.T.dot(label[:,None]) - self.U_o.T.dot(softmax(self.U_o.dot(self.r[n]))))
+        update_term_dict = {'NC':0,'C1':c1_update_term,'C2':c2_update_term}
+        rn_c_update_term = update_term_dict[class_type]
+
+        return rn_c_update_term
+
+    def Uo_o_updates(self,label):
+        self.o = np.exp(self.U_o.dot(self.r[n]))
+        self.U_o = self.U_o + label[:,None].dot(self.r[n].T) - len(label)*softmax((self.U_o.dot(self.r[n])).dot(self.r[n].T))
+
+        return
+
+
+    def train(self,X,Y,class_type=self.p.classification):
         '''
         X: matrix of input patterns (N_patterns x input_size)
         Y: matrix of output/target patterns (N_patterns x output_size)
@@ -528,6 +538,11 @@ class PredictiveCodingClassifier:
         # number of hidden layers
         n = self.n_hidden_layers
         self.class_type = class_type
+
+        # initialize "output" layer
+        self.o = np.random.randn(self.p.output_size,1)
+        # and final set of weights to the output
+        self.U_o = np.random.randn(self.p.output_size,self.p.hidden_sizes[-1])
 
         #Set classification functions
         class_types = {'NC':self.do_not_classify,'C1':self.classify_via_C1,'C2':self.classify_via_C2}
@@ -613,6 +628,8 @@ class PredictiveCodingClassifier:
                 * self.U[n].T.dot(self.f(self.U[n].dot(self.r[n]))[1].dot(self.r[n-1] - self.f(self.U[n].dot(self.r[n]))[0])) \
                 - (k_r / 2) * self.g(self.r[n],self.p.alpha[n])[1] \
                 # classification term
+                self.rn_c_update_term(label)
+
                 + (k_o / 2) * (self.U_o.T.dot(label[:,None]) - self.U_o.T.dot(softmax(self.U_o.dot(self.r[n]))))
 
                 # U[n] update (C1, C2) (identical to U[i], except index numbers)
@@ -620,19 +637,13 @@ class PredictiveCodingClassifier:
                 * (self.f(self.U[n].dot(self.r[n]))[1].dot(self.r[n-1] - self.f(self.U[n].dot(self.r[n]))[0])).dot(self.r[n].T) \
                 - (k_U / 2) * self.h(self.U[n],self.p.lam[n])[1]
 
-                """ U_o update (C2) """
-                self.o = np.exp(self.U_o.dot(self.r[n]))
-                self.U_o = self.U_o + label[:,None].dot(self.r[n].T) - len(label)*softmax((self.U_o.dot(self.r[n])).dot(self.r[n].T))
+                #Uo, o updates (this function does nothing if self.p.classification == 'NC' or 'C1')
+                self.Uo_o_updates(label)
 
                 # Loss function E
                 E = E + self.rep_cost()
                 # Eup = self.rep_cost()
                 # print('Eup image {} is {}'.format(image+1,Eup))
-
-                # """ Classifying using C1 """
-                # C = self.class_cost_1(label)
-                # E = E + C
-                # self.class_type = 'C1'
 
                 """ Classification """
                 C = classification_cost(label)
@@ -695,7 +706,7 @@ class PredictiveCodingClassifier:
         return self.prediction
 
 
-    def evaluate(self,X,Y,img_vec_dims=2,eval_class_type='C2'):
+    def evaluate(self,X,Y,img_vec_dims=2,eval_class_type=self.p.classification):
 
         """ evaluates model's E, C and classification accuracy in any state (trained, untrained)
         using any input data. X should be a matrix of shape [n_pred_images,:,:] or a single image of size [:,:]
@@ -1389,8 +1400,6 @@ class TiledPredictiveCodingClassifier:
                     self.U_o = np.random.randn(self.p.output_size,self.p.hidden_sizes[-1])
                     # designate label vector
                     label = Y_shuffled[image,:]
-
-
 
 
                     # loop through intermediate layers (will fail if number of hidden layers is 1)
