@@ -22,10 +22,10 @@ Comment-in the plot type
 # plot_type = 'trainingECAsplitplot'
 
 # # for models with same E,C scale
-plot_type = 'trainingECAoneplot'
+# plot_type = 'trainingECAoneplot'
 
 # # for models with different E,C scales
-# plot_type = 'evalECAsplitplot'
+plot_type = 'evalECAsplitplot'
 
 # # for models with same E,C scale
 # plot_type = 'evalECAoneplot'
@@ -45,7 +45,12 @@ MUST comment-in 'P' and a pred_dataset for predPEs plot
 # model_size = '[32.10]'
 # model_size = '[32.32]'
 # model_size = '[36.32]'
-model_size = '[36.10]'
+# model_size = '[36.10]'
+# model_size = '[128.10]'
+# model_size = '[128.128.10]'
+# model_size = '[128.128.128.10]'
+model_size = '[128.128.128.128.10]' 
+# model_size = '[1020.10]'
 # model_size = '[128.32]'
 # model_size = '[96.32]'
 # model_size = '[192.32]'
@@ -76,24 +81,30 @@ trained = 'T'
 # num_epochs = '50e'
 num_epochs = '40e'
 # num_epochs = '25e'
+# num_epochs = '20e'
 # num_epochs = '-'
 
 #dataset trained on if trained (if not, use -)
 training_dataset = 'tanh100x10'
+# training_dataset = 'tanh1000x10'
 # training_dataset = 'tanh100x10_size_24x24'
 # training_dataset = 'linear100x10_size_24x24'
 # training_dataset = 'tanh10x10'
 # training_dataset = '-'
 
 #evaluated or not evaluated with so far
-# evaluated = 'E'
-evaluated = 'ne'
+evaluated = 'E'
+# evaluated = 'ne'
 
 #images evaluated against, if evaluated (if not, use -)
 # eval_dataset = 'tanh100x10'
-# training_dataset = 'tanh100x10_size24x24'
+# eval_dataset = 'tanh100x10_fashion_mnist'
+eval_dataset = 'tanh100x10_cifar10'
+# eval_dataset = 'tanh100x10_size_24x24'
+# eval_dataset = 'tanh100x10_fashion_mnist_size_24x24'
+# eval_dataset = 'tanh100x10_cifar10_size_24x24'
 # eval_dataset = 'tanh10x10'
-eval_dataset = '-'
+# eval_dataset = '-'
 
 
 #used or not used for prediction so far
@@ -108,7 +119,7 @@ used_for_pred = 'np'
 pred_dataset = '-'
 
 #extra identifier for any particular or unique qualities of the model object
-extra_tag = 'randUo'
+# extra_tag = 'randUo'
 # extra_tag = 'scaled_ppixel'
 # extra_tag = 'pipeline_test'
 # extra_tag = 'tile_offset_6'
@@ -119,7 +130,6 @@ extra_tag = 'randUo'
 # extra_tag = 'tile_offset_6_lr_0.005_lU_0.005'
 # extra_tag = 'tile_offset_6_lr_0.0005_lU_0.0005'
 # extra_tag = 'tile_offset_6_poly_lr_0.05_lU_0.005_me40_pp1'
-# extra_tag = 'tile_offset_6_poly_lr_0.005_lU_0.005_me40_pp1'
 # extra_tag = 'tile_offset_6_poly_lr_0.005_lU_0.005_me40_pp1_randUo'
 # extra_tag = 'poly_lr_0.05_lU_0.005_me40_pp1'
 # extra_tag = 'tile_offset_6_poly_lr_0.05_lU_0.005_me20_pp1'
@@ -127,7 +137,14 @@ extra_tag = 'randUo'
 # extra_tag = 'tile_offset_6_step_lr_0.05_lU_0.005_df0.9_10'
 # extra_tag = 'tile_offset_6_step_0.005_df0.9_10'
 # extra_tag = 'const_lr_0.0005'
-# extra_tag = '-'
+# extra_tag = 'cboost_1'
+# extra_tag = 'cboost_5'
+# extra_tag = 'cboost_50'
+# extra_tag = 'cboost_100'
+# extra_tag = 'cboost_1000'
+# extra_tag = 'cboost_4000'
+# extra_tag = 'tile_offset_6_poly_lr_0.005_lU_0.005_me40_pp1'
+extra_tag = '-'
 
 
 """
@@ -211,7 +228,7 @@ def plot(plot_type,model_size,transform_type,prior_type,class_type,\
             plotE = ax.plot(num_epochs, representation_cost_by_epoch, '#000000', label="Avg E")
     
             # set E scale
-            ax.set_ylim(0, 5)
+            ax.set_ylim(0, 1000)
     
             # set axis names
             ax.set_xlabel("Epoch")
@@ -468,8 +485,8 @@ def plot(plot_type,model_size,transform_type,prior_type,class_type,\
             # set limits for and label x,y-axes for both subplots
     
             # axE.set_xlim(0, 2)
-            axE.set_ylim(0, 2)
-            twinEA.set_ylim(0, 150)
+            axE.set_ylim(0, 1000)
+            twinEA.set_ylim(0, 110)
     
             axE.set_xlabel("Epoch")
             axE.set_ylabel("Avg E, Avg C")
@@ -542,7 +559,7 @@ def plot(plot_type,model_size,transform_type,prior_type,class_type,\
     
     
             # Acc
-            Acc = Acc
+            Acc = round(Acc,2)
     
             # general variables
             eval_class_type = pcmod.eval_class_type
@@ -580,7 +597,7 @@ def plot(plot_type,model_size,transform_type,prior_type,class_type,\
             # E plotting range is around 2000 if model is untrained; if trained on 100 images, E ~ 10; if trained on 1000 images, E ~ 1.
             axE.set_ylim(0, 2000)
             # C plotting range is around 20 if model is untrained; if trained on 100 images, E ~ 0.15; if trained on 1000 images, E ~ 0.05.
-            axC.set_ylim(0, 20)
+            axC.set_ylim(0, 100)
     
     
             axE.set_xlabel("Evaluation Image")

@@ -4,7 +4,6 @@ import numpy as np
 import pickle
 import cProfile
 import pstats
-import re
 
 
 
@@ -19,14 +18,14 @@ def main():
     # TANH NON-TILED constant
     # r 0.05, U 0.05 o 0.05
     p = ModelParameters(unit_act='tanh',r_prior = 'gaussian', U_prior = 'gaussian', input_size=784,
-        hidden_sizes = [36,10], num_epochs = 40,
+        hidden_sizes = [128,128,10], c_cost_param = 1, num_epochs = 40,
         k_r_sched = {'constant':{'initial':0.05}},
         k_U_sched = {'constant':{'initial':0.05}},
-        k_o_sched = {'constant':{'initial':0.0005}})
+        k_o_sched = {'constant':{'initial':0.00005}})
     
     # # TANH TILED polynomial
     # p = ModelParameters(unit_act='tanh',r_prior = 'gaussian', U_prior = 'gaussian', input_size=576,
-    #     hidden_sizes = [36,10], num_epochs = 40, tile_offset = 6,
+    #     hidden_sizes = [1020,10], num_epochs = 20, tile_offset = 6,
     #     k_r_sched = {'poly':{'initial':0.005,'max_epochs':40,'poly_power':1}},
     #     k_U_sched = {'poly':{'initial':0.005,'max_epochs':40,'poly_power':1}},
     #     k_o_sched = {'poly':{'initial':0.0005,'max_epochs':40,'poly_power':1}})
@@ -97,7 +96,12 @@ def main():
     # model_size = '[32.10]'
     # model_size = '[32.32]'
     # model_size = '[36.32]'
-    model_size = '[36.10]'
+    # model_size = '[36.10]'
+    # model_size = '[128.10]'
+    # model_size = '[1020.10]'
+    model_size = '[128.128.10]'
+    # model_size = '[128.128.128.10]'
+    # model_size = '[128.128.128.128.10]'
     # model_size = '[128.32]'
     # model_size = '[96.32]'
     # model_size = '[192.32]'
@@ -127,10 +131,12 @@ def main():
     # num_epochs = '50e'
     num_epochs = '40e'
     # num_epochs = '25e'
+    # num_epochs = '20e'
     # num_epochs = '-'
 
     #dataset trained on if trained (if not, use -)
     training_dataset = 'tanh100x10'
+    # training_dataset = 'tanh1000x10'
     # training_dataset = 'tanh100x10_size_24x24'
     # training_dataset = 'linear100x10_size_24x24'
     # training_dataset = 'tanh10x10'
@@ -155,7 +161,7 @@ def main():
     pred_dataset = '-'
 
     #extra identifier for any particular or unique qualities of the model object
-    extra_tag = 'randUo'
+    # extra_tag = 'randUo'
     # extra_tag = 'pipeline_test'
     # extra_tag = 'tile_offset_6_lr_0.5_lU_0.005'
     # extra_tag = 'tile_offset_6_lr_0.5_lU_0.0005'
@@ -177,7 +183,14 @@ def main():
     # extra_tag = 'tile_offset_6'
     # extra_tag = 'tile_offset_8'
     # extra_tag = 'tile_offset_0'
-    # extra_tag = '-'
+    # extra_tag = 'cboost_1'
+    # extra_tag = 'cboost_5'
+    # extra_tag = 'cboost_50'
+    # extra_tag = 'cboost_100'
+    # extra_tag = 'cboost_1000'
+    # extra_tag = 'cboost_4000'
+    # extra_tag = 'tile_offset_6_poly_lr_0.005_lU_0.005_me40_pp1'
+    extra_tag = '-'
 
     """
     Pickle In Training Image Set
@@ -245,7 +258,7 @@ def main():
     Pickle Out Trained or Untrained Model
     """
 
-    # pickle output model
+    # # pickle output model
     
     pcmod_out = open('pc.{}.{}.{}.{}.{}.{}.{}.{}.{}.{}.{}.{}.pydb'.format(model_size,transform_type,prior_type,class_type,\
         trained,num_epochs,training_dataset, evaluated, eval_dataset, used_for_pred, pred_dataset,extra_tag),'wb')
