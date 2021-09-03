@@ -1,10 +1,11 @@
 from parameters import ModelParameters
-from model import PredictiveCodingClassifier, TiledPredictiveCodingClassifier
+from model_c1 import TiledPredictiveCodingClassifier
 import numpy as np
 import pickle
 import cProfile
 import pstats
 import datetime
+
 
 
 def main():
@@ -15,27 +16,17 @@ def main():
 
     # create and modify model parameters
 
-    # TANH NON-TILED constant
-    # r 0.05, U 0.05 o 0.05
-    p = ModelParameters(unit_act='tanh',r_prior = 'gaussian', U_prior = 'gaussian', input_size=784,
-        hidden_sizes = [128,128,10], c_cost_param = 1, num_epochs = 40,
-        k_r_sched = {'constant':{'initial':0.05}},
-        k_U_sched = {'constant':{'initial':0.05}},
-        k_o_sched = {'constant':{'initial':0.00005}})
+    # TANH TILED polynomial
+    p = ModelParameters(unit_act='tanh',r_prior = 'gaussian', U_prior = 'gaussian', input_size=576,
+        hidden_sizes = [18432,10], classification = 'C1', num_epochs = 10, tile_offset = 6,
+        k_r_sched = {'poly':{'initial':0.005,'max_epochs':40,'poly_power':1}},
+        k_U_sched = {'poly':{'initial':0.005,'max_epochs':40,'poly_power':1}},
+        k_o_sched = {'poly':{'initial':0.0005,'max_epochs':40,'poly_power':1}})
 
-    # # TANH TILED polynomial
-    # p = ModelParameters(unit_act='tanh',r_prior = 'gaussian', U_prior = 'gaussian', input_size=576,
-    #     hidden_sizes = [1020,10], num_epochs = 20, tile_offset = 6,
-    #     k_r_sched = {'poly':{'initial':0.005,'max_epochs':40,'poly_power':1}},
-    #     k_U_sched = {'poly':{'initial':0.005,'max_epochs':40,'poly_power':1}},
-    #     k_o_sched = {'poly':{'initial':0.0005,'max_epochs':40,'poly_power':1}})
-
-
-
-
-
-
-
+    # model_size = '[36.10]'
+    # model_size = '[288.10]'
+    # model_size = '[2304.10]'
+    model_size = '[18432.10]'
 
     # #step decay learning rates for tanh model (has not been optimized)
     # p = ModelParameters(unit_act='tanh',r_prior = 'kurtotic', U_prior = 'kurtotic', input_size=576,
@@ -92,21 +83,6 @@ def main():
 
     # "-" serves as a placeholder for "not present"
 
-    #model size
-    # model_size = '[32.10]'
-    # model_size = '[32.32]'
-    # model_size = '[36.32]'
-    # model_size = '[36.10]'
-    # model_size = '[128.10]'
-    # model_size = '[1020.10]'
-    model_size = '[128.128.10]'
-    # model_size = '[128.128.128.10]'
-    # model_size = '[128.128.128.128.10]'
-    # model_size = '[128.32]'
-    # model_size = '[96.32]'
-    # model_size = '[192.32]'
-
-
     #transformation function
     transform_type = 'tanh'
     # transform_type = 'linear'
@@ -117,8 +93,8 @@ def main():
 
     #classification method
     # class_type = 'NC'
-    # class_type = 'C1'
-    class_type = 'C2'
+    class_type = 'C1'
+    # class_type = 'C2'
 
     #will be trained or untrained
     trained = 'T'
@@ -129,15 +105,16 @@ def main():
     # num_epochs = '200e'
     # num_epochs = '100e'
     # num_epochs = '50e'
-    num_epochs = '40e'
+    # num_epochs = '40e'
     # num_epochs = '25e'
     # num_epochs = '20e'
+    num_epochs = '10e'
     # num_epochs = '-'
 
     #dataset trained on if trained (if not, use -)
-    training_dataset = 'tanh100x10'
+    # training_dataset = 'tanh100x10'
     # training_dataset = 'tanh1000x10'
-    # training_dataset = 'tanh100x10_size_24x24'
+    training_dataset = 'tanh100x10_size_24x24'
     # training_dataset = 'linear100x10_size_24x24'
     # training_dataset = 'tanh10x10'
     # training_dataset = '-'
@@ -189,8 +166,8 @@ def main():
     # extra_tag = 'cboost_100'
     # extra_tag = 'cboost_1000'
     # extra_tag = 'cboost_4000'
-    # extra_tag = 'tile_offset_6_poly_lr_0.005_lU_0.005_me40_pp1'
-    extra_tag = '-'
+    extra_tag = 'tile_offset_6_poly_lr_0.005_lU_0.005_me40_pp1'
+    # extra_tag = '-'
 
     """
     Pickle In Training Image Set
@@ -201,10 +178,6 @@ def main():
     # for a linear model training on a linear-optimized training set of 10digs x 10imgs open "linear_10x10.pydb"
     # comment out the below three lines if using tanh model
 
-    # linear_data_in = open('linear_10x10.pydb','rb')
-    # X_train, y_train, training_img, non_training_img, scrm_training_img, lena_pw, lena_zoom = pickle.load(linear_data_in)
-    # linear_data_in.close()
-
     # linear_tile_data_in = open('linear_100x10_size_24x24.pydb','rb')
     # X_train, y_train, training_img, non_training_img, scrm_training_img, lena_pw, lena_zoom = pickle.load(linear_tile_data_in)
     # linear_tile_data_in.close()
@@ -214,21 +187,10 @@ def main():
     # for 1000x10, use the associated tanh_1000x10.pydb
     # comment out the below three lines if using linear model
 
-    # tanh_data_in = open('tanh_10x10.pydb','rb')
-    # X_train, y_train, training_img, non_training_img, scrm_training_img, lena_pw, lena_zoom = pickle.load(tanh_data_in)
-    # tanh_data_in.close()
+    tanh_tile_data_in = open('tanh_100x10_size_24x24.pydb','rb')
+    X_train, y_train, training_img, non_training_img, scrm_training_img, lena_pw, lena_zoom = pickle.load(tanh_tile_data_in)
+    tanh_tile_data_in.close()
 
-    tanh_data_in = open('tanh_100x10.pydb','rb')
-    X_train, y_train, training_img, non_training_img, scrm_training_img, lena_pw, lena_zoom = pickle.load(tanh_data_in)
-    tanh_data_in.close()
-
-    # tanh_tile_data_in = open('tanh_100x10_size_24x24.pydb','rb')
-    # X_train, y_train, training_img, non_training_img, scrm_training_img, lena_pw, lena_zoom = pickle.load(tanh_tile_data_in)
-    # tanh_tile_data_in.close()
-
-    # tanh_data_in = open('tanh_1000x10.pydb','rb')
-    # X_train, y_train, training_img, non_training_img, scrm_training_img, lena_pw, lena_zoom = pickle.load(tanh_data_in)
-    # tanh_data_in.close()
 
 
     """
@@ -241,17 +203,17 @@ def main():
 
     # NOTE: comment out pcmod.train() line below to leave model untrained
 
-    # # instantiate model
-    pcmod = PredictiveCodingClassifier(p)
-    # train on training set
-    pcmod.train(X_train, y_train)
+    # # # instantiate model
+    # pcmod = PredictiveCodingClassifier(p)
+    # # train on training set
+    # pcmod.train(X_train, y_train)
 
-    # # instantiate and train tiled model
-    # tiled_pcmod = TiledPredictiveCodingClassifier(p)
+    # instantiate and train tiled model
+    tiled_pcmod = TiledPredictiveCodingClassifier(p)
 
-    # # safeguard against training a non-tiled model
-    # if tiled_pcmod.is_tiled == True:
-    #     tiled_pcmod.train(X_train, y_train)
+    # safeguard against training a non-tiled model
+    if tiled_pcmod.is_tiled == True:
+        tiled_pcmod.train(X_train, y_train)
 
 
     """
@@ -259,25 +221,32 @@ def main():
     """
 
     # # pickle output model
-
-    pcmod_out = open('pc.{}.{}.{}.{}.{}.{}.{}.{}.{}.{}.{}.{}.pydb'.format(model_size,transform_type,prior_type,class_type,\
-        trained,num_epochs,training_dataset, evaluated, eval_dataset, used_for_pred, pred_dataset,extra_tag),'wb')
-    pickle.dump(pcmod, pcmod_out)
-    pcmod_out.close()
+    #
+    # pcmod_out = open('pc.{}.{}.{}.{}.{}.{}.{}.{}.{}.{}.{}.{}.pydb'.format(model_size,transform_type,prior_type,class_type,\
+    #     trained,num_epochs,training_dataset, evaluated, eval_dataset, used_for_pred, pred_dataset,extra_tag),'wb')
+    # pickle.dump(pcmod, pcmod_out)
+    # pcmod_out.close()
 
     # pickle tiled output model
 
-    # tiled_pcmod_out = open('pc.{}.{}.{}.{}.{}.{}.{}.{}.{}.{}.{}.{}.pydb'.format(model_size,transform_type,prior_type,class_type,\
-    #     trained,num_epochs,training_dataset, evaluated, eval_dataset, used_for_pred, pred_dataset,extra_tag),'wb')
-    # pickle.dump(tiled_pcmod, tiled_pcmod_out)
-    # tiled_pcmod_out.close()
+    tiled_pcmod_out = open('pc.{}.{}.{}.{}.{}.{}.{}.{}.{}.{}.{}.{}.pydb'.format(model_size,transform_type,prior_type,class_type,\
+        trained,num_epochs,training_dataset, evaluated, eval_dataset, used_for_pred, pred_dataset,extra_tag),'wb')
+    pickle.dump(tiled_pcmod, tiled_pcmod_out)
+    tiled_pcmod_out.close()
 
 
 
 if __name__ == '__main__':
     # for unabridged cProfile readout in bash shell type: 'python -m cProfile main.py'
 
+    time_start = datetime.datetime.now
     main()
+    time_end = datetime.datetime.now
+    time_taken = time_end-time_start
+
+    print('time start {}'.format(time_start))
+    print('time end {}'.format(time_end))
+    print('time taken {}'.format(time_taken))
 
     # for truncated cProfile readout in IDE, use logic below
 

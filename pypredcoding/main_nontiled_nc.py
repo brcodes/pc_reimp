@@ -1,5 +1,5 @@
 from parameters import ModelParameters
-from model import PredictiveCodingClassifier, TiledPredictiveCodingClassifier
+from model_nc import PredictiveCodingClassifier
 import numpy as np
 import pickle
 import cProfile
@@ -18,24 +18,15 @@ def main():
     # TANH NON-TILED constant
     # r 0.05, U 0.05 o 0.05
     p = ModelParameters(unit_act='tanh',r_prior = 'gaussian', U_prior = 'gaussian', input_size=784,
-        hidden_sizes = [128,128,10], c_cost_param = 1, num_epochs = 40,
+        hidden_sizes = [18432,18432], classification = 'NC', c_cost_param = 1, num_epochs = 10,
         k_r_sched = {'constant':{'initial':0.05}},
         k_U_sched = {'constant':{'initial':0.05}},
         k_o_sched = {'constant':{'initial':0.00005}})
 
-    # # TANH TILED polynomial
-    # p = ModelParameters(unit_act='tanh',r_prior = 'gaussian', U_prior = 'gaussian', input_size=576,
-    #     hidden_sizes = [1020,10], num_epochs = 20, tile_offset = 6,
-    #     k_r_sched = {'poly':{'initial':0.005,'max_epochs':40,'poly_power':1}},
-    #     k_U_sched = {'poly':{'initial':0.005,'max_epochs':40,'poly_power':1}},
-    #     k_o_sched = {'poly':{'initial':0.0005,'max_epochs':40,'poly_power':1}})
-
-
-
-
-
-
-
+    # model_size = '[36.36]'
+    # model_size = '[288.288]'
+    # model_size = '[2304.2304]'
+    model_size = '[18432.18432]'
 
     # #step decay learning rates for tanh model (has not been optimized)
     # p = ModelParameters(unit_act='tanh',r_prior = 'kurtotic', U_prior = 'kurtotic', input_size=576,
@@ -92,21 +83,6 @@ def main():
 
     # "-" serves as a placeholder for "not present"
 
-    #model size
-    # model_size = '[32.10]'
-    # model_size = '[32.32]'
-    # model_size = '[36.32]'
-    # model_size = '[36.10]'
-    # model_size = '[128.10]'
-    # model_size = '[1020.10]'
-    model_size = '[128.128.10]'
-    # model_size = '[128.128.128.10]'
-    # model_size = '[128.128.128.128.10]'
-    # model_size = '[128.32]'
-    # model_size = '[96.32]'
-    # model_size = '[192.32]'
-
-
     #transformation function
     transform_type = 'tanh'
     # transform_type = 'linear'
@@ -116,9 +92,9 @@ def main():
     # prior_type = 'kurt'
 
     #classification method
-    # class_type = 'NC'
+    class_type = 'NC'
     # class_type = 'C1'
-    class_type = 'C2'
+    # class_type = 'C2'
 
     #will be trained or untrained
     trained = 'T'
@@ -129,9 +105,9 @@ def main():
     # num_epochs = '200e'
     # num_epochs = '100e'
     # num_epochs = '50e'
-    num_epochs = '40e'
+    # num_epochs = '40e'
     # num_epochs = '25e'
-    # num_epochs = '20e'
+    num_epochs = '10e'
     # num_epochs = '-'
 
     #dataset trained on if trained (if not, use -)
@@ -277,7 +253,14 @@ def main():
 if __name__ == '__main__':
     # for unabridged cProfile readout in bash shell type: 'python -m cProfile main.py'
 
+    time_start = datetime.datetime.now
     main()
+    time_end = datetime.datetime.now
+    time_taken = time_end-time_start
+
+    print('time start {}'.format(time_start))
+    print('time end {}'.format(time_end))
+    print('time taken {}'.format(time_taken))
 
     # for truncated cProfile readout in IDE, use logic below
 
