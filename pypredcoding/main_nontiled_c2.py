@@ -18,7 +18,7 @@ def main():
     # TANH NON-TILED constant
     # r 0.05, U 0.05 o 0.05
     p = ModelParameters(unit_act='tanh',r_prior = 'gaussian', U_prior = 'gaussian', input_size=784,
-        hidden_sizes = [18432,18432], classification = 'C2', c_cost_param = 1, num_epochs = 10,
+        hidden_sizes = [18432,18432], classification = 'C2', num_epochs = 10,
         k_r_sched = {'constant':{'initial':0.05}},
         k_U_sched = {'constant':{'initial':0.05}},
         k_o_sched = {'constant':{'initial':0.00005}})

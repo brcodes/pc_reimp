@@ -339,7 +339,7 @@ class PredictiveCodingClassifier:
                 - (k_r / 2) * self.g(self.r[n],self.p.alpha[n])[1] \
 
                 # classification term C2
-                + ((k_o / 2) * (self.U_o.T.dot(label[:,None]) - self.U_o.T.dot(softmax(self.U_o.dot(self.r[n]))))) * self.p.c_cost_param
+                + ((k_o / 2) * (self.U_o.T.dot(label[:,None]) - self.U_o.T.dot(softmax(self.U_o.dot(self.r[n])))))
 
                 # U[n] update (C1, C2) (identical to U[i], except index numbers)
                 self.U[n] = self.U[n] + (k_U / self.p.sigma_sq[n]) \
@@ -360,7 +360,7 @@ class PredictiveCodingClassifier:
                 self.class_type = 'NC'
 
                 """ Classifying using C2 """
-                C = (self.class_cost_2(label)) * self.p.c_cost_param
+                C = (self.class_cost_2(label))
                 E = E + C
                 self.class_type = 'C2'
 
@@ -1411,7 +1411,7 @@ class TiledPredictiveCodingClassifier:
                 C = 0
 
                 # accuracy per epoch: how many images are correctly guessed per epoch
-                num_correct = 0
+                self.num_correct = 0
 
                 # set learning rates at the start of each epoch
                 k_r = self.k_r_lr(epoch)
@@ -1481,8 +1481,7 @@ class TiledPredictiveCodingClassifier:
                     * self.U[n].T.dot(self.f(self.U[n].dot(self.r[n]))[1].dot(self.r[n-1] - self.f(self.U[n].dot(self.r[n]))[0])) \
                     - (k_r / 2) * self.g(self.r[n],self.p.alpha[n])[1] \
                     # classification term
-                    + ((k_o / 2) * (self.U_o.T.dot(label[:,None]) - self.U_o.T.dot(softmax(self.U_o.dot(self.r[n]))))) * self.c_cost_param
-
+                    + ((k_o / 2) * (self.U_o.T.dot(label[:,None]) - self.U_o.T.dot(softmax(self.U_o.dot(self.r[n])))))
 
                     # U[n] update (C1, C2) (identical to U[i], except index numbers)
                     self.U[n] = self.U[n] + (k_U / self.p.sigma_sq[n]) \
@@ -1756,7 +1755,7 @@ class TiledPredictiveCodingClassifier:
                     * self.U[2].T.dot(self.f(self.U[2].dot(self.r[2]))[1].dot(self.r[1] - self.f(self.U[2].dot(self.r[2]))[0])) \
                     - (k_r / 2) * self.g(self.r[2],self.p.alpha[2])[1] \
                     # classification term
-                    + (((k_o / 2) * (self.U_o.T.dot(label[:,None]) - self.U_o.T.dot(softmax(self.U_o.dot(self.r[2])))))) * self.c_cost_param
+                    + (((k_o / 2) * (self.U_o.T.dot(label[:,None]) - self.U_o.T.dot(softmax(self.U_o.dot(self.r[2]))))))
 
 
                     # U[n] update (C1, C2) (identical to U[i], except index numbers)

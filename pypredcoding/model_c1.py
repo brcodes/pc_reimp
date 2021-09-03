@@ -339,7 +339,7 @@ class PredictiveCodingClassifier:
                 - (k_r / 2) * self.g(self.r[n],self.p.alpha[n])[1] \
 
                 # classification term C1
-                + ((k_o / 2) * (label[:,None] - softmax(self.r[n]))) * self.p.c_cost_param
+                + ((k_o / 2) * (label[:,None] - softmax(self.r[n])))
 
                 # U[n] update (C1, C2) (identical to U[i], except index numbers)
                 self.U[n] = self.U[n] + (k_U / self.p.sigma_sq[n]) \
@@ -354,7 +354,7 @@ class PredictiveCodingClassifier:
 
 
                 """ Classifying using C1 """
-                C = (self.class_cost_1(label)) * self.p.c_cost_param
+                C = (self.class_cost_1(label))
                 E = E + C
                 self.class_type = 'C1'
 
@@ -1398,7 +1398,7 @@ class TiledPredictiveCodingClassifier:
                 C = 0
 
                 # accuracy per epoch: how many images are correctly guessed per epoch
-                num_correct = 0
+                self.num_correct = 0
 
                 # set learning rates at the start of each epoch
                 k_r = self.k_r_lr(epoch)
@@ -1763,7 +1763,7 @@ class TiledPredictiveCodingClassifier:
 
                     """ C1 method """
                     if np.argmax(softmax(self.r[n])) == np.argmax(label[:,None]):
-                        num_correct += 1
+                        self.num_correct += 1
 
 
                     # print('np.argmax(softmax(c2_output))')
