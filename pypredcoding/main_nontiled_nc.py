@@ -18,15 +18,15 @@ def main():
     # TANH NON-TILED constant
     # r 0.05, U 0.05 o 0.05
     p = ModelParameters(unit_act='tanh',r_prior = 'gaussian', U_prior = 'gaussian', input_size=784,
-        hidden_sizes = [18432,18432], classification = 'NC', num_epochs = 10,
+        hidden_sizes = [2304,2304], num_epochs = 10,
         k_r_sched = {'constant':{'initial':0.05}},
         k_U_sched = {'constant':{'initial':0.05}},
-        k_o_sched = {'constant':{'initial':0.00005}})
+        k_o_sched = {'constant':{'initial':0.0005}})
 
     # model_size = '[36.36]'
     # model_size = '[288.288]'
-    # model_size = '[2304.2304]'
-    model_size = '[18432.18432]'
+    model_size = '[2304.2304]'
+    # model_size = '[18432.18432]'
 
     # #step decay learning rates for tanh model (has not been optimized)
     # p = ModelParameters(unit_act='tanh',r_prior = 'kurtotic', U_prior = 'kurtotic', input_size=576,
@@ -253,9 +253,9 @@ def main():
 if __name__ == '__main__':
     # for unabridged cProfile readout in bash shell type: 'python -m cProfile main.py'
 
-    time_start = datetime.datetime.now
+    time_start = datetime.datetime.now()
     main()
-    time_end = datetime.datetime.now
+    time_end = datetime.datetime.now()
     time_taken = time_end-time_start
 
     print('time start {}'.format(time_start))

@@ -15,10 +15,10 @@ MUST comment-in desired naming parameters
 # by uncommenting all of its parameters
 
 #model size
-model_size = '[36.10]'
-# model_size = '[288.10]'
-# model_size = '[2304.10]'
-# model_size = '[18432.10]'
+model_size = '[36.36]'
+# model_size = '[288.288]'
+# model_size = '[2304.2304]'
+# model_size = '[18432.18432]'
 
 
 #transformation function
@@ -30,8 +30,8 @@ prior_type = 'gauss'
 # prior_type = 'kurt'
 
 #classification method
-# class_type = 'NC'
-class_type = 'C1'
+class_type = 'NC'
+# class_type = 'C1'
 # class_type = 'C2'
 
 #trained or untrained
@@ -129,7 +129,7 @@ naming_parameters = [model_size,transform_type,prior_type,class_type,\
 
 
 # evaluate
-E,C,Classif_success_by_img,Acc = pcmod.evaluate(X_inflated,y_train,eval_class_type='C1')
+E,C,Classif_success_by_img,Acc = pcmod.evaluate(X_inflated,y_train,eval_class_type='C2')
 
 
 """

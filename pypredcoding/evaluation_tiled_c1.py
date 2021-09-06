@@ -15,11 +15,10 @@ MUST comment-in desired naming parameters
 # by uncommenting all of its parameters
 
 #model size
-# model_size = '[36.10]'
+model_size = '[36.10]'
 # model_size = '[288.10]'
 # model_size = '[2304.10]'
-model_size = '[18432.10]'
-
+# model_size = '[18432.10]'
 
 #transformation function
 transform_type = 'tanh'
@@ -77,7 +76,7 @@ pred_dataset = '-'
 # extra_tag = 'tile_offset_6_poly_lr_0.05_lU_0.005_me40_pp1'
 # extra_tag = 'tile_offset_8'
 # extra_tag = 'tile_offset_0'
-extra_tag = 'tile_offset_6_poly_lr_0.005_lU_0.005_me40_pp1'
+extra_tag = 'tile_offset_6_poly_lr_0.005_lU_0.005_me10_pp1'
 # extra_tag = '-'
 
 # load it
@@ -128,7 +127,7 @@ naming_parameters = [model_size,transform_type,prior_type,class_type,\
 
 
 # evaluate
-E,C,Classif_success_by_img,Acc = pcmod.evaluate(X_inflated,y_train)
+E,C,Classif_success_by_img,Acc = pcmod.evaluate(X_inflated,y_train,eval_class_type='C1')
 
 
 """

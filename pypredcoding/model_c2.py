@@ -348,7 +348,7 @@ class PredictiveCodingClassifier:
 
                 """ U_o update (C2) """
                 self.o = np.exp(self.U_o.dot(self.r[n]))
-                self.U_o = self.U_o + (k_o / 2) * (label[:,None].dot(self.r[n].T) - len(label)*softmax((self.U_o.dot(self.r[n])).dot(self.r[n].T)))
+                self.U_o = self.U_o + ((k_o / 2) * (label[:,None].dot(self.r[n].T) - len(label)*softmax((self.U_o.dot(self.r[n])).dot(self.r[n].T))))
 
 
                 # Loss function E
@@ -371,10 +371,10 @@ class PredictiveCodingClassifier:
                 # then the model classified the image correctly
                 # and add 1 to num_correct
 
-                # print("Image {} epoch {}".format(image+1,epoch+1))
-                # print('\n')
-                # print("self.U_o[:1]")
-                # print(self.U_o[:1])
+                print("Image {} epoch {}".format(image+1,epoch+1))
+                print('\n')
+                print("self.U_o[:1]")
+                print(self.U_o[:1][0][:5])
                 # print('\n')
                 # # print("self.r[1][:5]")
                 # print(self.r[1][:5])
@@ -1766,7 +1766,7 @@ class TiledPredictiveCodingClassifier:
 
                     """ U_o update (C2) """
                     self.o = np.exp(self.U_o.dot(self.r[2]))
-                    self.U_o = self.U_o + (k_o / 2) * label[:,None].dot(self.r[2].T) - len(label)*softmax((self.U_o.dot(self.r[2])).dot(self.r[2].T))
+                    self.U_o = self.U_o + ((k_o / 2) * (label[:,None].dot(self.r[2].T) - len(label)*softmax((self.U_o.dot(self.r[2])).dot(self.r[2].T))))
 
 
                     # Loss function E
@@ -1790,6 +1790,11 @@ class TiledPredictiveCodingClassifier:
                     # = index of the 1 in associated one hot label vector
                     # then the model classified the image correctly
                     # and add 1 to num_correct
+                    
+                    print("Image {} epoch {}".format(image+1,epoch+1))
+                    print('\n')
+                    print("self.U_o[:1]")
+                    print(self.U_o[:1][0][:5])
 
                     """ C2 method """
                     c2_output = self.U_o.dot(self.r[2])

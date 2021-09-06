@@ -15,10 +15,10 @@ MUST comment-in desired naming parameters
 # by uncommenting all of its parameters
 
 #model size
-# model_size = '[36.36]'
+model_size = '[36.36]'
 # model_size = '[288.288]'
 # model_size = '[2304.2304]'
-model_size = '[18432.18432]'
+# model_size = '[18432.18432]'
 
 
 #transformation function
@@ -87,42 +87,27 @@ pcmod_in = open('pc.{}.{}.{}.{}.{}.{}.{}.{}.{}.{}.{}.{}.pydb'.format(model_size,
 pcmod = pickle.load(pcmod_in)
 pcmod_in.close()
 
-# # load data to evaluate against
-# tanh_data_in = open('tanh_100x10.pydb','rb')
-# X_train, y_train, training_img, non_training_img, scrm_training_img, lena_pw, lena_zoom = pickle.load(tanh_data_in)
-# tanh_data_in.close()
+# load data to evaluate against
+tanh_data_in = open('tanh_100x10.pydb','rb')
+X_train, y_train, training_img, non_training_img, scrm_training_img, lena_pw, lena_zoom = pickle.load(tanh_data_in)
+tanh_data_in.close()
 
 # # load data to evaluate against
 # tanh_data_in = open('tanh_100x10_fashion_mnist.pydb','rb')
 # X_train, y_train, training_img, non_training_img, scrm_training_img, lena_pw, lena_zoom = pickle.load(tanh_data_in)
 # tanh_data_in.close()
 
-# load data to evaluate against
-tanh_data_in = open('tanh_100x10_cifar10.pydb','rb')
-X_train, y_train, training_img, non_training_img, scrm_training_img, lena_pw, lena_zoom = pickle.load(tanh_data_in)
-tanh_data_in.close()
-
 # # load data to evaluate against
-# tanh_tile_data_in = open('tanh_100x10_size_24x24.pydb','rb')
-# X_train, y_train, training_img, non_training_img, scrm_training_img, lena_pw, lena_zoom = pickle.load(tanh_tile_data_in)
-# tanh_tile_data_in.close()
-
-# # load data to evaluate against
-# tanh_tile_data_in = open('tanh_100x10_fashion_mnist_size_24x24.pydb','rb')
-# X_train, y_train, training_img, non_training_img, scrm_training_img, lena_pw, lena_zoom = pickle.load(tanh_tile_data_in)
-# tanh_tile_data_in.close()
-
-# # load data to evaluate against
-# tanh_tile_data_in = open('tanh_100x10_cifar10_size_24x24.pydb','rb')
-# X_train, y_train, training_img, non_training_img, scrm_training_img, lena_pw, lena_zoom = pickle.load(tanh_tile_data_in)
-# tanh_tile_data_in.close()
+# tanh_data_in = open('tanh_100x10_cifar10.pydb','rb')
+# X_train, y_train, training_img, non_training_img, scrm_training_img, lena_pw, lena_zoom = pickle.load(tanh_data_in)
+# tanh_data_in.close()
 
 #output pickle naming
 
 #images evaluated against (must match tanh_data_in]
-# eval_dataset = 'tanh100x10'
+eval_dataset = 'tanh100x10'
 # eval_dataset = 'tanh100x10_fashion_mnist'
-eval_dataset = 'tanh100x10_cifar10'
+# eval_dataset = 'tanh100x10_cifar10'
 # eval_dataset = 'tanh10x10'
 
 # print(X_train.shape)
@@ -143,7 +128,7 @@ naming_parameters = [model_size,transform_type,prior_type,class_type,\
 
 
 # evaluate
-E,C,Classif_success_by_img,Acc = pcmod.evaluate(X_inflated,y_train)
+E,C,Classif_success_by_img,Acc = pcmod.evaluate(X_inflated,y_train,eval_class_type='C2')
 
 
 """

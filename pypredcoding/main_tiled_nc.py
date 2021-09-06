@@ -17,15 +17,15 @@ def main():
 
     # TANH TILED polynomial
     p = ModelParameters(unit_act='tanh',r_prior = 'gaussian', U_prior = 'gaussian', input_size=576,
-        hidden_sizes = [18432,18432], classification = 'NC', num_epochs = 10, tile_offset = 6,
-        k_r_sched = {'poly':{'initial':0.005,'max_epochs':40,'poly_power':1}},
-        k_U_sched = {'poly':{'initial':0.005,'max_epochs':40,'poly_power':1}},
-        k_o_sched = {'poly':{'initial':0.0005,'max_epochs':40,'poly_power':1}})
+        hidden_sizes = [2304,2304], num_epochs = 10, tile_offset = 6,
+        k_r_sched = {'poly':{'initial':0.005,'max_epochs':10,'poly_power':1}},
+        k_U_sched = {'poly':{'initial':0.005,'max_epochs':10,'poly_power':1}},
+        k_o_sched = {'poly':{'initial':0.0005,'max_epochs':10,'poly_power':1}})
 
     # model_size = '[36.36]'
     # model_size = '[288.288]'
-    # model_size = '[2304.2304]'
-    model_size = '[18432.18432]'
+    model_size = '[2304.2304]'
+    # model_size = '[18432.18432]'
 
 
     # #step decay learning rates for tanh model (has not been optimized)
@@ -165,7 +165,7 @@ def main():
     # extra_tag = 'cboost_100'
     # extra_tag = 'cboost_1000'
     # extra_tag = 'cboost_4000'
-    extra_tag = 'tile_offset_6_poly_lr_0.005_lU_0.005_me40_pp1'
+    extra_tag = 'tile_offset_6_poly_lr_0.005_lU_0.005_me10_pp1'
     # extra_tag = '-'
 
     """
@@ -241,10 +241,10 @@ def main():
 if __name__ == '__main__':
     # for unabridged cProfile readout in bash shell type: 'python -m cProfile main.py'
 
-    time_start = datetime.datetime.now
+    time_start = datetime.datetime.now()
     main()
-    time_end = datetime.datetime.now
-    time_taken = time_end-time_start
+    time_end = datetime.datetime.now()
+    time_taken = time_end - time_start
 
     print('time start {}'.format(time_start))
     print('time end {}'.format(time_end))
