@@ -46,10 +46,17 @@ MUST comment-in 'P' and a pred_dataset for predPEs plot
 # model_size = '[32.32]'
 # model_size = '[36.32]'
 # model_size = '[36.10]'
+model_size = '[288.10]'
+# model_size = '[2304.10]'
+# model_size = '[18432.10]'
+# model_size = '[36.36]'
+# model_size = '[288.288]'
+# model_size = '[2304.2304]'
+# model_size = '[18432.18432]'
 # model_size = '[128.10]'
 # model_size = '[128.128.10]'
 # model_size = '[128.128.128.10]'
-model_size = '[128.128.128.128.10]' 
+# model_size = '[128.128.128.128.10]' 
 # model_size = '[1020.10]'
 # model_size = '[128.32]'
 # model_size = '[96.32]'
@@ -67,8 +74,8 @@ prior_type = 'gauss'
 
 #classification method
 # class_type = 'NC'
-# class_type = 'C1'
-class_type = 'C2'
+class_type = 'C1'
+# class_type = 'C2'
 
 #trained or untrained
 trained = 'T'
@@ -79,9 +86,10 @@ trained = 'T'
 # num_epochs = '200e'
 # num_epochs = '100e'
 # num_epochs = '50e'
-num_epochs = '40e'
+# num_epochs = '40e'
 # num_epochs = '25e'
 # num_epochs = '20e'
+num_epochs = '10e'
 # num_epochs = '-'
 
 #dataset trained on if trained (if not, use -)
@@ -99,12 +107,12 @@ evaluated = 'E'
 #images evaluated against, if evaluated (if not, use -)
 # eval_dataset = 'tanh100x10'
 # eval_dataset = 'tanh100x10_fashion_mnist'
-eval_dataset = 'tanh100x10_cifar10'
+# eval_dataset = 'tanh100x10_cifar10'
 # eval_dataset = 'tanh100x10_size_24x24'
 # eval_dataset = 'tanh100x10_fashion_mnist_size_24x24'
 # eval_dataset = 'tanh100x10_cifar10_size_24x24'
 # eval_dataset = 'tanh10x10'
-# eval_dataset = '-'
+eval_dataset = '-'
 
 
 #used or not used for prediction so far
@@ -143,7 +151,7 @@ pred_dataset = '-'
 # extra_tag = 'cboost_100'
 # extra_tag = 'cboost_1000'
 # extra_tag = 'cboost_4000'
-# extra_tag = 'tile_offset_6_poly_lr_0.005_lU_0.005_me40_pp1'
+# extra_tag = 'tile_offset_6_poly_lr_0.005_lU_0.005_me10_pp1'
 extra_tag = '-'
 
 

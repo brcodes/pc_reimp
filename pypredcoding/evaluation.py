@@ -22,7 +22,7 @@ MUST comment-in desired naming parameters
 # model_size = '[128.10]'
 # model_size = '[128.128.10]'
 # model_size = '[128.128.128.10]'
-model_size = '[128.128.128.128.10]' 
+model_size = '[128.128.128.128.10]'
 # model_size = '[128.32]'
 # model_size = '[96.32]'
 
@@ -91,7 +91,12 @@ extra_tag = '-'
 pcmod_in = open('pc.{}.{}.{}.{}.{}.{}.{}.{}.{}.{}.{}.{}.pydb'.format(model_size,transform_type,prior_type,class_type,\
   trained,num_epochs,training_dataset, evaluated, eval_dataset, used_for_pred, pred_dataset,extra_tag),'rb')
 pcmod = pickle.load(pcmod_in)
-pcmod_in.close()
+pcmod_in.close
+
+# load data to evaluate against
+tanh_data_in = open('ten_of_each_dig_from_mnist_1000.pydb','rb')
+X_train, y_train = pickle.load(tanh_data_in)
+tanh_data_in.close()
 
 # # load data to evaluate against
 # tanh_data_in = open('tanh_100x10.pydb','rb')
@@ -103,10 +108,10 @@ pcmod_in.close()
 # X_train, y_train, training_img, non_training_img, scrm_training_img, lena_pw, lena_zoom = pickle.load(tanh_data_in)
 # tanh_data_in.close()
 
-# load data to evaluate against
-tanh_data_in = open('tanh_100x10_cifar10.pydb','rb')
-X_train, y_train, training_img, non_training_img, scrm_training_img, lena_pw, lena_zoom = pickle.load(tanh_data_in)
-tanh_data_in.close()
+# # load data to evaluate against
+# tanh_data_in = open('tanh_100x10_cifar10.pydb','rb')
+# X_train, y_train, training_img, non_training_img, scrm_training_img, lena_pw, lena_zoom = pickle.load(tanh_data_in)
+# tanh_data_in.close()
 
 # # load data to evaluate against
 # tanh_tile_data_in = open('tanh_100x10_size_24x24.pydb','rb')
@@ -128,7 +133,8 @@ tanh_data_in.close()
 #images evaluated against (must match tanh_data_in]
 # eval_dataset = 'tanh100x10'
 # eval_dataset = 'tanh100x10_fashion_mnist'
-eval_dataset = 'tanh100x10_cifar10'
+# eval_dataset = 'tanh100x10_cifar10'
+eval_dataset = 'ten_of_each_dig_from_mnist_1000'
 # eval_dataset = 'tanh100x10_size_24x24'
 # eval_dataset = 'tanh100x10_fashion_mnist_size_24x24'
 # eval_dataset = 'tanh100x10_cifar10_size_24x24'

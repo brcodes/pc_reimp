@@ -638,13 +638,15 @@ class PredictiveCodingClassifier:
                     Eimg = Eimg + Cimg
                     self.E_per_image.append(Eimg)
                     c2_output = self.U_o.dot(predicted_img)
-                    if np.argmax(softmax(c2_output)) == np.argmax(label[:,None]):
+                    guess = softmax(c2_output)
+                    if np.argmax(guess) == np.argmax(label[:,None]):
                         self.Classif_success_by_img.append(1)
                     else:
                         self.Classif_success_by_img.append(0)
+                    self.softmax_guess_each_img.append(guess)
                 num_correct = sum(self.Classif_success_by_img)
                 self.acc_evaluation = (num_correct / self.n_eval_images) * 100
-                return self.E_per_image,self.C_per_image,self.Classif_success_by_img,self.acc_evaluation
+                return self.E_per_image,self.C_per_image,self.Classif_success_by_img,self.acc_evaluation,self.softmax_guess_each_img
 
             elif eval_class_type == 'C1':
                 for i in range(0,self.n_eval_images):
@@ -657,13 +659,15 @@ class PredictiveCodingClassifier:
                     self.C_per_image.append(Cimg)
                     Eimg = Eimg + Cimg
                     self.E_per_image.append(Eimg)
-                    if np.argmax(softmax(predicted_img)) == np.argmax(label[:,None]):
+                    guess = softmax(predicted_img)
+                    if np.argmax(guess) == np.argmax(label[:,None]):
                         self.Classif_success_by_img.append(1)
                     else:
                         self.Classif_success_by_img.append(0)
+                    self.softmax_guess_each_img.append(guess)
                 num_correct = sum(self.Classif_success_by_img)
                 self.acc_evaluation = (num_correct / self.n_eval_images) * 100
-                return self.E_per_image,self.C_per_image,self.Classif_success_by_img,self.acc_evaluation
+                return self.E_per_image,self.C_per_image,self.Classif_success_by_img,self.acc_evaluation,self.softmax_guess_each_img
 
             else:
                 print("classification_type must ='C1' or 'C2'")
@@ -689,13 +693,15 @@ class PredictiveCodingClassifier:
                     Eimg = Eimg + Cimg
                     self.E_per_image.append(Eimg)
                     c2_output = self.U_o.dot(predicted_img)
-                    if np.argmax(softmax(c2_output)) == np.argmax(label[:,None]):
+                    guess = softmax(c2_output)
+                    if np.argmax(guess) == np.argmax(label[:,None]):
                         self.Classif_success_by_img.append(1)
                     else:
                         self.Classif_success_by_img.append(0)
+                    self.softmax_guess_each_img.append(guess)
                 num_correct = sum(self.Classif_success_by_img)
                 self.acc_evaluation = (num_correct / self.n_eval_images) * 100
-                return self.E_per_image,self.C_per_image,self.Classif_success_by_img,self.acc_evaluation
+                return self.E_per_image,self.C_per_image,self.Classif_success_by_img,self.acc_evaluation,self.softmax_guess_each_img
 
             elif eval_class_type == 'C1':
                 for i in range(0,self.n_eval_images):
@@ -708,13 +714,15 @@ class PredictiveCodingClassifier:
                     self.C_per_image.append(Cimg)
                     Eimg = Eimg + Cimg
                     self.E_per_image.append(Eimg)
-                    if np.argmax(softmax(predicted_img)) == np.argmax(label[:,None]):
+                    guess = softmax(predicted_img)
+                    if np.argmax(guess) == np.argmax(label[:,None]):
                         self.Classif_success_by_img.append(1)
                     else:
                         self.Classif_success_by_img.append(0)
+                    self.softmax_guess_each_img.append(guess)
                 num_correct = sum(self.Classif_success_by_img)
                 self.acc_evaluation = (num_correct / self.n_eval_images) * 100
-                return self.E_per_image,self.C_per_image,self.Classif_success_by_img,self.acc_evaluation
+                return self.E_per_image,self.C_per_image,self.Classif_success_by_img,self.acc_evaluation,self.softmax_guess_each_img
 
             else:
                 print("classification_type must ='C1' or 'C2'")
@@ -727,7 +735,7 @@ class PredictiveCodingClassifier:
         print("Evaluation finished.")
         print('\n')
 
-        return self.E_per_image,self.C_per_image,self.Classif_success_by_img,self.acc_evaluation
+        return self.E_per_image,self.C_per_image,self.Classif_success_by_img,self.acc_evaluation,self.softmax_guess_each_img
 
 class TiledPredictiveCodingClassifier:
     def __init__(self, parameters):
@@ -2103,6 +2111,7 @@ class TiledPredictiveCodingClassifier:
         self.Classif_success_by_img = []
         self.acc_evaluation = 0
         self.eval_class_type = eval_class_type
+        self.softmax_guess_each_img = []
 
         # if X is a matrix of shape [n_eval_images,:,:].
         # i.e. if number of input images is greater than 1
@@ -2123,13 +2132,15 @@ class TiledPredictiveCodingClassifier:
                     Eimg = Eimg + Cimg
                     self.E_per_image.append(Eimg)
                     c2_output = self.U_o.dot(predicted_img)
-                    if np.argmax(softmax(c2_output)) == np.argmax(label[:,None]):
+                    guess = softmax(c2_output)
+                    if np.argmax(guess) == np.argmax(label[:,None]):
                         self.Classif_success_by_img.append(1)
                     else:
                         self.Classif_success_by_img.append(0)
+                    self.softmax_guess_each_img.append(guess)
                 num_correct = sum(self.Classif_success_by_img)
                 self.acc_evaluation = (num_correct / self.n_eval_images) * 100
-                return self.E_per_image,self.C_per_image,self.Classif_success_by_img,self.acc_evaluation
+                return self.E_per_image,self.C_per_image,self.Classif_success_by_img,self.acc_evaluation,self.softmax_guess_each_img
 
             elif eval_class_type == 'C1':
                 for i in range(0,self.n_eval_images):
@@ -2142,13 +2153,15 @@ class TiledPredictiveCodingClassifier:
                     self.C_per_image.append(Cimg)
                     Eimg = Eimg + Cimg
                     self.E_per_image.append(Eimg)
-                    if np.argmax(softmax(predicted_img)) == np.argmax(label[:,None]):
+                    guess = softmax(predicted_img)
+                    if np.argmax(guess) == np.argmax(label[:,None]):
                         self.Classif_success_by_img.append(1)
                     else:
                         self.Classif_success_by_img.append(0)
+                    self.softmax_guess_each_img.append(guess)
                 num_correct = sum(self.Classif_success_by_img)
                 self.acc_evaluation = (num_correct / self.n_eval_images) * 100
-                return self.E_per_image,self.C_per_image,self.Classif_success_by_img,self.acc_evaluation
+                return self.E_per_image,self.C_per_image,self.Classif_success_by_img,self.acc_evaluation,self.softmax_guess_each_img
 
             else:
                 print("classification_type must ='C1' or 'C2'")
@@ -2174,13 +2187,15 @@ class TiledPredictiveCodingClassifier:
                     Eimg = Eimg + Cimg
                     self.E_per_image.append(Eimg)
                     c2_output = self.U_o.dot(predicted_img)
-                    if np.argmax(softmax(c2_output)) == np.argmax(label[:,None]):
+                    guess = softmax(c2_output)
+                    if np.argmax(guess) == np.argmax(label[:,None]):
                         self.Classif_success_by_img.append(1)
                     else:
                         self.Classif_success_by_img.append(0)
+                    self.softmax_guess_each_img.append(guess)
                 num_correct = sum(self.Classif_success_by_img)
                 self.acc_evaluation = (num_correct / self.n_eval_images) * 100
-                return self.E_per_image,self.C_per_image,self.Classif_success_by_img,self.acc_evaluation
+                return self.E_per_image,self.C_per_image,self.Classif_success_by_img,self.acc_evaluation,self.softmax_guess_each_img
 
             elif eval_class_type == 'C1':
                 for i in range(0,self.n_eval_images):
@@ -2193,13 +2208,15 @@ class TiledPredictiveCodingClassifier:
                     self.C_per_image.append(Cimg)
                     Eimg = Eimg + Cimg
                     self.E_per_image.append(Eimg)
-                    if np.argmax(softmax(predicted_img)) == np.argmax(label[:,None]):
+                    guess = softmax(predicted_img)
+                    if np.argmax(guess) == np.argmax(label[:,None]):
                         self.Classif_success_by_img.append(1)
                     else:
                         self.Classif_success_by_img.append(0)
+                    self.softmax_guess_each_img.append(guess)
                 num_correct = sum(self.Classif_success_by_img)
                 self.acc_evaluation = (num_correct / self.n_eval_images) * 100
-                return self.E_per_image,self.C_per_image,self.Classif_success_by_img,self.acc_evaluation
+                return self.E_per_image,self.C_per_image,self.Classif_success_by_img,self.acc_evaluation,self.softmax_guess_each_img
 
             else:
                 print("classification_type must ='C1' or 'C2'")
@@ -2212,4 +2229,4 @@ class TiledPredictiveCodingClassifier:
         print("Evaluation finished.")
         print('\n')
 
-        return self.E_per_image,self.C_per_image,self.Classif_success_by_img,self.acc_evaluation
+        return self.E_per_image,self.C_per_image,self.Classif_success_by_img,self.acc_evaluation,self.softmax_guess_each_img

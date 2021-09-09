@@ -1,4 +1,4 @@
-from data import get_mnist_data,flatten_images,standardization_filter,rescaling_filter, inflate_vectors
+ from data import get_mnist_data,flatten_images,standardization_filter,rescaling_filter, inflate_vectors
 import numpy as np
 import pickle
 import cv2
@@ -184,69 +184,6 @@ Load MNIST images and prepare 1,000 images, 100 of each digit (0-9)
 
 """
 
-# # load data
-# # frac_samp 0.166 = 10000 images
-# (X_train, y_train),(X_test,y_test) = get_mnist_data(frac_samp=0.166,return_test=True)
-
-# # number of initial training images
-# num_imgs = y_train.shape[0]
-# # print(num_imgs)
-
-# # make evenly distributed dataset of digits 0 - 9, 100 digits each
-
-# X_dict = {}
-# y_dict = {}
-
-# for i in range(0,10):
-#     X_dict[i] = np.zeros(shape=(1,28,28))
-#     y_dict[i] = np.zeros(shape=(1,10))
-
-# # print(X_dict[0].shape)
-# # print(y_dict[0].shape)
-
-# for i in range(0,num_imgs):
-#     label = y_train[i,:]
-#     digit = np.nonzero(label)[0][0]
-#     X_dict[digit] = np.vstack((X_dict[digit], X_train[i,:,:][None,:,:]))
-#     y_dict[digit] = np.vstack((y_dict[digit], label[None,:]))
-
-
-# X_dist = np.zeros(shape=(1,28,28))
-# y_dist = np.zeros(shape=(1,10))
-
-# # i is each unique digit, 0 - 9
-# # dict indexing is to: a) avoid empty first vector in dict value (value is a 2D array),
-# # b) only take first ten filled vectors from the value per key
-# for i in range(0,10):
-#     X_dist = np.vstack((X_dist, X_dict[i][1:101,:,:]))
-#     y_dist = np.vstack((y_dist, y_dict[i][1:101,:]))
-
-# # remove first empty vector of X_dist, y_dist to generate final image and label set
-# X_dist = X_dist[1:,:,:]
-# y_dist = y_dist[1:,:]
-
-# # verify array shape and presence & type of raw data of 100 dig x 10 imgs dataset
-
-# # print(X_dist.shape)
-# # print(y_dist.shape)
-# # for i in range(0,101):
-# #     print(y_dist[i])
-# # for i in range(0,12):
-# #     print(X_dist[i])
-
-# # visually verify 100 dig by 10 imgs practice set by printing
-
-# # for i in range(899,X_dist.shape[0]):
-# #     plt.imshow(X_dist[i,:,:])
-# #     plt.show()
-
-"""
-Load MNIST images and prepare 1,000 images, 100 of each digit (0-9)
-
-1,000 DOWNSAMPLED 24x24 images
-
-"""
-
 # load data
 # frac_samp 0.166 = 10000 images
 (X_train, y_train),(X_test,y_test) = get_mnist_data(frac_samp=0.166,return_test=True)
@@ -261,7 +198,7 @@ X_dict = {}
 y_dict = {}
 
 for i in range(0,10):
-    X_dict[i] = np.zeros(shape=(1,24,24))
+    X_dict[i] = np.zeros(shape=(1,28,28))
     y_dict[i] = np.zeros(shape=(1,10))
 
 # print(X_dict[0].shape)
@@ -270,13 +207,11 @@ for i in range(0,10):
 for i in range(0,num_imgs):
     label = y_train[i,:]
     digit = np.nonzero(label)[0][0]
-    image = X_train[i,:,:]
-    resized_image = cv2.resize(image,(24,24))
-    X_dict[digit] = np.vstack((X_dict[digit], resized_image[None,:,:]))
+    X_dict[digit] = np.vstack((X_dict[digit], X_train[i,:,:][None,:,:]))
     y_dict[digit] = np.vstack((y_dict[digit], label[None,:]))
 
 
-X_dist = np.zeros(shape=(1,24,24))
+X_dist = np.zeros(shape=(1,28,28))
 y_dist = np.zeros(shape=(1,10))
 
 # i is each unique digit, 0 - 9
@@ -304,6 +239,71 @@ y_dist = y_dist[1:,:]
 # for i in range(899,X_dist.shape[0]):
 #     plt.imshow(X_dist[i,:,:])
 #     plt.show()
+
+"""
+Load MNIST images and prepare 1,000 images, 100 of each digit (0-9)
+
+1,000 DOWNSAMPLED 24x24 images
+
+"""
+
+# # load data
+# # frac_samp 0.166 = 10000 images
+# (X_train, y_train),(X_test,y_test) = get_mnist_data(frac_samp=0.166,return_test=True)
+#
+# # number of initial training images
+# num_imgs = y_train.shape[0]
+# # print(num_imgs)
+#
+# # make evenly distributed dataset of digits 0 - 9, 100 digits each
+#
+# X_dict = {}
+# y_dict = {}
+#
+# for i in range(0,10):
+#     X_dict[i] = np.zeros(shape=(1,24,24))
+#     y_dict[i] = np.zeros(shape=(1,10))
+#
+# # print(X_dict[0].shape)
+# # print(y_dict[0].shape)
+#
+# for i in range(0,num_imgs):
+#     label = y_train[i,:]
+#     digit = np.nonzero(label)[0][0]
+#     image = X_train[i,:,:]
+#     resized_image = cv2.resize(image,(24,24))
+#     X_dict[digit] = np.vstack((X_dict[digit], resized_image[None,:,:]))
+#     y_dict[digit] = np.vstack((y_dict[digit], label[None,:]))
+#
+#
+# X_dist = np.zeros(shape=(1,24,24))
+# y_dist = np.zeros(shape=(1,10))
+#
+# # i is each unique digit, 0 - 9
+# # dict indexing is to: a) avoid empty first vector in dict value (value is a 2D array),
+# # b) only take first ten filled vectors from the value per key
+# for i in range(0,10):
+#     X_dist = np.vstack((X_dist, X_dict[i][1:101,:,:]))
+#     y_dist = np.vstack((y_dist, y_dict[i][1:101,:]))
+#
+# # remove first empty vector of X_dist, y_dist to generate final image and label set
+# X_dist = X_dist[1:,:,:]
+# y_dist = y_dist[1:,:]
+#
+# # verify array shape and presence & type of raw data of 100 dig x 10 imgs dataset
+#
+# # print(X_dist.shape)
+# # print(y_dist.shape)
+# # for i in range(0,101):
+# #     print(y_dist[i])
+# # for i in range(0,12):
+# #     print(X_dist[i])
+#
+# # visually verify 100 dig by 10 imgs practice set by printing
+#
+# # for i in range(899,X_dist.shape[0]):
+# #     plt.imshow(X_dist[i,:,:])
+# #     plt.show()
 
 
 """
@@ -366,6 +366,7 @@ Load MNIST images and prepare 10,000 images, 1,000 of each digit (0-9)
 # #     plt.imshow(X_dist[i,:,:])
 # #     plt.show()
 
+
 """
 "Out of bag" (non-training) image, and "In bag" normal , "In bag" scrambled images
 """
@@ -374,7 +375,7 @@ Load MNIST images and prepare 10,000 images, 1,000 of each digit (0-9)
 non_training_img = np.copy(X_test[0,:,:])
 
 # for 24x24 image
-non_training_img = cv2.resize(non_training_img, (24,24))
+# non_training_img = cv2.resize(non_training_img, (24,24))
 
 # # verify image
 # plt.imshow(non_training_img, cmap='Greys'),plt.title('out of bag mnist image')
@@ -389,10 +390,10 @@ scrambled = scrambled.ravel()
 np.random.shuffle(scrambled)
 
 # # for 28x28 image
-# scrambled = scrambled.reshape(28,28)
+scrambled = scrambled.reshape(28,28)
 
 # for 24x24 image
-scrambled = scrambled.reshape(24,24)
+# scrambled = scrambled.reshape(24,24)
 
 # # verify in bag normal and scrambled images
 # plt.subplot(121), plt.imshow(training_img, cmap='Greys'),plt.title('in bag mnist normal')
@@ -439,62 +440,62 @@ Scaling and Pickling for Linear Model
 
 # NOTE: comment out code between these NOTES when pickling the Tanh dataset
 
-
-# standardize and flatten main database
-X_stdized = standardization_filter(X_dist)
-X_flat = flatten_images(X_stdized)
-# #verify stdization
-plt.imshow(X_stdized[0,:,:], cmap='Greys'),plt.title('in bag standardized database')
-plt.show()
-
-# stdize and flatten one (the first, [0,:,:]) image from main database
-training_img_std = standardization_filter(training_img[None,:,:])
-training_img_flat = flatten_images(training_img_std)
-# #verify stdization
-training_img_sq = np.squeeze(training_img_std)
-plt.imshow(training_img_sq, cmap='Greys'),plt.title('in bag standardized')
-plt.show()
-
-# stdize/flatten out of bag image
-non_training_img_std = standardization_filter(non_training_img[None,:,:])
-non_training_img_flat = flatten_images(non_training_img_std)
-# #verify stdization
-non_training_img_sq = np.squeeze(non_training_img_std)
-plt.imshow(non_training_img_sq, cmap='Greys'),plt.title('out of bag standardized')
-plt.show()
-
-# stdize/flatten in bag scrambled image
-scrambled_std = standardization_filter(scrambled[None,:,:])
-scrambled_flat = flatten_images(scrambled_std)
-# # verify stdization
-scrambled_sq = np.squeeze(scrambled_std)
-plt.imshow(scrambled_sq, cmap='Greys'),plt.title('scrambled standardized')
-plt.show()
-
-# stdize/flatten lena prewhitened
-lena_pw_std = standardization_filter(lena_pw[None,:,:])
-lena_pw_flat = flatten_images(lena_pw_std)
-# # verify stdization
-lena_pw_sq = np.squeeze(lena_pw_std)
-plt.imshow(lena_pw_sq, cmap='Greys'),plt.title('lena prewhitened')
-plt.show()
-
-# flatten lena zoomed for pickle output
-lena_zoom_std = standardization_filter(lena_zoom[None,:,:])
-lena_zoom_flat = flatten_images(lena_zoom_std)
-# # verify stdization
-lena_zoom_sq = np.squeeze(lena_zoom_std)
-plt.imshow(lena_zoom_sq, cmap='Greys'),plt.title('lena zoom')
-plt.show()
-
-
-# test out
-
-
-# pickle the flattened input images and the output vectors as a tuple
-linear_data_out = open('linear_100x10_size_24x24.pydb','wb')
-pickle.dump((X_flat, y_dist, training_img_flat, non_training_img_flat, scrambled_flat, lena_pw_flat, lena_zoom_flat), linear_data_out)
-linear_data_out.close()
+#
+# # standardize and flatten main database
+# X_stdized = standardization_filter(X_dist)
+# X_flat = flatten_images(X_stdized)
+# # #verify stdization
+# plt.imshow(X_stdized[0,:,:], cmap='Greys'),plt.title('in bag standardized database')
+# plt.show()
+#
+# # stdize and flatten one (the first, [0,:,:]) image from main database
+# training_img_std = standardization_filter(training_img[None,:,:])
+# training_img_flat = flatten_images(training_img_std)
+# # #verify stdization
+# training_img_sq = np.squeeze(training_img_std)
+# plt.imshow(training_img_sq, cmap='Greys'),plt.title('in bag standardized')
+# plt.show()
+#
+# # stdize/flatten out of bag image
+# non_training_img_std = standardization_filter(non_training_img[None,:,:])
+# non_training_img_flat = flatten_images(non_training_img_std)
+# # #verify stdization
+# non_training_img_sq = np.squeeze(non_training_img_std)
+# plt.imshow(non_training_img_sq, cmap='Greys'),plt.title('out of bag standardized')
+# plt.show()
+#
+# # stdize/flatten in bag scrambled image
+# scrambled_std = standardization_filter(scrambled[None,:,:])
+# scrambled_flat = flatten_images(scrambled_std)
+# # # verify stdization
+# scrambled_sq = np.squeeze(scrambled_std)
+# plt.imshow(scrambled_sq, cmap='Greys'),plt.title('scrambled standardized')
+# plt.show()
+#
+# # stdize/flatten lena prewhitened
+# lena_pw_std = standardization_filter(lena_pw[None,:,:])
+# lena_pw_flat = flatten_images(lena_pw_std)
+# # # verify stdization
+# lena_pw_sq = np.squeeze(lena_pw_std)
+# plt.imshow(lena_pw_sq, cmap='Greys'),plt.title('lena prewhitened')
+# plt.show()
+#
+# # flatten lena zoomed for pickle output
+# lena_zoom_std = standardization_filter(lena_zoom[None,:,:])
+# lena_zoom_flat = flatten_images(lena_zoom_std)
+# # # verify stdization
+# lena_zoom_sq = np.squeeze(lena_zoom_std)
+# plt.imshow(lena_zoom_sq, cmap='Greys'),plt.title('lena zoom')
+# plt.show()
+#
+#
+# # test out
+#
+#
+# # pickle the flattened input images and the output vectors as a tuple
+# linear_data_out = open('linear_100x10_size_24x24.pydb','wb')
+# pickle.dump((X_flat, y_dist, training_img_flat, non_training_img_flat, scrambled_flat, lena_pw_flat, lena_zoom_flat), linear_data_out)
+# linear_data_out.close()
 
 
 # NOTE: comment out code between these NOTES when pickling the Tanh dataset
@@ -507,49 +508,50 @@ Scaling and Pickling for Tanh Model
 # # NOTE: comment out code between these NOTES when pickling the Linear dataset
 
 
-# # scale main database to [-1,1] and flatten
-# X_tanh = rescaling_filter(X_dist, scaling_range=[-1,1])
-# X_flat_tanh = flatten_images(X_tanh)
-# # # verify tanh scaling
-# plt.imshow(X_tanh[0,:,:], cmap='Greys'),plt.title('in bag tanh database')
-# plt.show()
+# scale main database to [-1,1] and flatten
+X_tanh = rescaling_filter(X_dist, scaling_range=[-1,1])
+X_flat_tanh = flatten_images(X_tanh)
+# # verify tanh scaling
+plt.imshow(X_tanh[0,:,:], cmap='Greys'),plt.title('in bag tanh database')
+plt.show()
 
-# # scale in bag image to [-1,1] and flatten
-# training_img_tanh = rescaling_filter(training_img, scaling_range=[-1,1])
-# training_img_tanh_flat = flatten_images(training_img_tanh[None,:,:])
-# # # verify tanh scaling
-# plt.imshow(training_img_tanh, cmap='Greys'),plt.title('in bag tanh')
-# plt.show()
+# scale in bag image to [-1,1] and flatten
+training_img_tanh = rescaling_filter(training_img, scaling_range=[-1,1])
+training_img_tanh_flat = flatten_images(training_img_tanh[None,:,:])
+# # verify tanh scaling
+plt.imshow(training_img_tanh, cmap='Greys'),plt.title('in bag tanh')
+plt.show()
 
-# # scale out of bag image to [-1,1] and flatten
-# non_training_img_tanh = rescaling_filter(non_training_img, scaling_range=[-1,1])
-# non_training_img_tanh_flat = flatten_images(non_training_img_tanh[None,:,:])
-# # # verify tanh scaling
-# plt.imshow(non_training_img_tanh, cmap='Greys'),plt.title('out of bag tanh')
-# plt.show()
+# scale out of bag image to [-1,1] and flatten
+non_training_img_tanh = rescaling_filter(non_training_img, scaling_range=[-1,1])
+non_training_img_tanh_flat = flatten_images(non_training_img_tanh[None,:,:])
+# # verify tanh scaling
+plt.imshow(non_training_img_tanh, cmap='Greys'),plt.title('out of bag tanh')
+plt.show()
 
-# # scale in bag scrambled to [-1,1] and flatten
-# scrambled_tanh = rescaling_filter(scrambled, scaling_range=[-1,1])
-# scrambled_tanh_flat = flatten_images(scrambled_tanh[None,:,:])
-# # # verify tanh scaling
-# plt.imshow(scrambled_tanh, cmap='Greys'),plt.title('in bag scrambled tanh')
-# plt.show()
-
-
-# # scale lena pw to [-1,1] and flatten
-# lena_pw_tanh = rescaling_filter(lena_pw, scaling_range=[-1,1])
-# lena_pw_tanh_flat = flatten_images(lena_pw_tanh[None,:,:])
-# # # verify tanh scaling
-# plt.imshow(lena_pw_tanh, cmap='Greys'),plt.title('lena pw tanh')
-# plt.show()
+# scale in bag scrambled to [-1,1] and flatten
+scrambled_tanh = rescaling_filter(scrambled, scaling_range=[-1,1])
+scrambled_tanh_flat = flatten_images(scrambled_tanh[None,:,:])
+# # verify tanh scaling
+plt.imshow(scrambled_tanh, cmap='Greys'),plt.title('in bag scrambled tanh')
+plt.show()
 
 
-# # scale lena zoom to [-1,1] and flatten
-# lena_zoom_tanh = rescaling_filter(lena_zoom, scaling_range=[-1,1])
-# lena_zoom_tanh_flat = flatten_images(lena_zoom_tanh[None,:,:])
-# # # verify tanh scaling
-# plt.imshow(lena_zoom_tanh, cmap='Greys'),plt.title('lena zoom tanh')
-# plt.show()
+# scale lena pw to [-1,1] and flatten
+lena_pw_tanh = rescaling_filter(lena_pw, scaling_range=[-1,1])
+lena_pw_tanh_flat = flatten_images(lena_pw_tanh[None,:,:])
+# # verify tanh scaling
+plt.imshow(lena_pw_tanh, cmap='Greys'),plt.title('lena pw tanh')
+plt.show()
+
+
+# scale lena zoom to [-1,1] and flatten
+lena_zoom_tanh = rescaling_filter(lena_zoom, scaling_range=[-1,1])
+lena_zoom_tanh_flat = flatten_images(lena_zoom_tanh[None,:,:])
+# # verify tanh scaling
+plt.imshow(lena_zoom_tanh, cmap='Greys'),plt.title('lena zoom tanh')
+plt.show()
+
 
 '''
 Plot histograms of "increasingly out-of-bag images 1-5"
@@ -605,5 +607,70 @@ Pickle out whatever tanh dataset has been created above
 # pickle.dump((X_flat_tanh, y_dist, training_img_tanh_flat, non_training_img_tanh_flat, scrambled_tanh_flat, lena_pw_tanh_flat, lena_zoom_tanh_flat), tanh_data_out)
 # tanh_data_out.close()
 
+'''
+Take ten random examples of each digit from tanh mnist 100x10
+'''
+
+index1 = 0
+index2 = 100
+
+X_distilled = np.zeros(shape=(1,784))
+y_distilled = np.zeros(shape=(1,10))
+
+for digit in range(0,10):
+    
+    hundred_imgs_one_dig = X_flat_tanh[index1:index2]
+    print('size hundred_imgs_one_dig is {}'.format(hundred_imgs_one_dig.shape))
+    hundred_labels_one_dig = y_dist[index1:index2]
+    print('size hundred_labels_one_dig is {}'.format(hundred_labels_one_dig.shape))
+    ten_rand_indices = random.sample(range(100), 10)
+    print('ten rand indices for digit {} are {}'.format(digit,ten_rand_indices))
+    ten_imgs = np.zeros(shape=(1,784))
+    ten_labels = np.zeros(shape=(1,10))
+    for index in ten_rand_indices:
+        #Size 784
+        rand_img = hundred_imgs_one_dig[index]
+        print('size of rand_img is {}'.format(rand_img.shape))
+        #Size 10
+        rand_label = hundred_labels_one_dig[index]
+        print('size of rand_label is {}'.format(rand_label.shape))
+        ten_imgs = np.vstack((ten_imgs, rand_img[None,:]))
+        ten_labels = np.vstack((ten_labels, rand_label[None,:]))
+    print('size of ten_imgs after 10 rand insertions is {}'.format(ten_imgs.shape))
+    print('size of ten_labels after 10 rand insertions is {}'.format(ten_labels.shape))
+
+    #taking off first empty row
+    
+    ten_imgs_squeezed = ten_imgs[1:11,:]
+    ten_labels_squeezed = ten_labels[1:11,:]
+    print('size of ten_imgs_squeezed is {}'.format(ten_imgs_squeezed.shape))
+    print('size of ten_labels_squeezed is {}'.format(ten_labels_squeezed.shape))
+    
+    X_distilled = np.vstack((X_distilled, ten_imgs_squeezed))
+    y_distilled = np.vstack((y_distilled, ten_labels_squeezed))
+    
+    print('size of X_distilled in loop is {}'.format(X_distilled.shape))
+    print('size of y_distilled in loop is {}'.format(y_distilled.shape))
+
+    index1 += 100
+    index2 += 100
+
+X_distilled_squeezed = X_distilled[1:101,:]
+y_distilled_squeezed = y_distilled[1:101,:]
+
+print('size of X_dist_squeezed after loop is {}'.format(X_distilled_squeezed.shape))
+print('size of y_dist_squeezed after loop is {}'.format(y_distilled_squeezed.shape))
+
+for i in range(0,100):
+    reshaped = X_distilled_squeezed[i].reshape(28,28)
+    plt.imshow(reshaped)
+    plt.show()
+    print(np.argmax(y_distilled_squeezed[i,:]))
+
+
+# pickle the flattened input images and the output vectors as a tuple
+tanh_data_out = open('ten_of_each_dig_from_mnist_1000.pydb', 'wb')
+pickle.dump((X_distilled_squeezed, y_distilled_squeezed), tanh_data_out)
+tanh_data_out.close()
 
 # NOTE: comment out code between these NOTES when pickling the Linear dataset

@@ -87,27 +87,27 @@ pcmod_in = open('pc.{}.{}.{}.{}.{}.{}.{}.{}.{}.{}.{}.{}.pydb'.format(model_size,
 pcmod = pickle.load(pcmod_in)
 pcmod_in.close()
 
-# load data to evaluate against
-tanh_data_in = open('tanh_100x10.pydb','rb')
-X_train, y_train, training_img, non_training_img, scrm_training_img, lena_pw, lena_zoom = pickle.load(tanh_data_in)
-tanh_data_in.close()
+# # load data to evaluate against
+# tanh_data_in = open('tanh_100x10.pydb','rb')
+# X_train, y_train, training_img, non_training_img, scrm_training_img, lena_pw, lena_zoom = pickle.load(tanh_data_in)
+# tanh_data_in.close()
 
 # # load data to evaluate against
 # tanh_data_in = open('tanh_100x10_fashion_mnist.pydb','rb')
 # X_train, y_train, training_img, non_training_img, scrm_training_img, lena_pw, lena_zoom = pickle.load(tanh_data_in)
 # tanh_data_in.close()
 
-# # load data to evaluate against
-# tanh_data_in = open('tanh_100x10_cifar10.pydb','rb')
-# X_train, y_train, training_img, non_training_img, scrm_training_img, lena_pw, lena_zoom = pickle.load(tanh_data_in)
-# tanh_data_in.close()
+# load data to evaluate against
+tanh_data_in = open('tanh_100x10_cifar10.pydb','rb')
+X_train, y_train, training_img, non_training_img, scrm_training_img, lena_pw, lena_zoom = pickle.load(tanh_data_in)
+tanh_data_in.close()
 
 #output pickle naming
 
 #images evaluated against (must match tanh_data_in]
-eval_dataset = 'tanh100x10'
+# eval_dataset = 'tanh100x10'
 # eval_dataset = 'tanh100x10_fashion_mnist'
-# eval_dataset = 'tanh100x10_cifar10'
+eval_dataset = 'tanh100x10_cifar10'
 # eval_dataset = 'tanh10x10'
 
 # print(X_train.shape)
