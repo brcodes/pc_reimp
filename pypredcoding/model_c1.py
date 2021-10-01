@@ -618,6 +618,7 @@ class PredictiveCodingClassifier:
         self.Classif_success_by_img = []
         self.acc_evaluation = 0
         self.eval_class_type = eval_class_type
+        self.softmax_guess_each_img = []
 
         # if X is a matrix of shape [n_eval_images,:,:].
         # i.e. if number of input images is greater than 1

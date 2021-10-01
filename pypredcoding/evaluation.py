@@ -20,9 +20,14 @@ MUST comment-in desired naming parameters
 # model_size = '[36.32]'
 # model_size = '[1020.10]'
 # model_size = '[128.10]'
+# model_size = '[288.10]'
+# model_size = '[2304.10]'
+# model_size = '[18432.10]'
+# model_size = '[36.36]'
+model_size = '[288.288]'
 # model_size = '[128.128.10]'
 # model_size = '[128.128.128.10]'
-model_size = '[128.128.128.128.10]'
+# model_size = '[128.128.128.128.10]'
 # model_size = '[128.32]'
 # model_size = '[96.32]'
 
@@ -47,9 +52,10 @@ trained = 'T'
 #number of epochs if trained (if not, use -)
 # num_epochs = '1000e'
 # num_epochs = '100e'
-num_epochs = '40e'
+# num_epochs = '40e'
 # num_epochs = '50e'
 # num_epochs = '20e'
+num_epochs = '10e'
 # num_epochs = '-'
 
 #dataset trained on if trained (if not, use -)
@@ -93,15 +99,15 @@ pcmod_in = open('pc.{}.{}.{}.{}.{}.{}.{}.{}.{}.{}.{}.{}.pydb'.format(model_size,
 pcmod = pickle.load(pcmod_in)
 pcmod_in.close
 
-# load data to evaluate against
-tanh_data_in = open('ten_of_each_dig_from_mnist_1000.pydb','rb')
-X_train, y_train = pickle.load(tanh_data_in)
-tanh_data_in.close()
-
 # # load data to evaluate against
-# tanh_data_in = open('tanh_100x10.pydb','rb')
-# X_train, y_train, training_img, non_training_img, scrm_training_img, lena_pw, lena_zoom = pickle.load(tanh_data_in)
+# tanh_data_in = open('ten_of_each_dig_from_mnist_1000.pydb','rb')
+# X_train, y_train = pickle.load(tanh_data_in)
 # tanh_data_in.close()
+
+# load data to evaluate against
+tanh_data_in = open('tanh_100x10.pydb','rb')
+X_train, y_train, training_img, non_training_img, scrm_training_img, lena_pw, lena_zoom = pickle.load(tanh_data_in)
+tanh_data_in.close()
 
 # # load data to evaluate against
 # tanh_data_in = open('tanh_100x10_fashion_mnist.pydb','rb')
@@ -131,10 +137,10 @@ tanh_data_in.close()
 #output pickle naming
 
 #images evaluated against (must match tanh_data_in]
-# eval_dataset = 'tanh100x10'
+eval_dataset = 'tanh100x10'
 # eval_dataset = 'tanh100x10_fashion_mnist'
 # eval_dataset = 'tanh100x10_cifar10'
-eval_dataset = 'ten_of_each_dig_from_mnist_1000'
+# eval_dataset = 'ten_of_each_dig_from_mnist_1000'
 # eval_dataset = 'tanh100x10_size_24x24'
 # eval_dataset = 'tanh100x10_fashion_mnist_size_24x24'
 # eval_dataset = 'tanh100x10_cifar10_size_24x24'
@@ -158,7 +164,7 @@ naming_parameters = [model_size,transform_type,prior_type,class_type,\
 
 
 # evaluate
-E,C,Classif_success_by_img,Acc = pcmod.evaluate(X_inflated,y_train)
+E,C,Classif_success_by_img,Acc,softmax_guess_each_img = pcmod.evaluate(X_inflated,y_train,eval_class_type='C2')
 
 
 """
@@ -175,5 +181,5 @@ evaluated = 'E'
 
 evaluation_out = open('pc.{}.{}.{}.{}.{}.{}.{}.{}.{}.{}.{}.{}.pydb'.format(model_size,transform_type,prior_type,class_type,\
     trained,num_epochs,training_dataset, evaluated, eval_dataset, used_for_pred, pred_dataset,extra_tag),'wb')
-pickle.dump((pcmod,E,C,Classif_success_by_img,Acc), evaluation_out)
+pickle.dump((pcmod,E,C,Classif_success_by_img,Acc,softmax_guess_each_img), evaluation_out)
 evaluation_out.close()

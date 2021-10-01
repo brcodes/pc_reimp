@@ -16,15 +16,15 @@ def main():
     # create and modify model parameters
 
     # TANH TILED polynomial
-    p = ModelParameters(unit_act='tanh',r_prior = 'gaussian', U_prior = 'gaussian', input_size=576,
-        hidden_sizes = [2304,2304], classification = 'C2', num_epochs = 10, tile_offset = 6,
-        k_r_sched = {'poly':{'initial':0.005,'max_epochs':10,'poly_power':1}},
-        k_U_sched = {'poly':{'initial':0.005,'max_epochs':10,'poly_power':1}},
-        k_o_sched = {'poly':{'initial':0.00005,'max_epochs':10,'poly_power':1}})
+    p = ModelParameters(unit_act='tanh',r_prior = 'kurtotic', U_prior = 'kurtotic', input_size=576,
+        hidden_sizes = [36,36], classification = 'C2', num_epochs = 10000, tile_offset = 6, output_size=5,
+        k_r_sched = {'poly':{'initial':0.005,'max_epochs':10000,'poly_power':10}},
+        k_U_sched = {'poly':{'initial':0.005,'max_epochs':10000,'poly_power':10}},
+        k_o_sched = {'poly':{'initial':0.00005,'max_epochs':10000,'poly_power':50}})
 
-    # model_size = '[36.36]'
+    model_size = '[36.36]'
     # model_size = '[288.288]'
-    model_size = '[2304.2304]'
+    # model_size = '[2304.2304]'
     # model_size = '[18432.18432]'
 
 
@@ -93,8 +93,8 @@ def main():
     # transform_type = 'linear'
 
     #prior type
-    prior_type = 'gauss'
-    # prior_type = 'kurt'
+    # prior_type = 'gauss'
+    prior_type = 'kurt'
 
     #classification method
     # class_type = 'NC'
@@ -106,21 +106,27 @@ def main():
     # trained = 'nt'
 
     #number of epochs if trained (if not, use -)
+    num_epochs = '10000e'
+    # num_epochs = '5000e'
     # num_epochs = '1000e'
     # num_epochs = '200e'
     # num_epochs = '100e'
     # num_epochs = '50e'
     # num_epochs = '40e'
     # num_epochs = '25e'
-    num_epochs = '10e'
+    # num_epochs = '10e'
     # num_epochs = '-'
 
     #dataset trained on if trained (if not, use -)
     # training_dataset = 'tanh100x10'
     # training_dataset = 'tanh1000x10'
-    training_dataset = 'tanh100x10_size_24x24'
+    # training_dataset = 'tanh100x10_size_24x24'
     # training_dataset = 'linear100x10_size_24x24'
     # training_dataset = 'tanh10x10'
+    # training_dataset = 'rao_visionres'
+    # training_dataset = 'rao_ballard_nature'
+    # training_dataset = 'rao_visionres_size_24x24'
+    training_dataset = 'rao_ballard_nature_size_24x24'
     # training_dataset = '-'
 
     #evaluated or not evaluated with evaluate() (should occur in evaluation.py, so likely choose ne here in main.py)
@@ -170,7 +176,8 @@ def main():
     # extra_tag = 'cboost_100'
     # extra_tag = 'cboost_1000'
     # extra_tag = 'cboost_4000'
-    extra_tag = 'tile_offset_6_poly_lr_0.005_lU_0.005_me10_pp1'
+    # extra_tag = 'tile_offset_6_poly_lr_0.005_lU_0.005_me10_pp1'
+    extra_tag = 'tiled'
     # extra_tag = '-'
 
     """
@@ -203,13 +210,22 @@ def main():
     # X_train, y_train, training_img, non_training_img, scrm_training_img, lena_pw, lena_zoom = pickle.load(tanh_data_in)
     # tanh_data_in.close()
 
-    tanh_tile_data_in = open('tanh_100x10_size_24x24.pydb','rb')
-    X_train, y_train, training_img, non_training_img, scrm_training_img, lena_pw, lena_zoom = pickle.load(tanh_tile_data_in)
-    tanh_tile_data_in.close()
+    # tanh_tile_data_in = open('tanh_100x10_size_24x24.pydb','rb')
+    # X_train, y_train, training_img, non_training_img, scrm_training_img, lena_pw, lena_zoom = pickle.load(tanh_tile_data_in)
+    # tanh_tile_data_in.close()
 
     # tanh_data_in = open('tanh_1000x10.pydb','rb')
     # X_train, y_train, training_img, non_training_img, scrm_training_img, lena_pw, lena_zoom = pickle.load(tanh_data_in)
     # tanh_data_in.close()
+
+    # tanh_data_in = open('rao_visionres_size_24x24.pydb','rb')
+    # X_train, y_train = pickle.load(tanh_data_in)
+    # tanh_data_in.close()
+    
+    tanh_data_in = open('rao_ballard_nature_size_24x24.pydb','rb')
+    X_train, y_train = pickle.load(tanh_data_in)
+    tanh_data_in.close()
+    
 
 
     """

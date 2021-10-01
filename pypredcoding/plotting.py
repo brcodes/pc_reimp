@@ -16,16 +16,16 @@ Comment-in the plot type
 """
 
 
-# plot_type = 'trainingE'
+plot_type = 'trainingE'
 
 # # for models with different E,C scales
 # plot_type = 'trainingECAsplitplot'
-
+# 
 # # for models with same E,C scale
 # plot_type = 'trainingECAoneplot'
 
 # # for models with different E,C scales
-plot_type = 'evalECAsplitplot'
+# plot_type = 'evalECAsplitplot'
 
 # # for models with same E,C scale
 # plot_type = 'evalECAoneplot'
@@ -43,14 +43,17 @@ MUST comment-in 'P' and a pred_dataset for predPEs plot
 
 #model size
 # model_size = '[32.10]'
-# model_size = '[32.32]'
+model_size = '[32.32]'
 # model_size = '[36.32]'
 # model_size = '[36.10]'
-model_size = '[288.10]'
+# model_size = '[288.10]'
 # model_size = '[2304.10]'
 # model_size = '[18432.10]'
 # model_size = '[36.36]'
 # model_size = '[288.288]'
+# model_size = '[576.576]'
+# model_size = '[1152.1152]'
+# model_size = '[1152.10]'
 # model_size = '[2304.2304]'
 # model_size = '[18432.18432]'
 # model_size = '[128.10]'
@@ -73,8 +76,8 @@ prior_type = 'gauss'
 # prior_type = 'kurt'
 
 #classification method
-# class_type = 'NC'
-class_type = 'C1'
+class_type = 'NC'
+# class_type = 'C1'
 # class_type = 'C2'
 
 #trained or untrained
@@ -82,14 +85,16 @@ trained = 'T'
 # trained = 'nt'
 
 #number of epochs if trained (if not, use -)
+# num_epochs = '10000e'
+# num_epochs = '5000e'
 # num_epochs = '1000e'
 # num_epochs = '200e'
-# num_epochs = '100e'
+num_epochs = '100e'
 # num_epochs = '50e'
 # num_epochs = '40e'
 # num_epochs = '25e'
 # num_epochs = '20e'
-num_epochs = '10e'
+# num_epochs = '10e'
 # num_epochs = '-'
 
 #dataset trained on if trained (if not, use -)
@@ -98,11 +103,16 @@ training_dataset = 'tanh100x10'
 # training_dataset = 'tanh100x10_size_24x24'
 # training_dataset = 'linear100x10_size_24x24'
 # training_dataset = 'tanh10x10'
+# training_dataset = 'tanh1x10'
+# training_dataset = 'rao_visionres'
+# training_dataset = 'rao_ballard_nature'
+# training_dataset = 'rao_visionres_size_24x24'
+# training_dataset = 'rao_ballard_nature_size_24x24'
 # training_dataset = '-'
 
 #evaluated or not evaluated with so far
-evaluated = 'E'
-# evaluated = 'ne'
+# evaluated = 'E'
+evaluated = 'ne'
 
 #images evaluated against, if evaluated (if not, use -)
 # eval_dataset = 'tanh100x10'
@@ -112,6 +122,7 @@ evaluated = 'E'
 # eval_dataset = 'tanh100x10_fashion_mnist_size_24x24'
 # eval_dataset = 'tanh100x10_cifar10_size_24x24'
 # eval_dataset = 'tanh10x10'
+# eval_dataset = 'ten_of_each_dig_from_mnist_1000'
 eval_dataset = '-'
 
 
@@ -152,6 +163,8 @@ pred_dataset = '-'
 # extra_tag = 'cboost_1000'
 # extra_tag = 'cboost_4000'
 # extra_tag = 'tile_offset_6_poly_lr_0.005_lU_0.005_me10_pp1'
+# extra_tag = 'tile_offset_6_poly_lr_0.005_lU_0.005_me40_pp1'
+# extra_tag = 'tiled'
 extra_tag = '-'
 
 
@@ -236,7 +249,7 @@ def plot(plot_type,model_size,transform_type,prior_type,class_type,\
             plotE = ax.plot(num_epochs, representation_cost_by_epoch, '#000000', label="Avg E")
     
             # set E scale
-            ax.set_ylim(0, 1000)
+            ax.set_ylim(0, 2000)
     
             # set axis names
             ax.set_xlabel("Epoch")
@@ -311,6 +324,7 @@ def plot(plot_type,model_size,transform_type,prior_type,class_type,\
             acc_first = round(pcmod.acc_per_epoch[0],1)
             acc_last = round(pcmod.acc_per_epoch[-1],1)
             acc_max = round(max(pcmod.acc_per_epoch),1)
+            acc_avg = round(pcmod.acc_per_epoch,1)
     
     
             # general variables
@@ -344,7 +358,7 @@ def plot(plot_type,model_size,transform_type,prior_type,class_type,\
             fig, (axE, axC) = plt.subplots(2)
             fig.suptitle("{}  {}  {}  {}  ".format(pcmod.p.unit_act,prior_type,class_type,tiling)+"lr_r={} ".format(pcmod.lr_r)+"lr_U={} ".format(pcmod.lr_U)+"lr_o={}".format(pcmod.lr_o)+'\n'\
             +'E1={} '.format(round_epoch1)+'Emin={} '.format(round_min)\
-            +'Cmax={} '.format(C_round_max)+'Cmin={} '.format(C_round_min) + 'Amax={} '.format(acc_max))
+            +'Cmax={} '.format(C_round_max)+'Cmin={} '.format(C_round_min) + 'Aavg={} '.format(acc_avg))
     
             # create a second y-axis (Accuracy) for each subplot
     
@@ -446,6 +460,7 @@ def plot(plot_type,model_size,transform_type,prior_type,class_type,\
             acc_first = round(pcmod.acc_per_epoch[0],1)
             acc_last = round(pcmod.acc_per_epoch[-1],1)
             acc_max = round(max(pcmod.acc_per_epoch),1)
+            acc_avg = round(np.mean(pcmod.acc_per_epoch),1)
     
     
             # general variables
@@ -480,7 +495,7 @@ def plot(plot_type,model_size,transform_type,prior_type,class_type,\
             fig, (axE) = plt.subplots(1)
             fig.suptitle("{}  {}  {}  {}  {}".format(pcmod.p.unit_act,prior_type,class_type,tiling,pcmod.p.hidden_sizes)+'\n'\
             +'E1={} '.format(round_epoch1)+'Emin={} '.format(round_min)\
-            +'Cmax={} '.format(C_round_max)+'Cmin={} '.format(C_round_min) + 'Amax={} '.format(acc_max))
+            +'Cmax={} '.format(C_round_max)+'Cmin={} '.format(C_round_min) + 'Aavg={} '.format(acc_avg))
     
     
             twinEA = axE.twinx()
@@ -493,7 +508,7 @@ def plot(plot_type,model_size,transform_type,prior_type,class_type,\
             # set limits for and label x,y-axes for both subplots
     
             # axE.set_xlim(0, 2)
-            axE.set_ylim(0, 1000)
+            axE.set_ylim(0, 20000)
             twinEA.set_ylim(0, 110)
     
             axE.set_xlabel("Epoch")
@@ -540,7 +555,7 @@ def plot(plot_type,model_size,transform_type,prior_type,class_type,\
             # load it
             evaluation_in = open('pc.{}.{}.{}.{}.{}.{}.{}.{}.{}.{}.{}.{}.pydb'.format(model_size,transform_type,prior_type,class_type,\
               trained,num_epochs,training_dataset, evaluated, eval_dataset, used_for_pred, pred_dataset,extra_tag),'rb')
-            pcmod,E,C,Classif_success_by_img,Acc = pickle.load(evaluation_in)
+            pcmod,E,C,Classif_success_by_img,Acc,softmax_guess_each_img = pickle.load(evaluation_in)
             evaluation_in.close()
     
             """

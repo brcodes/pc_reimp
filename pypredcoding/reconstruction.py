@@ -40,8 +40,8 @@ MUST comment-in desired naming parameters
 #model size
 # model_size = '[32.10]'
 # model_size = '[32.32]'
-model_size = '[36.32]'
-# model_size = '[128.32]'
+# model_size = '[36.32]'
+model_size = '[128.32]'
 
 
 #transformation function
@@ -49,8 +49,8 @@ transform_type = 'tanh'
 # transform_type = 'linear'
 
 #prior type
-prior_type = 'gauss'
-# prior_type = 'kurt'
+# prior_type = 'gauss'
+prior_type = 'kurt'
 
 #classification method
 class_type = 'NC'
@@ -63,14 +63,14 @@ trained = 'T'
 
 #number of epochs if trained (if not, use -)
 # num_epochs = '1000e'
-# num_epochs = '100e'
-num_epochs = '40e'
+num_epochs = '100e'
+# num_epochs = '40e'
 # num_epochs = '50e'
 # num_epochs = '-'
 
 #dataset trained on if trained (if not, use -)
-# training_dataset = 'tanh100x10'
-training_dataset = 'tanh100x10_size_24x24'
+training_dataset = 'tanh100x10'
+# training_dataset = 'tanh100x10_size_24x24'
 # training_dataset = 'tanh10x10'
 # training_dataset = '-'
 
@@ -79,8 +79,8 @@ evaluated = 'E'
 # evaluated = 'ne'
 
 #images evaluated against, if evaluated (if not, use -)
-# eval_dataset = 'tanh100x10'
-eval_dataset = 'tanh100x10_size_24x24'
+eval_dataset = 'tanh100x10'
+# eval_dataset = 'tanh100x10_size_24x24'
 # eval_dataset = 'tanh10x10'
 # eval_dataset = '-'
 
@@ -90,16 +90,16 @@ used_for_pred = 'P'
 #images predicted, if used for prediction (if not, use -)
 #images 1-5 from April/May 2021 exps
 # pred_dataset = '5imgs'
-# pred_dataset = '0-9_minE_128.32_kurt'
-pred_dataset = '0-9_minE_36.32'
+pred_dataset = '0-9_minE_128.32_kurt'
+# pred_dataset = '0-9_minE_36.32'
 # pred_dataset = '0-9_maxE_128.32_kurt'
 # pred_dataset = '-'
 
 #extra identifier for any particular or unique qualities of the model object
 # extra_tag = 'randUo'
 # extra_tag = 'pipeline_test'
-extra_tag = 'tile_offset_6_poly_lr_0.05_lU_0.005_me40_pp1'
-# extra_tag = '-'
+# extra_tag = 'tile_offset_6_poly_lr_0.05_lU_0.005_me40_pp1'
+extra_tag = '-'
 
 
 # import model and predicted image set (set could contain multple 2-dim images, or one 3-dim multi-image
@@ -109,16 +109,18 @@ prediction_in = open('pc.{}.{}.{}.{}.{}.{}.{}.{}.{}.{}.{}.{}.pydb'.format(model_
 pcmod, prediction_image_set, n_pred_images = pickle.load(prediction_in)
 prediction_in.close()
 
-# for loading and recontruction of a different prediction_image_set
-other_prediction_in = open('pc.[36.32].tanh.gauss.NC.T.40e.tanh100x10.E.tanh100x10.P.0-9_minE_36.32.-.pydb'.format(model_size,transform_type,prior_type,class_type,\
-  trained,num_epochs,training_dataset, evaluated, eval_dataset, used_for_pred, pred_dataset,extra_tag),'rb')
-other_pcmod, other_prediction_image_set, other_n_pred_images = pickle.load(other_prediction_in)
-other_prediction_in.close()
+# # for loading and recontruction of a different prediction_image_set
+# other_prediction_in = open('pc.[36.32].tanh.gauss.NC.T.40e.tanh100x10.E.tanh100x10.P.0-9_minE_36.32.-.pydb'.format(model_size,transform_type,prior_type,class_type,\
+#   trained,num_epochs,training_dataset, evaluated, eval_dataset, used_for_pred, pred_dataset,extra_tag),'rb')
+# other_pcmod, other_prediction_image_set, other_n_pred_images = pickle.load(other_prediction_in)
+# other_prediction_in.close()
 
 
 """
 Reconstruct and Plot Prediction Images
 """
+
+#I = f(Ur)
 
 # for image in range(0,n_pred_images):
     
@@ -154,6 +156,44 @@ Reconstruct and Plot Prediction Images
 #     # plt.colorbar(fraction=0.046, pad=0.04)
 #     plt.show()
     
+
+#I = Ur
+
+    
+for image in range(0,n_pred_images):
+
+    # layer 1 reconstruction
+    fU1r1_l1 = pcmod.U[1].dot(pcmod.r1s[image])[0]
+    #test number of r[1]s is correct (should = num prediction images)
+    #print(len(pcmod.r1s))
+    fU1r1_resize_l1 = fU1r1_l1.reshape(28,28)
+    
+    # layer 2 reconstruction
+    fU2r2 = pcmod.U[2].dot(pcmod.prediction[image])[0]
+    # tests
+    # print("shape of U2 {} and r2 {}".format(pcmod.prediction[image].shape, pcmod.U[2].shape))
+    # print("shape of fU2r2 {}".format(fU2r2.shape))
+    # print("shape of U1 {}".format(pcmod.U[1]))
+    fU1r1_l2 = pcmod.U[1].dot(fU2r2)[0]
+    fU1r1_resize_l2 = fU1r1_l2.reshape(28,28)
+    
+    # original image
+    original_image = prediction_image_set[image].reshape(28,28)
+    # # original image from other source
+    # original_image = other_prediction_image_set[image].reshape(28,28)
+    
+    # plot
+    plt.subplot(131),plt.imshow(original_image, cmap='Greys'),plt.title('image #{} Original'.format(image+1))
+    plt.xticks([]), plt.yticks([])
+    # plt.colorbar(fraction=0.046, pad=0.04)
+    plt.subplot(132),plt.imshow(fU1r1_resize_l1, cmap='Greys'),plt.title('image #{} L{}'.format(image+1,1))
+    plt.xticks([]), plt.yticks([])
+    # plt.colorbar(fraction=0.046, pad=0.04)
+    plt.subplot(133),plt.imshow(fU1r1_resize_l2, cmap='Greys'),plt.title('image #{} L{}'.format(image+1,2))
+    plt.xticks([]), plt.yticks([])
+    # plt.colorbar(fraction=0.046, pad=0.04)
+    plt.show()
+
     
 # # TILED VERSION BELOW
 # # NO AVERAGING OF OVERLAP
@@ -236,94 +276,94 @@ Reconstruct and Plot Prediction Images
 # # TILED VERSION BELOW
 # # AVERAGING OF OVERLAP
 
-for image in range(0,n_pred_images):
+# for image in range(0,n_pred_images):
     
-    # set up indexing
-    rthird = int(pcmod.r[1].shape[0]/3)
-    print('rthird is {}'.format(rthird))
-    rindex1 = 0
-    rindex2 = rthird
+#     # set up indexing
+#     rthird = int(pcmod.r[1].shape[0]/3)
+#     print('rthird is {}'.format(rthird))
+#     rindex1 = 0
+#     rindex2 = rthird
     
-    print("first 10 lines of r1 image {}".format(image+1))
-    print(pcmod.r1s[image][:100])
-    print('length of list of r1s')
-    print(len(pcmod.r1s))
+#     print("first 10 lines of r1 image {}".format(image+1))
+#     print(pcmod.r1s[image][:100])
+#     print('length of list of r1s')
+#     print(len(pcmod.r1s))
 
-    # MODULE 1
+#     # MODULE 1
     
-    # layer 1 reconstruction
-    fU1r1_l1_1 = tanh_trans(pcmod.U[1][0].dot(pcmod.r1s[image][rindex1:rindex2]))[0]
-    fU1r1_resize_l1_1 = fU1r1_l1_1.reshape(24,12)
+#     # layer 1 reconstruction
+#     fU1r1_l1_1 = tanh_trans(pcmod.U[1][0].dot(pcmod.r1s[image][rindex1:rindex2]))[0]
+#     fU1r1_resize_l1_1 = fU1r1_l1_1.reshape(24,12)
 
-    # layer 2 reconstruction
-    fU2r2_1 = tanh_trans(pcmod.U[2].dot(pcmod.prediction[image]))[0]
-    fU1r1_l2_1 = tanh_trans(pcmod.U[1][0].dot(fU2r2_1[rindex1:rindex2]))[0]
-    fU1r1_resize_l2_1 = fU1r1_l2_1.reshape(24,12)
+#     # layer 2 reconstruction
+#     fU2r2_1 = tanh_trans(pcmod.U[2].dot(pcmod.prediction[image]))[0]
+#     fU1r1_l2_1 = tanh_trans(pcmod.U[1][0].dot(fU2r2_1[rindex1:rindex2]))[0]
+#     fU1r1_resize_l2_1 = fU1r1_l2_1.reshape(24,12)
     
-    rindex1 += rthird
-    rindex2 += rthird
+#     rindex1 += rthird
+#     rindex2 += rthird
     
-    # MODULE 2
+#     # MODULE 2
     
-    # layer 1 reconstruction
-    fU1r1_l1_2 = tanh_trans(pcmod.U[1][1].dot(pcmod.r1s[image][rindex1:rindex2]))[0]
-    fU1r1_resize_l1_2 = fU1r1_l1_2.reshape(24,12)
+#     # layer 1 reconstruction
+#     fU1r1_l1_2 = tanh_trans(pcmod.U[1][1].dot(pcmod.r1s[image][rindex1:rindex2]))[0]
+#     fU1r1_resize_l1_2 = fU1r1_l1_2.reshape(24,12)
 
-    # layer 2 reconstruction
-    fU2r2_2 = tanh_trans(pcmod.U[2].dot(pcmod.prediction[image]))[0]
-    fU1r1_l2_2 = tanh_trans(pcmod.U[1][1].dot(fU2r2_2[rindex1:rindex2]))[0]
-    fU1r1_resize_l2_2 = fU1r1_l2_2.reshape(24,12)
+#     # layer 2 reconstruction
+#     fU2r2_2 = tanh_trans(pcmod.U[2].dot(pcmod.prediction[image]))[0]
+#     fU1r1_l2_2 = tanh_trans(pcmod.U[1][1].dot(fU2r2_2[rindex1:rindex2]))[0]
+#     fU1r1_resize_l2_2 = fU1r1_l2_2.reshape(24,12)
     
-    rindex1 += rthird
-    rindex2 += rthird
+#     rindex1 += rthird
+#     rindex2 += rthird
     
-    # MODULE 3
+#     # MODULE 3
     
-    # layer 1 reconstruction
-    fU1r1_l1_3 = tanh_trans(pcmod.U[1][2].dot(pcmod.r1s[image][rindex1:rindex2]))[0]
-    fU1r1_resize_l1_3 = fU1r1_l1_3.reshape(24,12)
+#     # layer 1 reconstruction
+#     fU1r1_l1_3 = tanh_trans(pcmod.U[1][2].dot(pcmod.r1s[image][rindex1:rindex2]))[0]
+#     fU1r1_resize_l1_3 = fU1r1_l1_3.reshape(24,12)
 
-    # layer 2 reconstruction
-    fU2r2_3 = tanh_trans(pcmod.U[2].dot(pcmod.prediction[image]))[0]
-    fU1r1_l2_3 = tanh_trans(pcmod.U[1][2].dot(fU2r2_3[rindex1:rindex2]))[0]
-    fU1r1_resize_l2_3 = fU1r1_l2_3.reshape(24,12)
+#     # layer 2 reconstruction
+#     fU2r2_3 = tanh_trans(pcmod.U[2].dot(pcmod.prediction[image]))[0]
+#     fU1r1_l2_3 = tanh_trans(pcmod.U[1][2].dot(fU2r2_3[rindex1:rindex2]))[0]
+#     fU1r1_resize_l2_3 = fU1r1_l2_3.reshape(24,12)
     
-    # take average overlapping parts of L1 and L2 reconstructions and concatenate all 4 quadrants
-    # of each reconstruction
+#     # take average overlapping parts of L1 and L2 reconstructions and concatenate all 4 quadrants
+#     # of each reconstruction
     
-    # LAYER 1
+#     # LAYER 1
     
-    q1_l1 = fU1r1_resize_l1_1[:,0:6]
-    q2_l1 = (fU1r1_resize_l1_1[:,6:12]+fU1r1_resize_l1_2[:,0:6])/2
-    q3_l1 = (fU1r1_resize_l1_2[:,6:12]+fU1r1_resize_l1_3[:,0:6])/2
-    q4_l1 = fU1r1_resize_l1_3[:,6:12]
+#     q1_l1 = fU1r1_resize_l1_1[:,0:6]
+#     q2_l1 = (fU1r1_resize_l1_1[:,6:12]+fU1r1_resize_l1_2[:,0:6])/2
+#     q3_l1 = (fU1r1_resize_l1_2[:,6:12]+fU1r1_resize_l1_3[:,0:6])/2
+#     q4_l1 = fU1r1_resize_l1_3[:,6:12]
     
-    l1_recon = np.concatenate((q1_l1,q2_l1,q3_l1,q4_l1),axis=1)
+#     l1_recon = np.concatenate((q1_l1,q2_l1,q3_l1,q4_l1),axis=1)
     
-    # LAYER 2
+#     # LAYER 2
     
-    q1_l2 = fU1r1_resize_l2_1[:,0:6]
-    q2_l2 = (fU1r1_resize_l2_1[:,6:12]+fU1r1_resize_l2_2[:,0:6])/2
-    q3_l2 = (fU1r1_resize_l2_2[:,6:12]+fU1r1_resize_l2_3[:,0:6])/2
-    q4_l2 = fU1r1_resize_l2_3[:,6:12]
+#     q1_l2 = fU1r1_resize_l2_1[:,0:6]
+#     q2_l2 = (fU1r1_resize_l2_1[:,6:12]+fU1r1_resize_l2_2[:,0:6])/2
+#     q3_l2 = (fU1r1_resize_l2_2[:,6:12]+fU1r1_resize_l2_3[:,0:6])/2
+#     q4_l2 = fU1r1_resize_l2_3[:,6:12]
     
-    l2_recon = np.concatenate((q1_l2,q2_l2,q3_l2,q4_l2),axis=1)
+#     l2_recon = np.concatenate((q1_l2,q2_l2,q3_l2,q4_l2),axis=1)
     
     
-    # original image from other source
-    original_image = prediction_image_set[image].reshape(24,24)
+#     # original image from other source
+#     original_image = prediction_image_set[image].reshape(24,24)
     
-    # plot
-    plt.subplot(131),plt.imshow(original_image, cmap='Greys'),plt.title('image #{} Original'.format(image+1))
-    plt.xticks([]), plt.yticks([])
-    # plt.colorbar(fraction=0.046, pad=0.04)
-    plt.subplot(132),plt.imshow(l1_recon, cmap='Greys'),plt.title('image #{} L1'.format(image+1))
-    plt.xticks([]), plt.yticks([])
-    # plt.colorbar(fraction=0.046, pad=0.04)
-    plt.subplot(133),plt.imshow(l2_recon, cmap='Greys'),plt.title('image #{} L2'.format(image+1))
-    plt.xticks([]), plt.yticks([])
-    # plt.colorbar(fraction=0.046, pad=0.04)
-    plt.show()
+#     # plot
+#     plt.subplot(131),plt.imshow(original_image, cmap='Greys'),plt.title('image #{} Original'.format(image+1))
+#     plt.xticks([]), plt.yticks([])
+#     # plt.colorbar(fraction=0.046, pad=0.04)
+#     plt.subplot(132),plt.imshow(l1_recon, cmap='Greys'),plt.title('image #{} L1'.format(image+1))
+#     plt.xticks([]), plt.yticks([])
+#     # plt.colorbar(fraction=0.046, pad=0.04)
+#     plt.subplot(133),plt.imshow(l2_recon, cmap='Greys'),plt.title('image #{} L2'.format(image+1))
+#     plt.xticks([]), plt.yticks([])
+#     # plt.colorbar(fraction=0.046, pad=0.04)
+#     plt.show()
     
     
     
