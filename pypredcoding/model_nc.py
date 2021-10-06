@@ -304,12 +304,23 @@ class PredictiveCodingClassifier:
 
 
                 # copy first image into r[0]
-                self.r[0] = X_shuffled[image,:][:,None]
+                single_image = X_shuffled[image,:][:,None]
+                self.r[0] = single_image
+                # print('shape of self.r[0] is {}'.format(self.r[0].shape))
+                #reshape for predict function
+                reshaped_image = single_image.reshape(28,28)
+                # print('reshaped image size is {}'.format(reshaped_image.shape))
 
-                # initialize new r's
+                #Initialize new r's
                 for layer in range(1,self.n_non_input_layers):
                     # self state per layer
                     self.r[layer] = np.random.randn(self.p.hidden_sizes[layer-1],1)
+                    
+                #Update them for 100 iterations using self.predict() to ensure U's are trained with
+                #optimal r's
+                
+                self.predict(reshaped_image)
+                print('prediction {} epoch {} finished'.format(image+1, epoch+1))
 
                 # designate label vector
                 label = Y_shuffled[image,:]
@@ -342,6 +353,8 @@ class PredictiveCodingClassifier:
                 self.U[n] = self.U[n] + (k_U / self.p.sigma_sq[n]) \
                 * (self.f(self.U[n].dot(self.r[n]))[1].dot(self.r[n-1] - self.f(self.U[n].dot(self.r[n]))[0])).dot(self.r[n].T) \
                 - (k_U / 2) * self.h(self.U[n],self.p.lam[n])[1]
+                
+                print('update {} epoch {} finished'.format(image+1, epoch+1))
 
 
                 # Loss function E
@@ -510,8 +523,8 @@ class PredictiveCodingClassifier:
         # of shape [:,:]
         elif len(X.shape) == 2:
 
-            print("Xshape is")
-            print(X.shape)
+            # print("Xshape is")
+            # print(X.shape)
 
             self.n_pred_images = 1
 
@@ -522,8 +535,8 @@ class PredictiveCodingClassifier:
             # print("Xflat is")
             # print(X_flat.shape)
 
-            print("*** Predicting ***")
             print('\n')
+            print("*** Predicting single image ***")
 
             # loop through testing images
             for image in range(0, self.n_pred_images):

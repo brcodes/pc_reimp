@@ -17,14 +17,15 @@ def main():
     # TANH NON-TILED constant
     # r 0.05, U 0.05 o 0.05
     p = ModelParameters(unit_act='tanh',r_prior = 'gaussian', U_prior = 'gaussian', input_size=784,
-        hidden_sizes = [2304,10], classification = 'C1', num_epochs = 10,
+        hidden_sizes = [128,10], classification = 'C1', num_epochs = 10,
         k_r_sched = {'constant':{'initial':0.05}},
         k_U_sched = {'constant':{'initial':0.05}},
         k_o_sched = {'constant':{'initial':0.0005}})
 
     # model_size = '[36.10]'
+    model_size = '[128.10]'
     # model_size = '[288.10]'
-    model_size = '[2304.10]'
+    # model_size = '[2304.10]'
     # model_size = '[18432.10]'
 
 
@@ -112,8 +113,9 @@ def main():
     # num_epochs = '-'
 
     #dataset trained on if trained (if not, use -)
-    training_dataset = 'tanh100x10'
+    # training_dataset = 'tanh_dog_10x10'
     # training_dataset = 'tanh1000x10'
+    training_dataset = 'tanh100x10'
     # training_dataset = 'tanh10x10'
     # training_dataset = '-'
 
@@ -165,7 +167,8 @@ def main():
     # extra_tag = 'cboost_1000'
     # extra_tag = 'cboost_4000'
     # extra_tag = 'tile_offset_6_poly_lr_0.005_lU_0.005_me40_pp1'
-    extra_tag = '-'
+    extra_tag = 'C1_LSQ'
+    # extra_tag = '-'
 
     """
     Pickle In Training Image Set
@@ -186,6 +189,10 @@ def main():
     # comment out the below three lines if using linear model
 
     # tanh_data_in = open('tanh_10x10.pydb','rb')
+    # X_train, y_train, training_img, non_training_img, scrm_training_img, lena_pw, lena_zoom = pickle.load(tanh_data_in)
+    # tanh_data_in.close()
+    
+    # tanh_data_in = open('tanh_dog_10x10.pydb','rb')
     # X_train, y_train, training_img, non_training_img, scrm_training_img, lena_pw, lena_zoom = pickle.load(tanh_data_in)
     # tanh_data_in.close()
 

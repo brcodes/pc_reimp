@@ -16,13 +16,13 @@ Comment-in the plot type
 """
 
 
-plot_type = 'trainingE'
+# plot_type = 'trainingE'
 
 # # for models with different E,C scales
 # plot_type = 'trainingECAsplitplot'
 # 
 # # for models with same E,C scale
-# plot_type = 'trainingECAoneplot'
+plot_type = 'trainingECAoneplot'
 
 # # for models with different E,C scales
 # plot_type = 'evalECAsplitplot'
@@ -43,7 +43,8 @@ MUST comment-in 'P' and a pred_dataset for predPEs plot
 
 #model size
 # model_size = '[32.10]'
-model_size = '[32.32]'
+# model_size = '[32.32]'
+model_size = '[128.36]'
 # model_size = '[36.32]'
 # model_size = '[36.10]'
 # model_size = '[288.10]'
@@ -56,6 +57,7 @@ model_size = '[32.32]'
 # model_size = '[1152.10]'
 # model_size = '[2304.2304]'
 # model_size = '[18432.18432]'
+# model_size = '[1280.10]'
 # model_size = '[128.10]'
 # model_size = '[128.128.10]'
 # model_size = '[128.128.128.10]'
@@ -89,16 +91,17 @@ trained = 'T'
 # num_epochs = '5000e'
 # num_epochs = '1000e'
 # num_epochs = '200e'
-num_epochs = '100e'
+# num_epochs = '100e'
 # num_epochs = '50e'
 # num_epochs = '40e'
 # num_epochs = '25e'
 # num_epochs = '20e'
-# num_epochs = '10e'
+num_epochs = '10e'
 # num_epochs = '-'
 
 #dataset trained on if trained (if not, use -)
 training_dataset = 'tanh100x10'
+# training_dataset = 'tanh_dog_10x10'
 # training_dataset = 'tanh1000x10'
 # training_dataset = 'tanh100x10_size_24x24'
 # training_dataset = 'linear100x10_size_24x24'
@@ -165,6 +168,9 @@ pred_dataset = '-'
 # extra_tag = 'tile_offset_6_poly_lr_0.005_lU_0.005_me10_pp1'
 # extra_tag = 'tile_offset_6_poly_lr_0.005_lU_0.005_me40_pp1'
 # extra_tag = 'tiled'
+# extra_tag = 'C2_no_L'  
+# extra_tag = 'C2_LSQ'
+# extra_tag = 'C1_LSQ'
 extra_tag = '-'
 
 

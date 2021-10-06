@@ -18,14 +18,14 @@ def main():
     # TANH NON-TILED constant
     # r 0.05, U 0.05 o 0.05
     p = ModelParameters(unit_act='tanh',r_prior = 'gaussian', U_prior = 'gaussian', input_size=784,
-        hidden_sizes = [2304,2304], num_epochs = 10,
+        hidden_sizes = [128,36], num_epochs = 10,
         k_r_sched = {'constant':{'initial':0.05}},
         k_U_sched = {'constant':{'initial':0.05}},
         k_o_sched = {'constant':{'initial':0.0005}})
 
-    # model_size = '[36.36]'
+    model_size = '[128.36]'
     # model_size = '[288.288]'
-    model_size = '[2304.2304]'
+    # model_size = '[2304.2304]'
     # model_size = '[18432.18432]'
 
     # #step decay learning rates for tanh model (has not been optimized)
@@ -115,7 +115,7 @@ def main():
     # training_dataset = 'tanh1000x10'
     # training_dataset = 'tanh100x10_size_24x24'
     # training_dataset = 'linear100x10_size_24x24'
-    # training_dataset = 'tanh10x10'
+    # training_dataset = 'tanh10x10' 
     # training_dataset = '-'
 
     #evaluated or not evaluated with evaluate() (should occur in evaluation.py, so likely choose ne here in main.py)

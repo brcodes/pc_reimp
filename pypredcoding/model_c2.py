@@ -304,13 +304,24 @@ class PredictiveCodingClassifier:
 
 
                 # copy first image into r[0]
-                self.r[0] = X_shuffled[image,:][:,None]
+                single_image = X_shuffled[image,:][:,None]
+                self.r[0] = single_image
+                # print('shape of self.r[0] is {}'.format(self.r[0].shape))
+                #reshape for predict function
+                reshaped_image = single_image.reshape(28,28)
+                # print('reshaped image size is {}'.format(reshaped_image.shape))
 
-                # initialize new r's
+                #Initialize new r's
                 for layer in range(1,self.n_non_input_layers):
                     # self state per layer
                     self.r[layer] = np.random.randn(self.p.hidden_sizes[layer-1],1)
-
+                    
+                #Update them for 100 iterations using self.predict() to ensure U's are trained with
+                #optimal r's
+                
+                self.predict(reshaped_image)
+                print('prediction C2 {} epoch {} finished'.format(image+1, epoch+1))
+                
                 # designate label vector
                 label = Y_shuffled[image,:]
 
@@ -348,8 +359,9 @@ class PredictiveCodingClassifier:
 
                 """ U_o update (C2) """
                 self.o = np.exp(self.U_o.dot(self.r[n]))
-                self.U_o = self.U_o + ((k_o / 2) * (label[:,None].dot(self.r[n].T) - len(label)*softmax((self.U_o.dot(self.r[n])).dot(self.r[n].T))))
+                self.U_o = self.U_o + ((k_o / 2) * (label[:,None].dot(self.r[n].T) - softmax((self.U_o.dot(self.r[n])).dot(self.r[n].T))))
 
+                print('update C2 {} epoch {} finished'.format(image+1, epoch+1))
 
                 # Loss function E
                 E = E + self.rep_cost()
@@ -452,15 +464,15 @@ class PredictiveCodingClassifier:
             print("using predict(3-dim_vec_input)")
 
             self.n_pred_images = X.shape[0]
-            print("npredimages")
-            print(self.n_pred_images)
+            # print("npredimages")
+            # print(self.n_pred_images)
 
             # get from [n,28,28] input to [n,784] so that self.r[0] instantiation below
             # can convert to and call each image as a [784,1] vector
             X_flat = data.flatten_images(X)
 
 
-            print("*** Predicting ***")
+            print("*** Predicting  ***")
             print('\n')
 
             # loop through testing images
@@ -536,8 +548,8 @@ class PredictiveCodingClassifier:
         # of shape [:,:]
         elif len(X.shape) == 2:
 
-            print("Xshape is")
-            print(X.shape)
+            # print("Xshape is")
+            # print(X.shape)
 
             self.n_pred_images = 1
 
@@ -548,9 +560,9 @@ class PredictiveCodingClassifier:
             # print("Xflat is")
             # print(X_flat.shape)
 
-            print("*** Predicting ***")
             print('\n')
-
+            print("*** Predicting single image ***")
+            
             # loop through testing images
             for image in range(0, self.n_pred_images):
 
