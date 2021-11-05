@@ -308,7 +308,7 @@ class PredictiveCodingClassifier:
                 self.r[0] = single_image
                 # print('shape of self.r[0] is {}'.format(self.r[0].shape))
                 #reshape for predict function
-                reshaped_image = single_image.reshape(28,28)
+                reshaped_image = single_image.reshape(128,128)
                 # print('reshaped image size is {}'.format(reshaped_image.shape))
 
                 #Initialize new r's
@@ -440,7 +440,7 @@ class PredictiveCodingClassifier:
         self.prediction_errors_l2 = []
 
         # set learning rate for r
-        k_r = 0.05
+        k_r = 0.0005
 
 
         # if X is a matrix of shape [n_pred_images,:,:].

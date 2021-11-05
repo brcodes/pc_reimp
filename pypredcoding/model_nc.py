@@ -319,8 +319,50 @@ class PredictiveCodingClassifier:
                 #Update them for 100 iterations using self.predict() to ensure U's are trained with
                 #optimal r's
                 
+                # print('self.r[1][0:3] before prediction {}'.format(self.r[1][0:3]))
+                # print('self.r[2][0:3] before prediction {}'.format(self.r[2][0:3]))
+                # print('self.U[1][0:1] before prediction {}'.format(self.U[1][0:1]))
+                # print('self.U[2][0:1] before prediction {}'.format(self.U[2][0:1]))
                 self.predict(reshaped_image)
+                # print('self.r[1][0:3] after prediction {}'.format(self.r[1][0:3]))
+                # print('self.r[2][0:3] after prediction {}'.format(self.r[2][0:3]))
+                # print('self.U[1][0:1] after prediction {}'.format(self.U[1][0:1]))
+                # print('self.U[2][0:1] after prediction {}'.format(self.U[2][0:1]))
+                
                 print('prediction {} epoch {} finished'.format(image+1, epoch+1))
+                
+                # # layer 1 reconstruction
+                # fU1r1_l1 = tanh_trans(pcmod.U[1].dot(pcmod.r1s[image]))[0]
+                # #test number of r[1]s is correct (should = num prediction images)
+                # #print(len(pcmod.r1s))
+                # fU1r1_resize_l1 = fU1r1_l1.reshape(28,28)
+                
+                # # layer 2 reconstruction
+                # fU2r2 = tanh_trans(pcmod.U[2].dot(pcmod.prediction[image]))[0]
+                # # tests
+                # # print("shape of U2 {} and r2 {}".format(pcmod.prediction[image].shape, pcmod.U[2].shape))
+                # # print("shape of fU2r2 {}".format(fU2r2.shape))
+                # # print("shape of U1 {}".format(pcmod.U[1]))
+                # fU1r1_l2 = tanh_trans(pcmod.U[1].dot(fU2r2))[0]
+                # fU1r1_resize_l2 = fU1r1_l2.reshape(28,28)
+                
+                # # original image
+                # original_image = prediction_image_set[image].reshape(28,28)
+                # # # original image from other source
+                # # original_image = other_prediction_image_set[image].reshape(28,28)
+                
+                # # plot
+                # plt.subplot(131),plt.imshow(original_image, cmap='Greys'),plt.title('image #{} Original'.format(image+1))
+                # plt.xticks([]), plt.yticks([])
+                # # plt.colorbar(fraction=0.046, pad=0.04)
+                # plt.subplot(132),plt.imshow(fU1r1_resize_l1, cmap='Greys'),plt.title('image #{} L{}'.format(image+1,1))
+                # plt.xticks([]), plt.yticks([])
+                # # plt.colorbar(fraction=0.046, pad=0.04)
+                # plt.subplot(133),plt.imshow(fU1r1_resize_l2, cmap='Greys'),plt.title('image #{} L{}'.format(image+1,2))
+                # plt.xticks([]), plt.yticks([])
+                # # plt.colorbar(fraction=0.046, pad=0.04)
+                # plt.show()
+                
 
                 # designate label vector
                 label = Y_shuffled[image,:]
@@ -355,6 +397,11 @@ class PredictiveCodingClassifier:
                 - (k_U / 2) * self.h(self.U[n],self.p.lam[n])[1]
                 
                 print('update {} epoch {} finished'.format(image+1, epoch+1))
+                
+                # print('self.r[1][0:3] after updates {}'.format(self.r[1][0:3]))
+                # print('self.r[2][0:3] after updates {}'.format(self.r[2][0:3]))
+                # print('self.U[1][0:1] after updates {}'.format(self.U[1][0:1]))
+                # print('self.U[2][0:1] after updates {}'.format(self.U[2][0:1]))
 
 
                 # Loss function E
@@ -429,7 +476,7 @@ class PredictiveCodingClassifier:
         self.prediction_errors_l2 = []
 
         # set learning rate for r
-        k_r = 0.05
+        k_r = 0.0005
 
 
         # if X is a matrix of shape [n_pred_images,:,:].
@@ -594,6 +641,9 @@ class PredictiveCodingClassifier:
 
 
                 # return final prediction (r[n]) and final r[1]
+                
+                # print('self.r[1][0:3] within predict after prediction {}'.format(self.r[1][0:3]))
+                # print('self.r[2][0:3] within predict after prediction {}'.format(self.r[2][0:3]))
 
                 r1 = self.r[1]
                 prediction = self.r[n]

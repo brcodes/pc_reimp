@@ -41,7 +41,11 @@ MUST comment-in desired naming parameters
 # model_size = '[32.10]'
 # model_size = '[32.32]'
 # model_size = '[36.32]'
-model_size = '[128.32]'
+# model_size = '[128.32]'
+# model_size = '[128.36]'
+model_size = '[128.5]'
+# model_size = '[36.36]'
+# model_size = '[5.5]'
 
 
 #transformation function
@@ -49,12 +53,12 @@ transform_type = 'tanh'
 # transform_type = 'linear'
 
 #prior type
-# prior_type = 'gauss'
-prior_type = 'kurt'
+prior_type = 'gauss'
+# prior_type = 'kurt'
 
 #classification method
-class_type = 'NC'
-# class_type = 'C1'
+# class_type = 'NC'
+class_type = 'C1'
 # class_type = 'C2'
 
 #trained or untrained
@@ -62,35 +66,44 @@ trained = 'T'
 # trained = 'nt'
 
 #number of epochs if trained (if not, use -)
-# num_epochs = '1000e'
-num_epochs = '100e'
+# num_epochs = '5000e'
+num_epochs = '1000e'
+# num_epochs = '100e'
 # num_epochs = '40e'
 # num_epochs = '50e'
+# num_epochs = '10e'
 # num_epochs = '-'
 
 #dataset trained on if trained (if not, use -)
-training_dataset = 'tanh100x10'
+# training_dataset = 'tanh100x10'
+# training_dataset = 'tanh_dog_100x10'
+# training_dataset = 'rao_ballard_nature_no_pre'
+training_dataset = 'rao_ballard_nature'
+# training_dataset = 'rao_ballard_nature_dog'
 # training_dataset = 'tanh100x10_size_24x24'
 # training_dataset = 'tanh10x10'
 # training_dataset = '-'
 
 #evaluated or not evaluated with so far
-evaluated = 'E'
-# evaluated = 'ne'
+# evaluated = 'E'
+evaluated = 'ne'
 
 #images evaluated against, if evaluated (if not, use -)
-eval_dataset = 'tanh100x10'
+# eval_dataset = 'tanh100x10'
 # eval_dataset = 'tanh100x10_size_24x24'
 # eval_dataset = 'tanh10x10'
-# eval_dataset = '-'
+eval_dataset = '-'
 
 #must be P
 used_for_pred = 'P'
 
 #images predicted, if used for prediction (if not, use -)
 #images 1-5 from April/May 2021 exps
+# pred_dataset = 'rao_ballard_nature_no_pre'
+pred_dataset = 'rao_ballard_nature'
+# pred_dataset = 'rao_ballard_nature_dog's
 # pred_dataset = '5imgs'
-pred_dataset = '0-9_minE_128.32_kurt'
+# pred_dataset = '0-9_minE_128.32_kurt'
 # pred_dataset = '0-9_minE_36.32'
 # pred_dataset = '0-9_maxE_128.32_kurt'
 # pred_dataset = '-'
@@ -99,14 +112,15 @@ pred_dataset = '0-9_minE_128.32_kurt'
 # extra_tag = 'randUo'
 # extra_tag = 'pipeline_test'
 # extra_tag = 'tile_offset_6_poly_lr_0.05_lU_0.005_me40_pp1'
-extra_tag = '-'
+extra_tag = 'C1_LSQ'
+# extra_tag = '-'
 
 
 # import model and predicted image set (set could contain multple 2-dim images, or one 3-dim multi-image
 # vector, like X_train)
 prediction_in = open('pc.{}.{}.{}.{}.{}.{}.{}.{}.{}.{}.{}.{}.pydb'.format(model_size,transform_type,prior_type,class_type,\
   trained,num_epochs,training_dataset, evaluated, eval_dataset, used_for_pred, pred_dataset,extra_tag),'rb')
-pcmod, prediction_image_set, n_pred_images = pickle.load(prediction_in)
+pcmod, prediction_image_set = pickle.load(prediction_in)
 prediction_in.close()
 
 # # for loading and recontruction of a different prediction_image_set
@@ -115,28 +129,65 @@ prediction_in.close()
 # other_pcmod, other_prediction_image_set, other_n_pred_images = pickle.load(other_prediction_in)
 # other_prediction_in.close()
 
+n_pred_images = 5
 
 """
 Reconstruct and Plot Prediction Images
 """
 
-#I = f(Ur)
+# #I = f(Ur) TANH
+
+for image in range(0,n_pred_images):
+    
+    # layer 1 reconstruction
+    fU1r1_l1 = tanh_trans(pcmod.U[1].dot(pcmod.r1s[image]))[0]
+    #test number of r[1]s is correct (should = num prediction images)
+    #print(len(pcmod.r1s))
+    fU1r1_resize_l1 = fU1r1_l1.reshape(28,28)
+    
+    # layer 2 reconstruction
+    fU2r2 = tanh_trans(pcmod.U[2].dot(pcmod.prediction[image]))[0]
+    # tests
+    # print("shape of U2 {} and r2 {}".format(pcmod.prediction[image].shape, pcmod.U[2].shape))
+    # print("shape of fU2r2 {}".format(fU2r2.shape))
+    # print("shape of U1 {}".format(pcmod.U[1]))
+    fU1r1_l2 = tanh_trans(pcmod.U[1].dot(fU2r2))[0]
+    fU1r1_resize_l2 = fU1r1_l2.reshape(28,28)
+    
+    # original image
+    original_image = prediction_image_set[image].reshape(28,28)
+    # # original image from other source
+    # original_image = other_prediction_image_set[image].reshape(28,28)
+    
+    # plot
+    plt.subplot(131),plt.imshow(original_image, cmap='Greys'),plt.title('image #{} Original'.format(image+1))
+    plt.xticks([]), plt.yticks([])
+    # plt.colorbar(fraction=0.046, pad=0.04)
+    plt.subplot(132),plt.imshow(fU1r1_resize_l1, cmap='Greys'),plt.title('image #{} L{}'.format(image+1,1))
+    plt.xticks([]), plt.yticks([])
+    # plt.colorbar(fraction=0.046, pad=0.04)
+    plt.subplot(133),plt.imshow(fU1r1_resize_l2, cmap='Greys'),plt.title('image #{} L{}'.format(image+1,2))
+    plt.xticks([]), plt.yticks([])
+    # plt.colorbar(fraction=0.046, pad=0.04)
+    plt.show()
+    
+#I = f(Ur) LINEAR
 
 # for image in range(0,n_pred_images):
     
 #     # layer 1 reconstruction
-#     fU1r1_l1 = tanh_trans(pcmod.U[1].dot(pcmod.r1s[image]))[0]
+#     fU1r1_l1 = linear_trans(pcmod.U[1].dot(pcmod.r1s[image]))[0]
 #     #test number of r[1]s is correct (should = num prediction images)
 #     #print(len(pcmod.r1s))
 #     fU1r1_resize_l1 = fU1r1_l1.reshape(28,28)
     
 #     # layer 2 reconstruction
-#     fU2r2 = tanh_trans(pcmod.U[2].dot(pcmod.prediction[image]))[0]
+#     fU2r2 = linear_trans(pcmod.U[2].dot(pcmod.prediction[image]))[0]
 #     # tests
 #     # print("shape of U2 {} and r2 {}".format(pcmod.prediction[image].shape, pcmod.U[2].shape))
 #     # print("shape of fU2r2 {}".format(fU2r2.shape))
 #     # print("shape of U1 {}".format(pcmod.U[1]))
-#     fU1r1_l2 = tanh_trans(pcmod.U[1].dot(fU2r2))[0]
+#     fU1r1_l2 = linear_trans(pcmod.U[1].dot(fU2r2))[0]
 #     fU1r1_resize_l2 = fU1r1_l2.reshape(28,28)
     
 #     # original image
@@ -156,43 +207,44 @@ Reconstruct and Plot Prediction Images
 #     # plt.colorbar(fraction=0.046, pad=0.04)
 #     plt.show()
     
+    
 
-#I = Ur
+# #I = Ur
 
     
-for image in range(0,n_pred_images):
+# for image in range(0,n_pred_images):
 
-    # layer 1 reconstruction
-    fU1r1_l1 = pcmod.U[1].dot(pcmod.r1s[image])[0]
-    #test number of r[1]s is correct (should = num prediction images)
-    #print(len(pcmod.r1s))
-    fU1r1_resize_l1 = fU1r1_l1.reshape(28,28)
+#     # layer 1 reconstruction
+#     fU1r1_l1 = pcmod.U[1].dot(pcmod.r1s[image])[0]
+#     #test number of r[1]s is correct (should = num prediction images)
+#     #print(len(pcmod.r1s))
+#     fU1r1_resize_l1 = fU1r1_l1.reshape(28,28)
     
-    # layer 2 reconstruction
-    fU2r2 = pcmod.U[2].dot(pcmod.prediction[image])[0]
-    # tests
-    # print("shape of U2 {} and r2 {}".format(pcmod.prediction[image].shape, pcmod.U[2].shape))
-    # print("shape of fU2r2 {}".format(fU2r2.shape))
-    # print("shape of U1 {}".format(pcmod.U[1]))
-    fU1r1_l2 = pcmod.U[1].dot(fU2r2)[0]
-    fU1r1_resize_l2 = fU1r1_l2.reshape(28,28)
+#     # layer 2 reconstruction
+#     fU2r2 = pcmod.U[2].dot(pcmod.prediction[image])[0]
+#     # tests
+#     # print("shape of U2 {} and r2 {}".format(pcmod.prediction[image].shape, pcmod.U[2].shape))
+#     # print("shape of fU2r2 {}".format(fU2r2.shape))
+#     # print("shape of U1 {}".format(pcmod.U[1]))
+#     fU1r1_l2 = pcmod.U[1].dot(fU2r2)[0]
+#     fU1r1_resize_l2 = fU1r1_l2.reshape(28,28)
     
-    # original image
-    original_image = prediction_image_set[image].reshape(28,28)
-    # # original image from other source
-    # original_image = other_prediction_image_set[image].reshape(28,28)
+#     # original image
+#     original_image = prediction_image_set[image].reshape(28,28)
+#     # # original image from other source
+#     # original_image = other_prediction_image_set[image].reshape(28,28)
     
-    # plot
-    plt.subplot(131),plt.imshow(original_image, cmap='Greys'),plt.title('image #{} Original'.format(image+1))
-    plt.xticks([]), plt.yticks([])
-    # plt.colorbar(fraction=0.046, pad=0.04)
-    plt.subplot(132),plt.imshow(fU1r1_resize_l1, cmap='Greys'),plt.title('image #{} L{}'.format(image+1,1))
-    plt.xticks([]), plt.yticks([])
-    # plt.colorbar(fraction=0.046, pad=0.04)
-    plt.subplot(133),plt.imshow(fU1r1_resize_l2, cmap='Greys'),plt.title('image #{} L{}'.format(image+1,2))
-    plt.xticks([]), plt.yticks([])
-    # plt.colorbar(fraction=0.046, pad=0.04)
-    plt.show()
+#     # plot
+#     plt.subplot(131),plt.imshow(original_image, cmap='Greys'),plt.title('image #{} Original'.format(image+1))
+#     plt.xticks([]), plt.yticks([])
+#     # plt.colorbar(fraction=0.046, pad=0.04)
+#     plt.subplot(132),plt.imshow(fU1r1_resize_l1, cmap='Greys'),plt.title('image #{} L{}'.format(image+1,1))
+#     plt.xticks([]), plt.yticks([])
+#     # plt.colorbar(fraction=0.046, pad=0.04)
+#     plt.subplot(133),plt.imshow(fU1r1_resize_l2, cmap='Greys'),plt.title('image #{} L{}'.format(image+1,2))
+#     plt.xticks([]), plt.yticks([])
+#     # plt.colorbar(fraction=0.046, pad=0.04)
+#     plt.show()
 
     
 # # TILED VERSION BELOW
@@ -373,72 +425,78 @@ MUST comment-in desired naming parameters
 """
 
 
-# #model size
-# # model_size = '[32.10]'
-# # model_size = '[32.32]'
-# model_size = '[36.32]'
-# # model_size = '[128.32]'
+#model size
+# model_size = '[32.10]'
+# model_size = '[32.32]'
+# model_size = '[128.36]'
+# model_size = '[36.36]'
+model_size = '[128.5]'
+# model_size = '[128.32]'
 
 
-# #transformation function
-# transform_type = 'tanh'
-# # transform_type = 'linear'
+#transformation function
+transform_type = 'tanh'
+# transform_type = 'linear'
 
-# #prior type
-# prior_type = 'gauss'
-# # prior_type = 'kurt'
+#prior type
+prior_type = 'gauss'
+# prior_type = 'kurt'
 
-# #classification method
+#classification method
 # class_type = 'NC'
-# # class_type = 'C1'
-# # class_type = 'C2'
+class_type = 'C1'
+# class_type = 'C2'
 
-# #trained or untrained
-# trained = 'T'
-# # trained = 'nt'
+#trained or untrained
+trained = 'T'
+# trained = 'nt'
 
-# #number of epochs if trained (if not, use -)
-# # num_epochs = '1000e'
-# # num_epochs = '100e'
+#number of epochs if trained (if not, use -)
+# num_epochs = '5000e'
+num_epochs = '1000e'
+# num_epochs = '100e'
 # num_epochs = '40e'
-# # num_epochs = '50e'
-# # num_epochs = '-'
+# num_epochs = '50e'
+# num_epochs = '-'
 
-# #dataset trained on if trained (if not, use -)
-# # training_dataset = 'tanh100x10'
+#dataset trained on if trained (if not, use -)
+# training_dataset = 'tanh100x10'
 # training_dataset = 'tanh100x10_size_24x24'
-# # training_dataset = 'tanh10x10'
-# # training_dataset = '-'
+training_dataset = 'rao_ballard_nature'
+# training_dataset = 'rao_ballard_nature_dog'
+# training_dataset = 'tanh10x10'
+# training_dataset = '-'
 
-# #evaluated or not evaluated with so far
-# # evaluated = 'E'
-# evaluated = 'ne'
+#evaluated or not evaluated with so far
+# evaluated = 'E'
+evaluated = 'ne'
 
-# #images evaluated against, if evaluated (if not, use -)
-# # eval_dataset = 'tanh100x10'
-# # eval_dataset = 'tanh10x10'
-# eval_dataset = '-'
+#images evaluated against, if evaluated (if not, use -)
+# eval_dataset = 'tanh100x10'
+# eval_dataset = 'tanh10x10'
+eval_dataset = '-'
 
-# #used or not used for prediction so far
-# # used_for_pred = 'P'
-# used_for_pred = 'np'
+#used or not used for prediction so far
+# used_for_pred = 'P'
+used_for_pred = 'np'
 
-# #images predicted, if used for prediction (if not, use -)
-# #images 1-5 from April/May 2021 exps
-# # pred_dataset = '5imgs'
-# pred_dataset = '-'
+#images predicted, if used for prediction (if not, use -)
+#images 1-5 from April/May 2021 exps
+# pred_dataset = '5imgs'
+pred_dataset = '-'
 
-# #extra identifier for any particular or unique qualities of the model object
-# # extra_tag = 'randUo'
-# # extra_tag = 'pipeline_test'
+#extra identifier for any particular or unique qualities of the model object
+# extra_tag = 'randUo'
+# extra_tag = 'pipeline_test'
 # extra_tag = 'tile_offset_6_poly_lr_0.05_lU_0.005_me40_pp1'
-# # extra_tag = '-'
+extra_tag = 'C1_LSQ'
+# extra_tag = '-'
 
-# # load it
-# pcmod_in = open('pc.{}.{}.{}.{}.{}.{}.{}.{}.{}.{}.{}.{}.pydb'.format(model_size,transform_type,prior_type,class_type,\
-#   trained,num_epochs,training_dataset, evaluated, eval_dataset, used_for_pred, pred_dataset,extra_tag),'rb')
-# pcmod = pickle.load(pcmod_in)
-# pcmod_in.close()
+# load it
+pcmod_in = open('pc.{}.{}.{}.{}.{}.{}.{}.{}.{}.{}.{}.{}.pydb'.format(model_size,transform_type,prior_type,class_type,\
+  trained,num_epochs,training_dataset, evaluated, eval_dataset, used_for_pred, pred_dataset,extra_tag),'rb')
+pcmod = pickle.load(pcmod_in)
+pcmod_in.close()
 
 
 
@@ -448,36 +506,36 @@ Extract and Plot U[1] Basis Vectors
 
 # # NON TILED VERSION BELOW
 
-# U1 = pcmod.U[1]
+U1 = pcmod.U[1]
 
 
-# print("lenU1")
-# print(len(U1))
-# print('shapeU1')
-# print(U1.shape)
+print("lenU1")
+print(len(U1))
+print('shapeU1')
+print(U1.shape)
 
-# num_basis_vecs = U1.shape[1]
+num_basis_vecs = U1.shape[1]
 
 
-# for i in range(0, num_basis_vecs):
-#     print('basis #{}'.format(i+1))
+for i in range(0, num_basis_vecs):
+    print('basis #{}'.format(i+1))
     
-#     basis_1d = U1[:,i]
-#     print('shape1d basis is {}'.format(basis_1d.shape))
+    basis_1d = U1[:,i]
+    print('shape1d basis is {}'.format(basis_1d.shape))
 
-#     basis_2d = basis_1d.reshape(28,28)
-#     print('shape2d basis is {}'.format(basis_2d.shape))
+    basis_2d = basis_1d.reshape(28,28)
+    print('shape2d basis is {}'.format(basis_2d.shape))
     
-#     plt.imshow(basis_2d, cmap='Greys'),plt.title('32,32 Gaussian U[1] basis vector #{}'.format(i+1))
-#     plt.show()
+    plt.imshow(basis_2d, cmap='Greys'),plt.title('U[1] basis vector #{}'.format(i+1))
+    plt.show()
     
 
 
-# print('shape of r0 is {}'.format(pcmod.r[0].shape))
-# print('shape of r1 is {}'.format(pcmod.r[1].shape))
-# print('shape of U1 is {}'.format(pcmod.U[1].shape))
-# print('shape of r2 is {}'.format(pcmod.r[2].shape))
-# print('shape of U2 is {}'.format(pcmod.U[2].shape))
+print('shape of r0 is {}'.format(pcmod.r[0].shape))
+print('shape of r1 is {}'.format(pcmod.r[1].shape))
+print('shape of U1 is {}'.format(pcmod.U[1].shape))
+print('shape of r2 is {}'.format(pcmod.r[2].shape))
+print('shape of U2 is {}'.format(pcmod.U[2].shape))
 
 
 

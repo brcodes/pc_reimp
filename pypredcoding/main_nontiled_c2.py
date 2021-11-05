@@ -113,9 +113,9 @@ def main():
     # num_epochs = '-'
 
     #dataset trained on if trained (if not, use -)
-    training_dataset = 'tanh100x10'
+    # training_dataset = 'tanh100x10'
     # training_dataset = 'tanh_dog_10x10'
-    # training_dataset = 'tanh_dog_100x10'
+    training_dataset = 'tanh_dog_100x10'
     # training_dataset = 'tanh100x10'
     # training_dataset = 'tanh1000x10'
     # training_dataset = 'tanh100x10_size_24x24'
@@ -207,12 +207,15 @@ def main():
     # tanh_data_in = open('tanh_dog_10x10.pydb','rb')
     # X_train, y_train, training_img, non_training_img, scrm_training_img, lena_pw, lena_zoom = pickle.load(tanh_data_in)
     # tanh_data_in.close()
-
-
-    tanh_data_in = open('tanh_100x10.pydb','rb')
+    
+    tanh_data_in = open('tanh_dog_100x10.pydb','rb')
     X_train, y_train, training_img, non_training_img, scrm_training_img, lena_pw, lena_zoom = pickle.load(tanh_data_in)
     tanh_data_in.close()
 
+    # tanh_data_in = open('tanh_100x10.pydb','rb')
+    # X_train, y_train, training_img, non_training_img, scrm_training_img, lena_pw, lena_zoom = pickle.load(tanh_data_in)
+    # tanh_data_in.close()
+ 
     # tanh_tile_data_in = open('tanh_100x10_size_24x24.pydb','rb')
     # X_train, y_train, training_img, non_training_img, scrm_training_img, lena_pw, lena_zoom = pickle.load(tanh_tile_data_in)
     # tanh_tile_data_in.close()

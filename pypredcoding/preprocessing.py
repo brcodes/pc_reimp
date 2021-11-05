@@ -1,4 +1,4 @@
- from data import get_mnist_data,flatten_images,standardization_filter,rescaling_filter, inflate_vectors
+ from data import get_mnist_data,flatten_images,standardization_filter,rescaling_filter, inflate_vectors, diff_of_gaussians_filter
 import numpy as np
 import pickle
 import cv2
@@ -450,11 +450,11 @@ rao_vr_spraycan_read = cv2.imread(rao_vr_spraycan_path,0)
 rao_vr_doll_read = cv2.imread(rao_vr_doll_path,0)
 rao_vr_teapot_read = cv2.imread(rao_vr_teapot_path,0)
 
-rao_vr_pepsi = cv2.resize(rao_vr_pepsi_read,(24,24))
-rao_vr_bear = cv2.resize(rao_vr_bear_read,(24,24))
-rao_vr_spraycan = cv2.resize(rao_vr_spraycan_read,(24,24))
-rao_vr_doll = cv2.resize(rao_vr_doll_read,(24,24))
-rao_vr_teapot = cv2.resize(rao_vr_teapot_read,(24,24))
+rao_vr_pepsi = cv2.resize(rao_vr_pepsi_read,(28,28))
+rao_vr_bear = cv2.resize(rao_vr_bear_read,(28,28))
+rao_vr_spraycan = cv2.resize(rao_vr_spraycan_read,(28,28))
+rao_vr_doll = cv2.resize(rao_vr_doll_read,(28,28))
+rao_vr_teapot = cv2.resize(rao_vr_teapot_read,(28,28))
 
 #From Rao and Ballard 1999 Nature paper
 
@@ -470,11 +470,11 @@ rb_nat_rose_read = cv2.imread(rb_nat_rose_path,0)
 rb_nat_zebra_read = cv2.imread(rb_nat_zebra_path,0)
 rb_nat_forest_read = cv2.imread(rb_nat_forest_path,0)
 
-rb_nat_monkey = cv2.resize(rb_nat_monkey_read,(24,24))
-rb_nat_swan = cv2.resize(rb_nat_swan_read,(24,24))
-rb_nat_rose = cv2.resize(rb_nat_rose_read,(24,24))
-rb_nat_zebra = cv2.resize(rb_nat_zebra_read,(24,24))
-rb_nat_forest = cv2.resize(rb_nat_forest_read,(24,24))
+rb_nat_monkey = cv2.resize(rb_nat_monkey_read,(28,28))
+rb_nat_swan = cv2.resize(rb_nat_swan_read,(28,28))
+rb_nat_rose = cv2.resize(rb_nat_rose_read,(28,28))
+rb_nat_zebra = cv2.resize(rb_nat_zebra_read,(28,28))
+rb_nat_forest = cv2.resize(rb_nat_forest_read,(28,28))
 
 
 
@@ -607,74 +607,157 @@ rao images
 rao_vr_pepsi_tanh = rescaling_filter(rao_vr_pepsi, scaling_range=[-1,1])
 rao_vr_pepsi_tanh_flat = flatten_images(rao_vr_pepsi_tanh[None,:,:])
 # # verify tanh scaling
-plt.imshow(rao_vr_pepsi_tanh, cmap='gray'),plt.title('rao visionres pepsi tanh')
-plt.show()
+# plt.imshow(rao_vr_pepsi_tanh, cmap='gray'),plt.title('rao visionres pepsi tanh')
+# plt.show()
 
 # scale  to [-1,1] and flatten
 rao_vr_bear_tanh = rescaling_filter(rao_vr_bear, scaling_range=[-1,1])
 rao_vr_bear_tanh_flat = flatten_images(rao_vr_bear_tanh[None,:,:])
 # # verify tanh scaling
-plt.imshow(rao_vr_bear_tanh, cmap='gray'),plt.title('rao visionres bear tanh')
-plt.show()
+# plt.imshow(rao_vr_bear_tanh, cmap='gray'),plt.title('rao visionres bear tanh')
+# plt.show()
 
 # scale  to [-1,1] and flatten
 rao_vr_spraycan_tanh = rescaling_filter(rao_vr_spraycan, scaling_range=[-1,1])
 rao_vr_spraycan_tanh_flat = flatten_images(rao_vr_spraycan_tanh[None,:,:])
 # # verify tanh scaling
-plt.imshow(rao_vr_spraycan_tanh, cmap='gray'),plt.title('rao visionres spraycan tanh')
-plt.show()
+# plt.imshow(rao_vr_spraycan_tanh, cmap='gray'),plt.title('rao visionres spraycan tanh')
+# plt.show()
 
 # scale  to [-1,1] and flatten
 rao_vr_doll_tanh = rescaling_filter(rao_vr_doll, scaling_range=[-1,1])
 rao_vr_doll_tanh_flat = flatten_images(rao_vr_doll_tanh[None,:,:])
 # # verify tanh scaling
-plt.imshow(rao_vr_doll_tanh, cmap='gray'),plt.title('rao visionres doll tanh')
-plt.show()
+# plt.imshow(rao_vr_doll_tanh, cmap='gray'),plt.title('rao visionres doll tanh')
+# plt.show()
 
 # scale  to [-1,1] and flatten
 rao_vr_teapot_tanh = rescaling_filter(rao_vr_teapot, scaling_range=[-1,1])
 rao_vr_teapot_tanh_flat = flatten_images(rao_vr_teapot_tanh[None,:,:])
 # # verify tanh scaling
-plt.imshow(rao_vr_teapot_tanh, cmap='gray'),plt.title('rao visionres teapot tanh')
-plt.show()
+# plt.imshow(rao_vr_teapot_tanh, cmap='gray'),plt.title('rao visionres teapot tanh')
+# plt.show()
 
 
 # 1999 Nature Paper
 
+# # standardize and flatten main database
+# X_stdized = standardization_filter(X_dist)
+# X_flat = flatten_images(X_stdized)
+# # #verify stdization
+# plt.imshow(X_stdized[0,:,:], cmap='Greys'),plt.title('in bag standardized database')
+# plt.show()
+
+
 # scale  to [-1,1] and flatten
-rb_nat_monkey_tanh = rescaling_filter(rb_nat_monkey, scaling_range=[-1,1])
-rb_nat_monkey_tanh_flat = flatten_images(rb_nat_monkey_tanh[None,:,:])
+rb_nat_monkey_tanh_flat = flatten_images(rb_nat_monkey[None,:,:])
 # # verify tanh scaling
-plt.imshow(rb_nat_monkey_tanh, cmap='gray'),plt.title('r&b nature monkey tanh')
+plt.imshow(np.squeeze(rb_nat_monkey), cmap='gray'),plt.title('r&b nature monkey lin')
 plt.show()
 
 # scale  to [-1,1] and flatten
-rb_nat_swan_tanh = rescaling_filter(rb_nat_swan, scaling_range=[-1,1])
-rb_nat_swan_tanh_flat = flatten_images(rb_nat_swan_tanh[None,:,:])
+rb_nat_swan_tanh_flat = flatten_images(rb_nat_swan[None,:,:])
 # # verify tanh scaling
-plt.imshow(rb_nat_swan_tanh, cmap='gray'),plt.title('r&b nature swan tanh')
+plt.imshow(np.squeeze(rb_nat_swan), cmap='gray'),plt.title('r&b nature swan lin')
 plt.show()
 
 # scale  to [-1,1] and flatten
-rb_nat_rose_tanh = rescaling_filter(rb_nat_rose, scaling_range=[-1,1])
-rb_nat_rose_tanh_flat = flatten_images(rb_nat_rose_tanh[None,:,:])
+rb_nat_rose_tanh_flat = flatten_images(rb_nat_rose[None,:,:])
 # # verify tanh scaling
-plt.imshow(rb_nat_rose_tanh, cmap='gray'),plt.title('r&b nature rose tanh')
+plt.imshow(np.squeeze(rb_nat_rose), cmap='gray'),plt.title('r&b nature rose lin')
 plt.show()
 
 # scale  to [-1,1] and flatten
-rb_nat_zebra_tanh = rescaling_filter(rb_nat_zebra, scaling_range=[-1,1])
-rb_nat_zebra_tanh_flat = flatten_images(rb_nat_zebra_tanh[None,:,:])
+rb_nat_zebra_tanh_flat = flatten_images(rb_nat_zebra[None,:,:])
 # # verify tanh scaling
-plt.imshow(rb_nat_zebra_tanh, cmap='gray'),plt.title('r&b nature zebra tanh')
+plt.imshow(np.squeeze(rb_nat_zebra), cmap='gray'),plt.title('r&b nature zebra lin')
 plt.show()
 
 # scale  to [-1,1] and flatten
-rb_nat_forest_tanh = rescaling_filter(rb_nat_forest, scaling_range=[-1,1])
-rb_nat_forest_tanh_flat = flatten_images(rb_nat_forest_tanh[None,:,:])
+rb_nat_forest_tanh_flat = flatten_images(rb_nat_forest[None,:,:])
 # # verify tanh scaling
-plt.imshow(rb_nat_forest_tanh, cmap='gray'),plt.title('r&b nature forest tanh')
+plt.imshow(np.squeeze(rb_nat_forest), cmap='gray'),plt.title('r&b nature forest lin')
 plt.show()
+
+
+
+
+# # scale  to [-1,1] and flatten
+# rb_nat_monkey_std = standardization_filter(rb_nat_monkey[None,:,:])
+# rb_nat_monkey_tanh_flat = flatten_images(rb_nat_monkey_std)
+# # # verify tanh scaling
+# plt.imshow(np.squeeze(rb_nat_monkey_std), cmap='gray'),plt.title('r&b nature monkey lin')
+# plt.show()
+
+# # scale  to [-1,1] and flatten
+# rb_nat_swan_std = standardization_filter(rb_nat_swan[None,:,:])
+# rb_nat_swan_tanh_flat = flatten_images(rb_nat_swan_std)
+# # # verify tanh scaling
+# plt.imshow(np.squeeze(rb_nat_swan_std), cmap='gray'),plt.title('r&b nature swan lin')
+# plt.show()
+
+# # scale  to [-1,1] and flatten
+# rb_nat_rose_std = standardization_filter(rb_nat_rose[None,:,:])
+# rb_nat_rose_tanh_flat = flatten_images(rb_nat_rose_std)
+# # # verify tanh scaling
+# plt.imshow(np.squeeze(rb_nat_rose_std), cmap='gray'),plt.title('r&b nature rose lin')
+# plt.show()
+
+# # scale  to [-1,1] and flatten
+# rb_nat_zebra_std = standardization_filter(rb_nat_zebra[None,:,:])
+# rb_nat_zebra_tanh_flat = flatten_images(rb_nat_zebra_std)
+# # # verify tanh scaling
+# plt.imshow(np.squeeze(rb_nat_zebra_std), cmap='gray'),plt.title('r&b nature zebra lin')
+# plt.show()
+
+# # scale  to [-1,1] and flatten
+# rb_nat_forest_std = standardization_filter(rb_nat_forest[None,:,:])
+# rb_nat_forest_tanh_flat = flatten_images(rb_nat_forest_std)
+# # # verify tanh scaling
+# plt.imshow(np.squeeze(rb_nat_forest_std), cmap='gray'),plt.title('r&b nature forest lin')
+# plt.show()
+
+
+
+# # scale  to [-1,1] and flatten
+# rb_nat_monkey_dog = diff_of_gaussians_filter(rb_nat_monkey[None,:,:])
+# rb_nat_monkey_tanh = rescaling_filter(rb_nat_monkey_dog, scaling_range=[-1,1])
+# rb_nat_monkey_tanh_flat = flatten_images(rb_nat_monkey_tanh)
+# # # verify tanh scaling
+# plt.imshow(np.squeeze(rb_nat_monkey_tanh), cmap='gray'),plt.title('r&b nature monkey tanh dog')
+# plt.show()
+
+# # scale  to [-1,1] and flatten
+# rb_nat_swan_dog = diff_of_gaussians_filter(rb_nat_swan[None,:,:])
+# rb_nat_swan_tanh = rescaling_filter(rb_nat_swan_dog, scaling_range=[-1,1])
+# rb_nat_swan_tanh_flat = flatten_images(rb_nat_swan_tanh)
+# # # verify tanh scaling
+# plt.imshow(np.squeeze(rb_nat_swan_tanh), cmap='gray'),plt.title('r&b nature swan tanh dog')
+# plt.show()
+
+# # scale  to [-1,1] and flatten
+# rb_nat_rose_dog = diff_of_gaussians_filter(rb_nat_rose[None,:,:])
+# rb_nat_rose_tanh = rescaling_filter(rb_nat_rose_dog, scaling_range=[-1,1])
+# rb_nat_rose_tanh_flat = flatten_images(rb_nat_rose_tanh)
+# # # verify tanh scaling
+# plt.imshow(np.squeeze(rb_nat_rose_tanh), cmap='gray'),plt.title('r&b nature rose tanh dog')
+# plt.show()
+
+# # scale  to [-1,1] and flatten
+# rb_nat_zebra_dog = diff_of_gaussians_filter(rb_nat_zebra[None,:,:])
+# rb_nat_zebra_tanh = rescaling_filter(rb_nat_zebra_dog, scaling_range=[-1,1])
+# rb_nat_zebra_tanh_flat = flatten_images(rb_nat_zebra_tanh)
+# # # verify tanh scaling
+# plt.imshow(np.squeeze(rb_nat_zebra_tanh), cmap='gray'),plt.title('r&b nature zebra tanh dog')
+# plt.show()
+
+# # scale  to [-1,1] and flatten
+# rb_nat_forest_dog = diff_of_gaussians_filter(rb_nat_forest[None,:,:])
+# rb_nat_forest_tanh = rescaling_filter(rb_nat_forest_dog, scaling_range=[-1,1])
+# rb_nat_forest_tanh_flat = flatten_images(rb_nat_forest_tanh)
+# # # verify tanh scaling
+# plt.imshow(np.squeeze(rb_nat_forest_tanh), cmap='gray'),plt.title('r&b nature forest tanh dog')
+# plt.show()
 
 
 
@@ -682,8 +765,8 @@ rao_vr_img_list = [rao_vr_pepsi_tanh_flat,rao_vr_bear_tanh_flat,rao_vr_spraycan_
 rb_nat_img_list = [rb_nat_monkey_tanh_flat,rb_nat_swan_tanh_flat,rb_nat_rose_tanh_flat,rb_nat_zebra_tanh_flat,rb_nat_forest_tanh_flat]
 
 
-combined_vr_imgs_vec = np.zeros(shape=(1,576))
-combined_nat_imgs_vec = np.zeros(shape=(1,576))
+combined_vr_imgs_vec = np.zeros(shape=(1,784))
+combined_nat_imgs_vec = np.zeros(shape=(1,784))
 combined_labels_vec = np.zeros(shape=(1,5))
 
 
@@ -692,8 +775,8 @@ for i in range(0,5):
     #image parsing and stacking
     vr_img = rao_vr_img_list[i]
     nat_img = rb_nat_img_list[i]
-    reshaped_vr = vr_img.reshape(1,576)
-    reshaped_nat = nat_img.reshape(1,576)
+    reshaped_vr = vr_img.reshape(1,784)
+    reshaped_nat = nat_img.reshape(1,784)
     combined_vr_imgs_vec = np.vstack((combined_vr_imgs_vec, reshaped_vr))
     combined_nat_imgs_vec = np.vstack((combined_nat_imgs_vec, reshaped_nat))
     
@@ -772,15 +855,25 @@ Pickle out whatever tanh dataset has been created above
 # pickle.dump((X_flat_tanh, y_dist, training_img_tanh_flat, non_training_img_tanh_flat, scrambled_tanh_flat, lena_pw_tanh_flat, lena_zoom_tanh_flat), tanh_data_out)
 # tanh_data_out.close()
 
+# # pickle the flattened input images and the output vectors as a tuple
+# tanh_data_out = open('rao_ballard_nature_dog.pydb', 'wb')
+# pickle.dump((nat_imgs_vec,labels_vec), tanh_data_out)
+# tanh_data_out.close()
+
+# # pickle the flattened input images and the output vectors as a tuple
+# tanh_data_out = open('rao_ballard_nature_lin.pydb', 'wb')
+# pickle.dump((nat_imgs_vec,labels_vec), tanh_data_out)
+# tanh_data_out.close()
+
 # pickle the flattened input images and the output vectors as a tuple
-tanh_data_out = open('rao_ballard_nature_size_24x24.pydb', 'wb')
+tanh_data_out = open('rao_ballard_nature_no_pre.pydb', 'wb')
 pickle.dump((nat_imgs_vec,labels_vec), tanh_data_out)
 tanh_data_out.close()
 
-# pickle the flattened input images and the output vectors as a tuple
-tanh_data_out = open('rao_visionres_size_24x24.pydb', 'wb')
-pickle.dump((vr_imgs_vec, labels_vec), tanh_data_out)
-tanh_data_out.close()
+# # pickle the flattened input images and the output vectors as a tuple
+# tanh_data_out = open('rao_visionres_size_24x24.pydb', 'wb')
+# pickle.dump((vr_imgs_vec, labels_vec), tanh_data_out)
+# tanh_data_out.close()
 
 '''
 Take ten random examples of each digit from tanh mnist 100x10

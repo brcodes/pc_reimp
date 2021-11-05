@@ -16,14 +16,18 @@ def main():
 
     # TANH NON-TILED constant
     # r 0.05, U 0.05 o 0.05
-    p = ModelParameters(unit_act='tanh',r_prior = 'gaussian', U_prior = 'gaussian', input_size=784,
-        hidden_sizes = [128,10], classification = 'C1', num_epochs = 10,
-        k_r_sched = {'constant':{'initial':0.05}},
-        k_U_sched = {'constant':{'initial':0.05}},
+    p = ModelParameters(unit_act='tanh',r_prior = 'gaussian', U_prior = 'gaussian', input_size=16384,
+        hidden_sizes = [128,5], classification = 'C1', num_epochs = 100, output_size=5,
+        k_r_sched = {'constant':{'initial':0.0005}},
+        k_U_sched = {'constant':{'initial':0.005}},
         k_o_sched = {'constant':{'initial':0.0005}})
 
     # model_size = '[36.10]'
-    model_size = '[128.10]'
+    model_size = '[128.5]'
+    # model_size = '[256.5]'
+    # model_size = '[512.5]'
+    # model_size = '[5.5]'
+    # model_size = '[36.5]'
     # model_size = '[288.10]'
     # model_size = '[2304.10]'
     # model_size = '[18432.10]'
@@ -105,17 +109,21 @@ def main():
     #number of epochs if trained (if not, use -)
     # num_epochs = '1000e'
     # num_epochs = '200e'
-    # num_epochs = '100e'
+    num_epochs = '100e'
     # num_epochs = '50e'
     # num_epochs = '40e'
     # num_epochs = '25e'
-    num_epochs = '10e'
+    # num_epochs = '10e'
     # num_epochs = '-'
 
     #dataset trained on if trained (if not, use -)
     # training_dataset = 'tanh_dog_10x10'
+    # training_dataset = 'tanh_dog_100x10'
+    training_dataset = 'rao_ballard_nature_128x128_tanh'
+    # training_dataset = 'rao_ballard_nature_128x128_dog_tanh'
+    # training_dataset = 'rao_ballard_nature_lin'
     # training_dataset = 'tanh1000x10'
-    training_dataset = 'tanh100x10'
+    # training_dataset = 'tanh100x10'
     # training_dataset = 'tanh10x10'
     # training_dataset = '-'
 
@@ -195,10 +203,30 @@ def main():
     # tanh_data_in = open('tanh_dog_10x10.pydb','rb')
     # X_train, y_train, training_img, non_training_img, scrm_training_img, lena_pw, lena_zoom = pickle.load(tanh_data_in)
     # tanh_data_in.close()
-
-    tanh_data_in = open('tanh_100x10.pydb','rb')
-    X_train, y_train, training_img, non_training_img, scrm_training_img, lena_pw, lena_zoom = pickle.load(tanh_data_in)
+    
+    # tanh_data_in = open('tanh_dog_100x10.pydb','rb')
+    # X_train, y_train, training_img, non_training_img, scrm_training_img, lena_pw, lena_zoom = pickle.load(tanh_data_in)
+    # tanh_data_in.close()
+    
+    # tanh_data_in = open('rao_ballard_nature_lin.pydb','rb')
+    # X_train, y_train = pickle.load(tanh_data_in)
+    # tanh_data_in.close()
+    
+    # tanh_data_in = open('rao_ballard_nature.pydb','rb')
+    # X_train, y_train = pickle.load(tanh_data_in)
+    # tanh_data_in.close()
+    
+    tanh_data_in = open('rao_ballard_nature_128x128_tanh.pydb','rb')
+    X_train, y_train = pickle.load(tanh_data_in)
     tanh_data_in.close()
+    
+    # tanh_data_in = open('rao_ballard_nature_128x128_DoG_tanh.pydb','rb')
+    # X_train, y_train = pickle.load(tanh_data_in)
+    # tanh_data_in.close()
+
+    # tanh_data_in = open('tanh_100x10.pydb','rb')
+    # X_train, y_train, training_img, non_training_img, scrm_training_img, lena_pw, lena_zoom = pickle.load(tanh_data_in)
+    # tanh_data_in.close()
 
     # tanh_data_in = open('tanh_1000x10.pydb','rb')
     # X_train, y_train, training_img, non_training_img, scrm_training_img, lena_pw, lena_zoom = pickle.load(tanh_data_in)

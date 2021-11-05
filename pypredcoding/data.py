@@ -1,5 +1,3 @@
-from keras.datasets import mnist
-from keras.utils import np_utils
 import cv2
 import numpy as np
 
