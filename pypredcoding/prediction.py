@@ -43,8 +43,8 @@ trained = 'T'
 # trained = 'nt'
 
 #number of epochs if trained (if not, use -)
-num_epochs = '10000e'
-# num_epochs = '5000e'
+# num_epochs = '10000e'
+num_epochs = '5000e'
 # num_epochs = '1000e'
 # num_epochs = '100e'
 # num_epochs = '50e'
@@ -59,7 +59,9 @@ num_epochs = '10000e'
 # training_dataset = 'rao_ballard_nature'
 # training_dataset = 'rao_ballard_nature_128x128_tanh'
 # training_dataset = 'rao_ballard_nature_128x128_dog_tanh'
-training_dataset = 'rao_ballard_nature_28x28_gray_mask_dog_tanh'
+# training_dataset = 'rao_ballard_nature_28x28_gray_mask_dog_tanh'
+training_dataset = 'rao_ballard_nature_48x48_gray_mask_dog_tanh'
+# training_dataset = 'rao_ballard_nature_68x68_gray_mask_dog_tanh'
 # training_dataset = 'rao_ballard_nature_dog'
 # training_dataset = 'tanh10x10'
 # training_dataset = '-'
@@ -160,9 +162,17 @@ comment-in correct image set
 # X_train, y_train = pickle.load(tanh_data_in)
 # tanh_data_in.close()
 
-tanh_data_in = open('rao_ballard_nature_28x28_gray_mask_DoG_tanh.pydb','rb')
+# tanh_data_in = open('rao_ballard_nature_28x28_gray_mask_DoG_tanh.pydb','rb')
+# X_train, y_train = pickle.load(tanh_data_in)
+# tanh_data_in.close()
+
+tanh_data_in = open('rao_ballard_nature_48x48_gray_mask_DoG_tanh.pydb','rb')
 X_train, y_train = pickle.load(tanh_data_in)
 tanh_data_in.close()
+    
+# tanh_data_in = open('rao_ballard_nature_68x68_gray_mask_DoG_tanh.pydb','rb')
+# X_train, y_train = pickle.load(tanh_data_in)
+# tanh_data_in.close()
     
     
 # tanh_data_in = open('rao_ballard_nature_dog.pydb','rb')
@@ -274,7 +284,7 @@ prediction_image_set = X_train
 
 
 #If RB Nature imported: Xtrain is fully formed already 
-combined_pred_imgs_vec = X_train.reshape((5,28,28))
+combined_pred_imgs_vec = X_train.reshape((5,48,48))
 print('shape of combined pred imgs vec is {}'.format(combined_pred_imgs_vec.shape))
 
 
@@ -311,7 +321,9 @@ used_for_pred = 'P'
 # pred_dataset = 'rao_ballard_nature'
 # pred_dataset = 'rao_ballard_nature_128x128_tanh'
 # pred_dataset = 'rao_ballard_nature_128x128_dog_tanh'
-pred_dataset = 'rao_ballard_nature_28x28_gray_mask_dog_tanh'
+# pred_dataset = 'rao_ballard_nature_28x28_gray_mask_dog_tanh'
+pred_dataset = 'rao_ballard_nature_48x48_gray_mask_dog_tanh'
+# pred_dataset = 'rao_ballard_nature_68x68_gray_mask_dog_tanh'
 # pred_dataset = 'rao_ballard_nature_dog'
 # pred_dataset = '0-9_minE_128.32_kurt'
 # pred_dataset = '0-9_minE_36.32'

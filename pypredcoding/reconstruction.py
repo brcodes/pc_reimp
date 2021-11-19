@@ -67,8 +67,8 @@ trained = 'T'
 
 #number of epochs if trained (if not, use -)
 # num_epochs = '10000e'
-# num_epochs = '5000e'
-num_epochs = '1000e'
+num_epochs = '5000e'
+# num_epochs = '1000e'
 # num_epochs = '100e'
 # num_epochs = '40e'
 # num_epochs = '50e'
@@ -82,7 +82,9 @@ num_epochs = '1000e'
 # training_dataset = 'rao_ballard_nature'
 # training_dataset = 'rao_ballard_nature_128x128_tanh'
 # training_dataset = 'rao_ballard_nature_128x128_dog_tanh'
-training_dataset = 'rao_ballard_nature_28x28_gray_mask_dog_tanh'
+# training_dataset = 'rao_ballard_nature_28x28_gray_mask_dog_tanh'
+training_dataset = 'rao_ballard_nature_48x48_gray_mask_dog_tanh'
+# training_dataset = 'rao_ballard_nature_68x68_gray_mask_dog_tanh'
 # training_dataset = 'rao_ballard_nature_dog'
 # training_dataset = 'tanh100x10_size_24x24'
 # training_dataset = 'tanh10x10'
@@ -107,7 +109,9 @@ used_for_pred = 'P'
 # pred_dataset = 'rao_ballard_nature'
 # pred_dataset = 'rao_ballard_nature_128x128_tanh'
 # pred_dataset = 'rao_ballard_nature_128x128_dog_tanh'
-pred_dataset = 'rao_ballard_nature_28x28_gray_mask_dog_tanh'
+# pred_dataset = 'rao_ballard_nature_28x28_gray_mask_dog_tanh'
+pred_dataset = 'rao_ballard_nature_48x48_gray_mask_dog_tanh'
+# pred_dataset = 'rao_ballard_nature_68x68_gray_mask_dog_tanh'
 # pred_dataset = 'rao_ballard_nature_dog's
 # pred_dataset = '5imgs'
 # pred_dataset = '0-9_minE_128.32_kurt'
@@ -150,7 +154,7 @@ for image in range(0,n_pred_images):
     fU1r1_l1 = tanh_trans(pcmod.U[1].dot(pcmod.r1s[image]))[0]
     #test number of r[1]s is correct (should = num prediction images)
     #print(len(pcmod.r1s))
-    fU1r1_resize_l1 = fU1r1_l1.reshape(28,28)
+    fU1r1_resize_l1 = fU1r1_l1.reshape(48,48)
     
     # layer 2 reconstruction
     fU2r2 = tanh_trans(pcmod.U[2].dot(pcmod.prediction[image]))[0]
@@ -159,10 +163,10 @@ for image in range(0,n_pred_images):
     # print("shape of fU2r2 {}".format(fU2r2.shape))
     # print("shape of U1 {}".format(pcmod.U[1]))
     fU1r1_l2 = tanh_trans(pcmod.U[1].dot(fU2r2))[0]
-    fU1r1_resize_l2 = fU1r1_l2.reshape(28,28)
+    fU1r1_resize_l2 = fU1r1_l2.reshape(48,48)
     
     # original image
-    original_image = prediction_image_set[image].reshape(28,28)
+    original_image = prediction_image_set[image].reshape(48,48)
     # # original image from other source
     # original_image = other_prediction_image_set[image].reshape(28,28)
     

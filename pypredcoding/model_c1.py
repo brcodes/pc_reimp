@@ -308,7 +308,7 @@ class PredictiveCodingClassifier:
                 self.r[0] = single_image
                 # print('shape of self.r[0] is {}'.format(self.r[0].shape))
                 #reshape for predict function
-                reshaped_image = single_image.reshape(28,28)
+                reshaped_image = single_image.reshape(48,48)
                 # print('reshaped image size is {}'.format(reshaped_image.shape))
 
                 #Initialize new r's

@@ -15,7 +15,7 @@ import random
 
 #Monica's gaussian mask function exactly as written in sPCSWR_linear commit
 
-def create_gauss_mask(sigma=1.0, width=28, height=28):
+def create_gauss_mask(sigma=1.0, width=68, height=68):
     """ Create gaussian mask. """
     mu = 0.0
     x, y = np.meshgrid(np.linspace(-1,1,width), np.linspace(-1,1,height))
@@ -91,11 +91,11 @@ rose_gray = cv2.cvtColor(rb_nat_rose_read, cv2.COLOR_RGB2GRAY)
 zebra_gray = cv2.cvtColor(rb_nat_zebra_read, cv2.COLOR_RGB2GRAY)
 forest_gray = cv2.cvtColor(rb_nat_forest_read, cv2.COLOR_RGB2GRAY)
 
-monkey_gray = cv2.resize(monkey_gray,(28,28))
-swan_gray = cv2.resize(swan_gray,(28,28))
-rose_gray = cv2.resize(rose_gray,(28,28))
-zebra_gray = cv2.resize(zebra_gray,(28,28))
-forest_gray = cv2.resize(forest_gray,(28,28))
+monkey_gray = cv2.resize(monkey_gray,(68,68))
+swan_gray = cv2.resize(swan_gray,(68,68))
+rose_gray = cv2.resize(rose_gray,(68,68))
+zebra_gray = cv2.resize(zebra_gray,(68,68))
+forest_gray = cv2.resize(forest_gray,(68,68))
 
 
 
@@ -230,15 +230,15 @@ forest_dog_tanh_flat = flatten_images(forest_dog_tanh[None,:,:])
 
 
 #Plot DoG tanh scaled images
-plt.imshow(np.squeeze(monkey_dog_tanh), cmap='gray'),plt.title('monkey 28x28 gray mask DoG tanh')
+plt.imshow(np.squeeze(monkey_dog_tanh), cmap='gray'),plt.title('monkey 68x68 gray mask DoG tanh')
 plt.show()
-plt.imshow(np.squeeze(swan_dog_tanh), cmap='gray'),plt.title('swan 28x28 gray mask DoG tanh')
+plt.imshow(np.squeeze(swan_dog_tanh), cmap='gray'),plt.title('swan 68x68 gray mask DoG tanh')
 plt.show()
-plt.imshow(np.squeeze(rose_dog_tanh), cmap='gray'),plt.title('rose 28x28 gray mask DoG tanh')
+plt.imshow(np.squeeze(rose_dog_tanh), cmap='gray'),plt.title('rose 68x68 gray mask DoG tanh')
 plt.show()
-plt.imshow(np.squeeze(zebra_dog_tanh), cmap='gray'),plt.title('zebra 28x28 gray mask DoG anh')
+plt.imshow(np.squeeze(zebra_dog_tanh), cmap='gray'),plt.title('zebra 68x68 gray mask DoG anh')
 plt.show()
-plt.imshow(np.squeeze(forest_dog_tanh), cmap='gray'),plt.title('forest 28x28 gray mask DoG tanh')
+plt.imshow(np.squeeze(forest_dog_tanh), cmap='gray'),plt.title('forest 68x68 gray mask DoG tanh')
 plt.show()
 
 
@@ -283,7 +283,7 @@ nature_dog = [monkey_dog_tanh_flat,swan_dog_tanh_flat,rose_dog_tanh_flat,zebra_d
 # shape = (1,16384) for 128x128
 
 # combined_nat_imgs_vec = np.zeros(shape=(1,784))
-combined_nat_dog_imgs_vec = np.zeros(shape=(1,784))
+combined_nat_dog_imgs_vec = np.zeros(shape=(1,4624))
 combined_labels_vec = np.zeros(shape=(1,5))
 
 
@@ -293,7 +293,7 @@ for i in range(0,5):
     # nat_img = nature[i]
     nat_dog_img = nature_dog[i]
     # reshaped_nat = nat_img.reshape(1,784)
-    reshaped_nat_dog = nat_dog_img.reshape(1,784)
+    reshaped_nat_dog = nat_dog_img.reshape(1,4624)
     # combined_nat_imgs_vec = np.vstack((combined_nat_imgs_vec, reshaped_nat))
     combined_nat_dog_imgs_vec = np.vstack((combined_nat_dog_imgs_vec, reshaped_nat_dog))
     
@@ -327,7 +327,7 @@ print(labels_vec)
 # pickle.dump((nat_imgs_vec,labels_vec), tanh_data_out)
 # tanh_data_out.close()
 
-tanh_data_out = open('rao_ballard_nature_28x28_gray_mask_DoG_tanh.pydb', 'wb')
+tanh_data_out = open('rao_ballard_nature_68x68_gray_mask_DoG_tanh.pydb', 'wb')
 pickle.dump((nat_dog_imgs_vec,labels_vec), tanh_data_out)
 tanh_data_out.close()
 
