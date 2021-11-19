@@ -15,7 +15,7 @@ import random
 
 #Monica's gaussian mask function exactly as written in sPCSWR_linear commit
 
-def create_gauss_mask(sigma=0.4, width=16, height=16):
+def create_gauss_mask(sigma=1.0, width=28, height=28):
     """ Create gaussian mask. """
     mu = 0.0
     x, y = np.meshgrid(np.linspace(-1,1,width), np.linspace(-1,1,height))
@@ -31,6 +31,22 @@ def apply_DoG_filter(image, ksize=(5,5), sigma1=1.3, sigma2=2.6):
        g1 = cv2.GaussianBlur(image, ksize, sigma1)
        g2 = cv2.GaussianBlur(image, ksize, sigma2)
        return g1 - g2
+   
+    
+mask = create_gauss_mask()
+
+print("mask is")
+print(mask)
+print("mask.shape is")
+print(mask.shape)
+
+reshaped_mask = mask.reshape([-1])
+
+print("mask.reshape([-1]) is")
+print(reshaped_mask)
+print("reshaped mask shape is")
+print(reshaped_mask.shape)
+
 
 
 #Load high-res 128x128 R&B '99 images data from local path
@@ -46,6 +62,8 @@ rb_nat_swan_read = cv2.imread(rb_nat_swan_path)
 rb_nat_rose_read = cv2.imread(rb_nat_rose_path)
 rb_nat_zebra_read = cv2.imread(rb_nat_zebra_path)
 rb_nat_forest_read = cv2.imread(rb_nat_forest_path)
+
+
 
 #Plot in original form
 
@@ -73,6 +91,16 @@ rose_gray = cv2.cvtColor(rb_nat_rose_read, cv2.COLOR_RGB2GRAY)
 zebra_gray = cv2.cvtColor(rb_nat_zebra_read, cv2.COLOR_RGB2GRAY)
 forest_gray = cv2.cvtColor(rb_nat_forest_read, cv2.COLOR_RGB2GRAY)
 
+monkey_gray = cv2.resize(monkey_gray,(28,28))
+swan_gray = cv2.resize(swan_gray,(28,28))
+rose_gray = cv2.resize(rose_gray,(28,28))
+zebra_gray = cv2.resize(zebra_gray,(28,28))
+forest_gray = cv2.resize(forest_gray,(28,28))
+
+
+
+
+
 #Plot grayed images
 # plt.imshow(monkey_gray, cmap='gray'),plt.title('r&b nature monkey 128x128 RGB2GRAY')
 # plt.show()
@@ -85,41 +113,85 @@ forest_gray = cv2.cvtColor(rb_nat_forest_read, cv2.COLOR_RGB2GRAY)
 # plt.imshow(forest_gray, cmap='gray'),plt.title('r&b nature forest 128x128 RGB2GRAY')
 # plt.show()
 
-#Apply DoG
-monkey_dog = apply_DoG_filter(monkey_gray)
-swan_dog = apply_DoG_filter(swan_gray)
-rose_dog = apply_DoG_filter(rose_gray)
-zebra_dog = apply_DoG_filter(zebra_gray)
-forest_dog = apply_DoG_filter(forest_gray)
+
+
+#Apply and plot mask of sigma = 1
+
+monkey_mask = monkey_gray * mask
+swan_mask = swan_gray * mask
+rose_mask = rose_gray * mask
+zebra_mask = zebra_gray * mask
+forest_mask = forest_gray * mask
+
+# plt.imshow(monkey_mask, cmap='gray'),plt.title('monkey gray + mask')
+# plt.show()
+# plt.imshow(swan_mask, cmap='gray'),plt.title('swan gray + mask')
+# plt.show()
+# plt.imshow(rose_mask, cmap='gray'),plt.title('rose gray + mask')
+# plt.show()
+# plt.imshow(zebra_mask, cmap='gray'),plt.title('zebra gray + mask')
+# plt.show()
+# plt.imshow(forest_mask, cmap='gray'),plt.title('forest gray + mask')
+# plt.show()
+
+
+
+
+# #Apply DoG to gray only
+# monkey_dog = apply_DoG_filter(monkey_gray)
+# swan_dog = apply_DoG_filter(swan_gray)
+# rose_dog = apply_DoG_filter(rose_gray)
+# zebra_dog = apply_DoG_filter(zebra_gray)
+# forest_dog = apply_DoG_filter(forest_gray)
+
+
+
+
+#Apply DoG to gray + mask
+monkey_dog = apply_DoG_filter(monkey_mask)
+swan_dog = apply_DoG_filter(swan_mask)
+rose_dog = apply_DoG_filter(rose_mask)
+zebra_dog = apply_DoG_filter(zebra_mask)
+forest_dog = apply_DoG_filter(forest_mask)
+
+
+
+
 
 # #Plot DoG
-# plt.imshow(monkey_dog, cmap='gray'),plt.title('monkey 128x128 gray DoG')
+# plt.imshow(monkey_dog, cmap='gray'),plt.title('monkey gray mask, then DoG')
 # plt.show()
-# plt.imshow(swan_dog, cmap='gray'),plt.title('swan 128x128 gray DoG')
+# plt.imshow(swan_dog, cmap='gray'),plt.title('swan gray mask, then DoG')
 # plt.show()
-# plt.imshow(rose_dog, cmap='gray'),plt.title('rose 128x128 gray DoG')
+# plt.imshow(rose_dog, cmap='gray'),plt.title('rose gray mask, then DoG')
 # plt.show()
-# plt.imshow(zebra_dog, cmap='gray'),plt.title('zebra 128x128 gray DoG')
+# plt.imshow(zebra_dog, cmap='gray'),plt.title('zebra gray mask, then DoG')
 # plt.show()
-# plt.imshow(forest_dog, cmap='gray'),plt.title('forest 128x128 gray DoG')
+# plt.imshow(forest_dog, cmap='gray'),plt.title('forest gray mask, then DoG')
 # plt.show()
 
 
-#Tanh rescale and flatten Non-DoG 128x128 Images
-monkey_tanh = rescaling_filter(monkey_gray, scaling_range=[-1,1])
-monkey_tanh_flat = flatten_images(monkey_tanh[None,:,:])
+# #Tanh rescale and flatten Non-DoG 128x128 Images
+# monkey_tanh = rescaling_filter(monkey_gray, scaling_range=[-1,1])
+# monkey_tanh_flat = flatten_images(monkey_tanh[None,:,:])
 
-swan_tanh = rescaling_filter(swan_gray, scaling_range=[-1,1])
-swan_tanh_flat = flatten_images(swan_tanh[None,:,:])
+# swan_tanh = rescaling_filter(swan_gray, scaling_range=[-1,1])
+# swan_tanh_flat = flatten_images(swan_tanh[None,:,:])
 
-rose_tanh = rescaling_filter(rose_gray, scaling_range=[-1,1])
-rose_tanh_flat = flatten_images(rose_tanh[None,:,:])
+# rose_tanh = rescaling_filter(rose_gray, scaling_range=[-1,1])
+# rose_tanh_flat = flatten_images(rose_tanh[None,:,:])
 
-zebra_tanh = rescaling_filter(zebra_gray, scaling_range=[-1,1])
-zebra_tanh_flat = flatten_images(zebra_tanh[None,:,:])
+# zebra_tanh = rescaling_filter(zebra_gray, scaling_range=[-1,1])
+# zebra_tanh_flat = flatten_images(zebra_tanh[None,:,:])
 
-forest_tanh = rescaling_filter(forest_gray, scaling_range=[-1,1])
-forest_tanh_flat = flatten_images(forest_tanh[None,:,:])
+# forest_tanh = rescaling_filter(forest_gray, scaling_range=[-1,1])
+# forest_tanh_flat = flatten_images(forest_tanh[None,:,:])
+
+# monkey_norm = cv2.normalize(src=monkey_tanh, dst=None, alpha=-255, beta=255, norm_type=cv2.NORM_MINMAX, dtype=cv2.CV_8U)
+
+# plt.imshow(monkey_norm, cmap='gray'),plt.title('monkey 128x128 gray cv2normed')
+# plt.show()
+
 
 
 # #Plot tanh scaled images
@@ -133,6 +205,7 @@ forest_tanh_flat = flatten_images(forest_tanh[None,:,:])
 # plt.show()
 # plt.imshow(np.squeeze(forest_tanh), cmap='gray'),plt.title('forest 128x128 gray tanh')
 # plt.show()
+
 
 
 #Tanh rescale and flatten DoG 128x128 Images
@@ -153,28 +226,32 @@ forest_dog_tanh = rescaling_filter(forest_dog, scaling_range=[-1,1])
 forest_dog_tanh_flat = flatten_images(forest_dog_tanh[None,:,:])
 
 
-# #Plot tanh scaled images
-# plt.imshow(np.squeeze(monkey_dog_tanh), cmap='gray'),plt.title('monkey 128x128 gray DoG tanh')
-# plt.show()
-# plt.imshow(np.squeeze(swan_dog_tanh), cmap='gray'),plt.title('swan 128x128 gray DoG tanh')
-# plt.show()
-# plt.imshow(np.squeeze(rose_dog_tanh), cmap='gray'),plt.title('rose 128x128 gray DoG tanh')
-# plt.show()
-# plt.imshow(np.squeeze(zebra_dog_tanh), cmap='gray'),plt.title('zebra 128x128 gray DoG anh')
-# plt.show()
-# plt.imshow(np.squeeze(forest_dog_tanh), cmap='gray'),plt.title('forest 128x128 gray DoG tanh')
-# plt.show()
+
+
+
+#Plot DoG tanh scaled images
+plt.imshow(np.squeeze(monkey_dog_tanh), cmap='gray'),plt.title('monkey 28x28 gray mask DoG tanh')
+plt.show()
+plt.imshow(np.squeeze(swan_dog_tanh), cmap='gray'),plt.title('swan 28x28 gray mask DoG tanh')
+plt.show()
+plt.imshow(np.squeeze(rose_dog_tanh), cmap='gray'),plt.title('rose 28x28 gray mask DoG tanh')
+plt.show()
+plt.imshow(np.squeeze(zebra_dog_tanh), cmap='gray'),plt.title('zebra 28x28 gray mask DoG anh')
+plt.show()
+plt.imshow(np.squeeze(forest_dog_tanh), cmap='gray'),plt.title('forest 28x28 gray mask DoG tanh')
+plt.show()
+
 
 
 #Verify that Tanh rescaling worked (that numbers are in [-1,1])
-# print("size of monkey_dog_tanh")
-# print(monkey_dog_tanh.shape)
+print("size of monkey_dog_tanh")
+print(monkey_dog_tanh.shape)
 
-# print("min(monkey_dog_tanh[0])")
-# print(min(monkey_dog_tanh[0]))
+print("min(monkey_dog_tanh[0])")
+print(min(monkey_dog_tanh[0]))
 
-# print("max(monkey_dog_tanh[0])")
-# print(max(monkey_dog_tanh[0]))
+print("max(monkey_dog_tanh[0])")
+print(max(monkey_dog_tanh[0]))
 
 # print("min(monkey_tanh[0])")
 # print(min(monkey_tanh[0]))
@@ -182,11 +259,11 @@ forest_dog_tanh_flat = flatten_images(forest_dog_tanh[None,:,:])
 # print("max(monkey_tanh[0])")
 # print(max(monkey_tanh[0]))
 
-# print("min(monkey_dog_tanh[1])")
-# print(min(monkey_dog_tanh[1]))
+print("min(monkey_dog_tanh[1])")
+print(min(monkey_dog_tanh[1]))
 
-# print("max(monkey_dog_tanh[1])")
-# print(max(monkey_dog_tanh[1]))
+print("max(monkey_dog_tanh[1])")
+print(max(monkey_dog_tanh[1]))
 
 # print("min(monkey_tanh[1])")
 # print(min(monkey_tanh[1]))
@@ -199,23 +276,25 @@ forest_dog_tanh_flat = flatten_images(forest_dog_tanh[None,:,:])
 
 
 
-nature = [monkey_tanh_flat,swan_tanh_flat,rose_tanh_flat,zebra_tanh_flat,forest_tanh_flat]
+# nature = [monkey_tanh_flat,swan_tanh_flat,rose_tanh_flat,zebra_tanh_flat,forest_tanh_flat]
 nature_dog = [monkey_dog_tanh_flat,swan_dog_tanh_flat,rose_dog_tanh_flat,zebra_dog_tanh_flat,forest_dog_tanh_flat]
 
+# shape = (1,784) for 28x28
+# shape = (1,16384) for 128x128
 
-combined_nat_imgs_vec = np.zeros(shape=(1,16384))
-combined_nat_dog_imgs_vec = np.zeros(shape=(1,16384))
+# combined_nat_imgs_vec = np.zeros(shape=(1,784))
+combined_nat_dog_imgs_vec = np.zeros(shape=(1,784))
 combined_labels_vec = np.zeros(shape=(1,5))
 
 
 
 for i in range(0,5):
     #image parsing and stacking
-    nat_img = nature[i]
+    # nat_img = nature[i]
     nat_dog_img = nature_dog[i]
-    reshaped_nat = nat_img.reshape(1,16384)
-    reshaped_nat_dog = nat_dog_img.reshape(1,16384)
-    combined_nat_imgs_vec = np.vstack((combined_nat_imgs_vec, reshaped_nat))
+    # reshaped_nat = nat_img.reshape(1,784)
+    reshaped_nat_dog = nat_dog_img.reshape(1,784)
+    # combined_nat_imgs_vec = np.vstack((combined_nat_imgs_vec, reshaped_nat))
     combined_nat_dog_imgs_vec = np.vstack((combined_nat_dog_imgs_vec, reshaped_nat_dog))
     
     #label creation and stacking
@@ -223,18 +302,18 @@ for i in range(0,5):
     label[:,i] = 1
     combined_labels_vec = np.vstack((combined_labels_vec,label))
     
-print('final shape of combined nat imgs vec is {}'.format(combined_nat_imgs_vec.shape))
+# print('final shape of combined nat imgs vec is {}'.format(combined_nat_imgs_vec.shape))
 print('final shape of combined nat dog imgs vec is {}'.format(combined_nat_dog_imgs_vec.shape))
 print('final shape of combined labels vec is {}'.format(combined_labels_vec.shape))
 print('final combined labels vec is')
 print(combined_labels_vec)
     
     
-nat_imgs_vec = combined_nat_imgs_vec[1:6]
+# nat_imgs_vec = combined_nat_imgs_vec[1:6]
 nat_dog_imgs_vec = combined_nat_dog_imgs_vec[1:6]
 labels_vec = combined_labels_vec[1:6]
     
-print('final shape of nat imgs vec is {}'.format(nat_imgs_vec.shape))
+# print('final shape of nat imgs vec is {}'.format(nat_imgs_vec.shape))
 print('final shape of nat dog imgs vec is {}'.format(nat_dog_imgs_vec.shape))
 print('final shape of labels vec is {}'.format(labels_vec.shape))
 print('final combined labels vec is')
@@ -243,12 +322,12 @@ print(labels_vec)
 
 
 
-#Pickle the flattened input images and the label vectors as a tuple
-tanh_data_out = open('rao_ballard_nature_128x128_tanh.pydb', 'wb')
-pickle.dump((nat_imgs_vec,labels_vec), tanh_data_out)
-tanh_data_out.close()
+# #Pickle the flattened input images and the label vectors as a tuple
+# tanh_data_out = open('rao_ballard_nature_128x128_tanh.pydb', 'wb')
+# pickle.dump((nat_imgs_vec,labels_vec), tanh_data_out)
+# tanh_data_out.close()
 
-tanh_data_out = open('rao_ballard_nature_128x128_DoG_tanh.pydb', 'wb')
+tanh_data_out = open('rao_ballard_nature_28x28_gray_mask_DoG_tanh.pydb', 'wb')
 pickle.dump((nat_dog_imgs_vec,labels_vec), tanh_data_out)
 tanh_data_out.close()
 

@@ -16,13 +16,13 @@ Comment-in the plot type
 """
 
 
-plot_type = 'trainingE'
+# plot_type = 'trainingE'
 
 # # for models with different E,C scales
 # plot_type = 'trainingECAsplitplot'
 # 
 # # for models with same E,C scale
-# plot_type = 'trainingECAoneplot'
+plot_type = 'trainingECAoneplot'
 
 # # for models with different E,C scales
 # plot_type = 'evalECAsplitplot'
@@ -45,8 +45,8 @@ MUST comment-in 'P' and a pred_dataset for predPEs plot
 # model_size = '[32.10]'
 # model_size = '[32.32]'
 # model_size = '[128.36]'
-model_size = '[512.5]'
-# model_size = '[128.5]'
+# model_size = '[512.5]'
+model_size = '[128.5]'
 # model_size = '[5.5]'
 # model_size = '[36.32]'
 # model_size = '[36.10]'
@@ -112,7 +112,10 @@ num_epochs = '1000e'
 # training_dataset = 'tanh10x10'
 # training_dataset = 'tanh1x10'
 # training_dataset = 'rao_visionres'
-training_dataset = 'rao_ballard_nature'
+# training_dataset = 'rao_ballard_nature'
+# training_dataset = 'rao_ballard_nature_128x128_tanh'
+# training_dataset = 'rao_ballard_nature_128x128_dog_tanh'
+training_dataset = 'rao_ballard_nature_28x28_gray_mask_dog_tanh'
 # training_dataset = 'rao_visionres_size_24x24'
 # training_dataset = 'rao_ballard_nature_size_24x24'
 # training_dataset = '-'
@@ -259,7 +262,7 @@ def plot(plot_type,model_size,transform_type,prior_type,class_type,\
             plotE = ax.plot(num_epochs, representation_cost_by_epoch, '#000000', label="Avg E")
     
             # set E scale
-            ax.set_ylim(0, 2000)
+            # ax.set_ylim(0, 2000)
     
             # set axis names
             ax.set_xlabel("Epoch")
@@ -518,7 +521,7 @@ def plot(plot_type,model_size,transform_type,prior_type,class_type,\
             # set limits for and label x,y-axes for both subplots
     
             # axE.set_xlim(0, 2)
-            axE.set_ylim(0, 20000)
+            # axE.set_ylim(0, 20000)
             twinEA.set_ylim(0, 110)
     
             axE.set_xlabel("Epoch")

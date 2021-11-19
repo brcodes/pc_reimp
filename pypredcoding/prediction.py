@@ -21,7 +21,7 @@ MUST comment-in desired naming parameters
 # model_size = '[32.32]'
 # model_size = '[36.32]'
 # model_size = '[128.36]'
-model_size = '[512.5]'
+model_size = '[128.5]'
 # model_size = '[36.36]'
 # model_size = '[5.5]'
 
@@ -43,18 +43,23 @@ trained = 'T'
 # trained = 'nt'
 
 #number of epochs if trained (if not, use -)
+num_epochs = '10000e'
 # num_epochs = '5000e'
-num_epochs = '1000e'
+# num_epochs = '1000e'
 # num_epochs = '100e'
 # num_epochs = '50e'
 # num_epochs = '40e'
+# num_epochs = '10e'
 # num_epochs = '-'
 
 #dataset trained on if trained (if not, use -)
 # training_dataset = 'tanh100x10'
 # training_dataset = 'tanh100x10_size_24x24'
 # training_dataset = 'rao_ballard_nature_no_pre'
-training_dataset = 'rao_ballard_nature'
+# training_dataset = 'rao_ballard_nature'
+# training_dataset = 'rao_ballard_nature_128x128_tanh'
+# training_dataset = 'rao_ballard_nature_128x128_dog_tanh'
+training_dataset = 'rao_ballard_nature_28x28_gray_mask_dog_tanh'
 # training_dataset = 'rao_ballard_nature_dog'
 # training_dataset = 'tanh10x10'
 # training_dataset = '-'
@@ -143,10 +148,23 @@ comment-in correct image set
 # X_train, y_train = pickle.load(tanh_data_in)
 # tanh_data_in.close()
 
-tanh_data_in = open('rao_ballard_nature.pydb','rb')
+# tanh_data_in = open('rao_ballard_nature.pydb','rb')
+# X_train, y_train = pickle.load(tanh_data_in)
+# tanh_data_in.close()
+
+# tanh_data_in = open('rao_ballard_nature_128x128_tanh.pydb','rb')
+# X_train, y_train = pickle.load(tanh_data_in)
+# tanh_data_in.close()
+
+# tanh_data_in = open('rao_ballard_nature_128x128_DoG_tanh.pydb','rb')
+# X_train, y_train = pickle.load(tanh_data_in)
+# tanh_data_in.close()
+
+tanh_data_in = open('rao_ballard_nature_28x28_gray_mask_DoG_tanh.pydb','rb')
 X_train, y_train = pickle.load(tanh_data_in)
 tanh_data_in.close()
-
+    
+    
 # tanh_data_in = open('rao_ballard_nature_dog.pydb','rb')
 # X_train, y_train = pickle.load(tanh_data_in)
 # tanh_data_in.close()
@@ -290,7 +308,10 @@ used_for_pred = 'P'
 #images 1-5 from April/May 2021 exps
 # pred_dataset = '5imgs'
 # pred_dataset = 'rao_ballard_nature_no_pre'
-pred_dataset = 'rao_ballard_nature'
+# pred_dataset = 'rao_ballard_nature'
+# pred_dataset = 'rao_ballard_nature_128x128_tanh'
+# pred_dataset = 'rao_ballard_nature_128x128_dog_tanh'
+pred_dataset = 'rao_ballard_nature_28x28_gray_mask_dog_tanh'
 # pred_dataset = 'rao_ballard_nature_dog'
 # pred_dataset = '0-9_minE_128.32_kurt'
 # pred_dataset = '0-9_minE_36.32'

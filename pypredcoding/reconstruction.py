@@ -66,6 +66,7 @@ trained = 'T'
 # trained = 'nt'
 
 #number of epochs if trained (if not, use -)
+# num_epochs = '10000e'
 # num_epochs = '5000e'
 num_epochs = '1000e'
 # num_epochs = '100e'
@@ -78,7 +79,10 @@ num_epochs = '1000e'
 # training_dataset = 'tanh100x10'
 # training_dataset = 'tanh_dog_100x10'
 # training_dataset = 'rao_ballard_nature_no_pre'
-training_dataset = 'rao_ballard_nature'
+# training_dataset = 'rao_ballard_nature'
+# training_dataset = 'rao_ballard_nature_128x128_tanh'
+# training_dataset = 'rao_ballard_nature_128x128_dog_tanh'
+training_dataset = 'rao_ballard_nature_28x28_gray_mask_dog_tanh'
 # training_dataset = 'rao_ballard_nature_dog'
 # training_dataset = 'tanh100x10_size_24x24'
 # training_dataset = 'tanh10x10'
@@ -100,7 +104,10 @@ used_for_pred = 'P'
 #images predicted, if used for prediction (if not, use -)
 #images 1-5 from April/May 2021 exps
 # pred_dataset = 'rao_ballard_nature_no_pre'
-pred_dataset = 'rao_ballard_nature'
+# pred_dataset = 'rao_ballard_nature'
+# pred_dataset = 'rao_ballard_nature_128x128_tanh'
+# pred_dataset = 'rao_ballard_nature_128x128_dog_tanh'
+pred_dataset = 'rao_ballard_nature_28x28_gray_mask_dog_tanh'
 # pred_dataset = 'rao_ballard_nature_dog's
 # pred_dataset = '5imgs'
 # pred_dataset = '0-9_minE_128.32_kurt'
@@ -160,13 +167,13 @@ for image in range(0,n_pred_images):
     # original_image = other_prediction_image_set[image].reshape(28,28)
     
     # plot
-    plt.subplot(131),plt.imshow(original_image, cmap='Greys'),plt.title('image #{} Original'.format(image+1))
+    plt.subplot(131),plt.imshow(original_image, cmap='gray'),plt.title('image #{} Original'.format(image+1))
     plt.xticks([]), plt.yticks([])
     # plt.colorbar(fraction=0.046, pad=0.04)
-    plt.subplot(132),plt.imshow(fU1r1_resize_l1, cmap='Greys'),plt.title('image #{} L{}'.format(image+1,1))
+    plt.subplot(132),plt.imshow(fU1r1_resize_l1, cmap='gray'),plt.title('image #{} L{}'.format(image+1,1))
     plt.xticks([]), plt.yticks([])
     # plt.colorbar(fraction=0.046, pad=0.04)
-    plt.subplot(133),plt.imshow(fU1r1_resize_l2, cmap='Greys'),plt.title('image #{} L{}'.format(image+1,2))
+    plt.subplot(133),plt.imshow(fU1r1_resize_l2, cmap='gray'),plt.title('image #{} L{}'.format(image+1,2))
     plt.xticks([]), plt.yticks([])
     # plt.colorbar(fraction=0.046, pad=0.04)
     plt.show()
@@ -425,117 +432,129 @@ MUST comment-in desired naming parameters
 """
 
 
-#model size
-# model_size = '[32.10]'
-# model_size = '[32.32]'
-# model_size = '[128.36]'
-# model_size = '[36.36]'
-model_size = '[128.5]'
-# model_size = '[128.32]'
+# #model size
+# # model_size = '[32.10]'
+# # model_size = '[32.32]'
+# # model_size = '[128.36]'
+# # model_size = '[36.36]'
+# model_size = '[128.5]'
+# # model_size = '[128.32]'
 
 
-#transformation function
-transform_type = 'tanh'
-# transform_type = 'linear'
+# #transformation function
+# transform_type = 'tanh'
+# # transform_type = 'linear'
 
-#prior type
-prior_type = 'gauss'
-# prior_type = 'kurt'
+# #prior type
+# prior_type = 'gauss'
+# # prior_type = 'kurt'
 
-#classification method
-# class_type = 'NC'
-class_type = 'C1'
-# class_type = 'C2'
+# #classification method
+# # class_type = 'NC'
+# class_type = 'C1'
+# # class_type = 'C2'
 
-#trained or untrained
-trained = 'T'
-# trained = 'nt'
+# #trained or untrained
+# trained = 'T'
+# # trained = 'nt'
 
-#number of epochs if trained (if not, use -)
-# num_epochs = '5000e'
-num_epochs = '1000e'
-# num_epochs = '100e'
-# num_epochs = '40e'
-# num_epochs = '50e'
-# num_epochs = '-'
+# #number of epochs if trained (if not, use -)
+# # num_epochs = '5000e'
+# # num_epochs = '1000e'
+# # num_epochs = '100e'
+# # num_epochs = '40e'
+# # num_epochs = '50e'
+# num_epochs = '10e'
+# # num_epochs = '-'
 
-#dataset trained on if trained (if not, use -)
-# training_dataset = 'tanh100x10'
-# training_dataset = 'tanh100x10_size_24x24'
-training_dataset = 'rao_ballard_nature'
-# training_dataset = 'rao_ballard_nature_dog'
-# training_dataset = 'tanh10x10'
-# training_dataset = '-'
+# #dataset trained on if trained (if not, use -)
+# # training_dataset = 'tanh100x10'
+# # training_dataset = 'tanh100x10_size_24x24'
+# # training_dataset = 'rao_ballard_nature'
+# # training_dataset = 'rao_ballard_nature_dog'
+# training_dataset = 'rao_ballard_nature_128x128_tanh'
+# # training_dataset = 'rao_ballard_nature_128x128_dog_tanh'
+# # training_dataset = 'tanh10x10'
+# # training_dataset = '-'
 
-#evaluated or not evaluated with so far
-# evaluated = 'E'
-evaluated = 'ne'
+# #evaluated or not evaluated with so far
+# # evaluated = 'E'
+# evaluated = 'ne'
 
-#images evaluated against, if evaluated (if not, use -)
-# eval_dataset = 'tanh100x10'
-# eval_dataset = 'tanh10x10'
-eval_dataset = '-'
+# #images evaluated against, if evaluated (if not, use -)
+# # eval_dataset = 'tanh100x10'
+# # eval_dataset = 'tanh10x10'
+# eval_dataset = '-'
 
-#used or not used for prediction so far
-# used_for_pred = 'P'
-used_for_pred = 'np'
+# #used or not used for prediction so far
+# # used_for_pred = 'P'
+# used_for_pred = 'np'
 
-#images predicted, if used for prediction (if not, use -)
-#images 1-5 from April/May 2021 exps
-# pred_dataset = '5imgs'
-pred_dataset = '-'
+# #images predicted, if used for prediction (if not, use -)
+# #images 1-5 from April/May 2021 exps
+# # pred_dataset = '5imgs'
+# pred_dataset = '-'
 
-#extra identifier for any particular or unique qualities of the model object
-# extra_tag = 'randUo'
-# extra_tag = 'pipeline_test'
-# extra_tag = 'tile_offset_6_poly_lr_0.05_lU_0.005_me40_pp1'
-extra_tag = 'C1_LSQ'
-# extra_tag = '-'
+# #extra identifier for any particular or unique qualities of the model object
+# # extra_tag = 'randUo'
+# # extra_tag = 'pipeline_test'
+# # extra_tag = 'tile_offset_6_poly_lr_0.05_lU_0.005_me40_pp1'
+# extra_tag = 'C1_LSQ'
+# # extra_tag = '-'
 
-# load it
-pcmod_in = open('pc.{}.{}.{}.{}.{}.{}.{}.{}.{}.{}.{}.{}.pydb'.format(model_size,transform_type,prior_type,class_type,\
-  trained,num_epochs,training_dataset, evaluated, eval_dataset, used_for_pred, pred_dataset,extra_tag),'rb')
-pcmod = pickle.load(pcmod_in)
-pcmod_in.close()
-
-
-
-"""
-Extract and Plot U[1] Basis Vectors
-"""
-
-# # NON TILED VERSION BELOW
-
-U1 = pcmod.U[1]
+# # load it
+# pcmod_in = open('pc.{}.{}.{}.{}.{}.{}.{}.{}.{}.{}.{}.{}.pydb'.format(model_size,transform_type,prior_type,class_type,\
+#   trained,num_epochs,training_dataset, evaluated, eval_dataset, used_for_pred, pred_dataset,extra_tag),'rb')
+# pcmod = pickle.load(pcmod_in)
+# pcmod_in.close()
 
 
-print("lenU1")
-print(len(U1))
-print('shapeU1')
-print(U1.shape)
 
-num_basis_vecs = U1.shape[1]
+# """
+# Extract and Plot U[1] Basis Vectors
+# """
+
+# # # NON TILED VERSION BELOW
+
+# U1 = pcmod.U[1]
 
 
-for i in range(0, num_basis_vecs):
-    print('basis #{}'.format(i+1))
+# print("lenU1")
+# print(len(U1))
+# print('shapeU1')
+# print(U1.shape)
+
+# num_basis_vecs = U1.shape[1]
+
+
+# for i in range(0, num_basis_vecs):
+#     print('basis #{}'.format(i+1))
     
-    basis_1d = U1[:,i]
-    print('shape1d basis is {}'.format(basis_1d.shape))
+#     basis_1d = U1[:,i]
+#     print('shape1d basis is {}'.format(basis_1d.shape))
 
-    basis_2d = basis_1d.reshape(28,28)
-    print('shape2d basis is {}'.format(basis_2d.shape))
+#     basis_2d = basis_1d.reshape(128,128)
+#     print('shape2d basis is {}'.format(basis_2d.shape))
     
-    plt.imshow(basis_2d, cmap='Greys'),plt.title('U[1] basis vector #{}'.format(i+1))
-    plt.show()
+#     plt.imshow(basis_2d, cmap='Greys'),plt.title('U[1] basis vector #{}'.format(i+1))
+#     plt.show()
     
 
 
-print('shape of r0 is {}'.format(pcmod.r[0].shape))
-print('shape of r1 is {}'.format(pcmod.r[1].shape))
-print('shape of U1 is {}'.format(pcmod.U[1].shape))
-print('shape of r2 is {}'.format(pcmod.r[2].shape))
-print('shape of U2 is {}'.format(pcmod.U[2].shape))
+# print('shape of r0 is {}'.format(pcmod.r[0].shape))
+# print('shape of r1 is {}'.format(pcmod.r[1].shape))
+# print('shape of U1 is {}'.format(pcmod.U[1].shape))
+# print('shape of r2 is {}'.format(pcmod.r[2].shape))
+# print('shape of U2 is {}'.format(pcmod.U[2].shape))
+
+
+
+
+
+
+
+
+
 
 
 

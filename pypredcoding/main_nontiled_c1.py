@@ -16,8 +16,8 @@ def main():
 
     # TANH NON-TILED constant
     # r 0.05, U 0.05 o 0.05
-    p = ModelParameters(unit_act='tanh',r_prior = 'gaussian', U_prior = 'gaussian', input_size=16384,
-        hidden_sizes = [128,5], classification = 'C1', num_epochs = 100, output_size=5,
+    p = ModelParameters(unit_act='tanh',r_prior = 'gaussian', U_prior = 'gaussian', input_size=784,
+        hidden_sizes = [128,5], classification = 'C1', num_epochs = 10000, output_size=5,
         k_r_sched = {'constant':{'initial':0.0005}},
         k_U_sched = {'constant':{'initial':0.005}},
         k_o_sched = {'constant':{'initial':0.0005}})
@@ -107,9 +107,10 @@ def main():
     # trained = 'nt'
 
     #number of epochs if trained (if not, use -)
+    num_epochs = '10000e'
     # num_epochs = '1000e'
     # num_epochs = '200e'
-    num_epochs = '100e'
+    # num_epochs = '100e'
     # num_epochs = '50e'
     # num_epochs = '40e'
     # num_epochs = '25e'
@@ -119,8 +120,9 @@ def main():
     #dataset trained on if trained (if not, use -)
     # training_dataset = 'tanh_dog_10x10'
     # training_dataset = 'tanh_dog_100x10'
-    training_dataset = 'rao_ballard_nature_128x128_tanh'
+    # training_dataset = 'rao_ballard_nature_128x128_tanh'
     # training_dataset = 'rao_ballard_nature_128x128_dog_tanh'
+    training_dataset = 'rao_ballard_nature_28x28_gray_mask_dog_tanh'
     # training_dataset = 'rao_ballard_nature_lin'
     # training_dataset = 'tanh1000x10'
     # training_dataset = 'tanh100x10'
@@ -216,13 +218,18 @@ def main():
     # X_train, y_train = pickle.load(tanh_data_in)
     # tanh_data_in.close()
     
-    tanh_data_in = open('rao_ballard_nature_128x128_tanh.pydb','rb')
-    X_train, y_train = pickle.load(tanh_data_in)
-    tanh_data_in.close()
+    # tanh_data_in = open('rao_ballard_nature_128x128_tanh.pydb','rb')
+    # X_train, y_train = pickle.load(tanh_data_in)
+    # tanh_data_in.close()
     
     # tanh_data_in = open('rao_ballard_nature_128x128_DoG_tanh.pydb','rb')
     # X_train, y_train = pickle.load(tanh_data_in)
     # tanh_data_in.close()
+    
+    tanh_data_in = open('rao_ballard_nature_28x28_gray_mask_DoG_tanh.pydb','rb')
+    X_train, y_train = pickle.load(tanh_data_in)
+    tanh_data_in.close()
+    
 
     # tanh_data_in = open('tanh_100x10.pydb','rb')
     # X_train, y_train, training_img, non_training_img, scrm_training_img, lena_pw, lena_zoom = pickle.load(tanh_data_in)
