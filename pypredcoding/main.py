@@ -1,287 +1,353 @@
+import os.path
+import cv2
 from parameters import ModelParameters
-from model import PredictiveCodingClassifier, TiledPredictiveCodingClassifier
-import numpy as np
+from model import PredictiveCodingClassifier
+from preprocessing import preprocess
 import pickle
-import cProfile
-import pstats
-import datetime
+from sys import exit
+
+
+""" Train a Predictive Coding Classifier according to the mathematical dictates
+of Rao and Ballard 1999 """
 
 
 def main():
 
     """
-    Set Model Parameters
+    main.py contents
+
+    I. The Input Set
+
+    1. Name input dataset parameters
+    2. Check to see if requested dataset exists in local dir
+        i. If it does, import it
+        ii. If it does not, create it, save it
+
+    II. The Model
+
+    1. Name model parameters (not exhaustive: some model parameters will be called from section I.1)
+    2. Check to see if requested model exists in local dir
+        i. If it does, print that it does and either overwrite or terminate program
+        ii. If it does not, initialize the model
+
+    III. Training
+
+    1. Train the model on the dataset
+        NOTE:
+        i. Model automatically pickles desired training checkpoints
+        ii. Model generates a terminal readout for time taken and estimated time remaining
+        iii. Training profile (cProfile) saved upon completion in a separate file
     """
 
-    # create and modify model parameters
-
-    # TANH NON-TILED constant
-    # r 0.05, U 0.05 o 0.05
-    p = ModelParameters(unit_act='tanh',r_prior = 'gaussian', U_prior = 'gaussian', input_size=784,
-        hidden_sizes = [128,128,10], c_cost_param = 1, num_epochs = 40,
-        k_r_sched = {'constant':{'initial':0.05}},
-        k_U_sched = {'constant':{'initial':0.05}},
-        k_o_sched = {'constant':{'initial':0.00005}})
-
-    # # TANH TILED polynomial
-    # p = ModelParameters(unit_act='tanh',r_prior = 'gaussian', U_prior = 'gaussian', input_size=576,
-    #     hidden_sizes = [1020,10], num_epochs = 20, tile_offset = 6,
-    #     k_r_sched = {'poly':{'initial':0.005,'max_epochs':40,'poly_power':1}},
-    #     k_U_sched = {'poly':{'initial':0.005,'max_epochs':40,'poly_power':1}},
-    #     k_o_sched = {'poly':{'initial':0.0005,'max_epochs':40,'poly_power':1}})
-
-
-
-
-
-
-
-
-    # #step decay learning rates for tanh model (has not been optimized)
-    # p = ModelParameters(unit_act='tanh',r_prior = 'kurtotic', U_prior = 'kurtotic', input_size=576,
-    #     hidden_sizes = [96,32], num_epochs = 40,
-    #     k_r_sched = {'step':{'initial':0.05,'drop_factor':0.9,'drop_every':10}},
-    #     k_U_sched = {'step':{'initial':0.005,'drop_factor':0.9,'drop_every':10}},
-    #     k_o_sched = {'step':{'initial':0.05,'drop_factor':0.9,'drop_every':10}})
-
+    ####
 
     """
-    PCMOD OBJECT NAMING FORMAT
-    and pipeline instructions
-    """
+    I. The Input Set
 
-    # every pickled file in the main -> evaluation -> prediction -> plotting script pipeline
-    # has been named with the following format:
-
-    # pc . [sizelayer1.sizelayer2] . transform function . prior . classification method
-    # . trained or not . # epochs if trained . training image set
-    # . evaluated or not . evaluation image set . predicted with or not . prediction image set . extra tag . pydb
-
-    # e.g.
-    # pc.[32.10].tanh.gauss.C2.T.100e.tanh100x10.ne.-.np.-.randUo.pydb
-
-    # the above model:
-    # is size 32,10, tanh, gaussian, has C2 classification, was trained for 100 epochs on
-    # the tanh 100x10 dataset, was not evaluated (ne) on any evaluation image set (-), was not
-    # used for prediction (np) on any images (-), and its extra tag indicates its train() loop in model.py
-    # was set so that Uo would stay random, never updating based on the labels (hence: 'randUo')
-
-    # note that "-" serves as a placeholder for "not present"
-
-    # when commenting-in the correct naming parameters for pickling in and out in main, eval, pred, or plot,
-    # note that they must be strings. I hope to set this up at some point as a function that runs with less human input.
-
-    # though the names are backwards compatible, currently the scripts can only be run in one direction
-
-    # main -> evaluation -> prediction -> plotting
-    # main -> prediction -> plotting
-    # main -> evaluation -> plotting
-    # main -> plotting
-
-    # note that evaluation and/or prediction can be skipped
-
+    1. Name input dataset parameters
+    2. Check to see if requested dataset exists in local dir
+        i. If it does, import it
+        ii. If it does not, create it, save it
 
     """
-    Set Naming Parameters for Model (Define Model Output Pickle Filename)
-    MUST comment-in desired naming parameters
-    MUST match model parameters set above
-    """
 
-    # pickle output model
-    # MUST comment-in desired names of parameters in the model
+    # Dataset naming format is:
+    # "source_numimgs_preprocessingscheme_numxpixls_numypixls_tilesornot_numtiles_numtilexpxls_numtileypxls_tilexoffset_tileyoffset.pydb"
+    # E.g. Li's successful classification set of 5 imgs:
+    # Rao and Ballard 1999, Li full suite of prepro, 128x128, 225 15x15 tiles, horizontal and vertical offset of 8
+    # Would be: "rb99_5_lifull_128_128_tl_225_15_15_8_8.pydb"
+    # RB99's would ~ be: "rb99_5_lifull_512_408_tl_3_16_16_5_0.pydb"
 
-    # "-" serves as a placeholder for "not present"
+    ####
 
-    #model size
-    # model_size = '[32.10]'
-    # model_size = '[32.32]'
-    # model_size = '[36.32]'
-    # model_size = '[36.10]'
-    # model_size = '[128.10]'
-    # model_size = '[1020.10]'
-    model_size = '[128.128.10]'
-    # model_size = '[128.128.128.10]'
-    # model_size = '[128.128.128.128.10]'
-    # model_size = '[128.32]'
-    # model_size = '[96.32]'
-    # model_size = '[192.32]'
+    ### Set parameters of datset to import
 
+    ## Data source
+    data_source = "rb99"
+    # data_source = "rao99"
+    # data_source = "rb97a"
+    # data_source = "mnist"
 
-    #transformation function
-    transform_type = 'tanh'
-    # transform_type = 'linear'
+    ## Number of images
+    num_imgs = 5
+    # num_imgs = 10
+    # num_imgs = 100
+    # num_imgs = 1000
+    # num_imgs = 10000
+    # num_imgs = 600000
 
-    #prior type
-    prior_type = 'gauss'
-    # prior_type = 'kurt'
+    ## Preprocessing scheme
+    prepro = "lifull"
+    # prepro = "grayonly"
 
-    #classification method
-    # class_type = 'NC'
-    # class_type = 'C1'
-    class_type = 'C2'
+    ## Image x,y dimensions
+    # numxpxls, numypxls = 28, 28
+    # numxpxls, numypxls = 38, 38
+    # numxpxls, numypxls = 48, 48
+    # numxpxls, numypxls = 68, 68
+    numxpxls, numypxls = 128, 128
+    # numxpxls, numypxls = 512, 408
+    # numxpxls, numypxls = 512, 512
 
-    #will be trained or untrained
-    trained = 'T'
-    # trained = 'nt'
+    ## Tiled or not
+    tlornot = "tl"
+    # tlornot = "ntl"
 
-    #number of epochs if trained (if not, use -)
-    # num_epochs = '1000e'
-    # num_epochs = '200e'
-    # num_epochs = '100e'
-    # num_epochs = '50e'
-    num_epochs = '40e'
-    # num_epochs = '25e'
-    # num_epochs = '20e'
-    # num_epochs = '-'
+    ## Number of tiles
+    # numtiles = 0
+    # numtiles = 3
+    numtiles = 225
 
-    #dataset trained on if trained (if not, use -)
-    training_dataset = 'tanh100x10'
-    # training_dataset = 'tanh1000x10'
-    # training_dataset = 'tanh100x10_size_24x24'
-    # training_dataset = 'linear100x10_size_24x24'
-    # training_dataset = 'tanh10x10'
-    # training_dataset = '-'
+    ## Tile x,y dimensions
+    # numtlxpxls, numtlypxls = 0, 0
+    numtlxpxls, numtlypxls = 15, 15
+    # numtlxpxls, numtlypxls = 16, 16
+    # numtlxpxls, numtlypxls = 12, 24
 
-    #evaluated or not evaluated with evaluate() (should occur in evaluation.py, so likely choose ne here in main.py)
-    # evaluated = 'E'
-    evaluated = 'ne'
+    ## Tile x,y offset
+    # tlxoffset, tlyoffset = 0, 0
+    # tlxoffset, tlyoffset = 5, 0
+    # tlxoffset, tlyoffset = 6, 0
+    tlxoffset, tlyoffset = 8, 8
 
-    #images evaluated against, if evaluated (if not, use -)
-    # eval_dataset = 'tanh100x10'
-    # eval_dataset = 'tanh10x10'
-    eval_dataset = '-'
+    def dataset_find_or_create():
 
-    #used or not used for prediction with predict() (should occur in prediction.py, so likely choose np here in main.py)
-    # used_for_pred = 'P'
-    used_for_pred = 'np'
+        ### Check for dataset in local directory: if present, load; if not, create, save for later
 
-    #images predicted, if used for prediction (if not, use -)
-    #images 1-5 from April/May exps
-    # pred_dataset = '5imgs'
-    pred_dataset = '-'
+        desired_dataset = "ds.{}_{}_{}_{}_{}_{}_{}_{}_{}_{}_{}.pydb".format(data_source, num_imgs, prepro, numxpxls, numypxls, tlornot, numtiles, numtlxpxls, numtlypxls, tlxoffset, tlyoffset)
 
-    #extra identifier for any particular or unique qualities of the model object
-    # extra_tag = 'randUo'
-    # extra_tag = 'pipeline_test'
-    # extra_tag = 'tile_offset_6_lr_0.5_lU_0.005'
-    # extra_tag = 'tile_offset_6_lr_0.5_lU_0.0005'
-    # extra_tag = 'tile_offset_6_lr_0.05_lU_0.001'
-    # extra_tag = 'tile_offset_6_lr_0.05_lU_0.005'
-    # extra_tag = 'tile_offset_6_lr_0.005_lU_0.005'
-    # extra_tag = 'tile_offset_6_lr_0.0005_lU_0.0005'
-    # extra_tag = 'tile_offset_6_poly_0.05_pp1'
-    # extra_tag = 'tile_offset_6_poly_0.005_pp1'
-    # extra_tag = 'tile_offset_6_poly_lr_0.05_lU_0.005_me40_pp1'
-    # extra_tag = 'tile_offset_6_poly_lr_0.005_lU_0.005_me40_pp1'
-    # extra_tag = 'tile_offset_6_poly_lr_0.005_lU_0.005_me40_pp1_randUo'
-    # extra_tag = 'tile_offset_6_const_lr_0.05'
-    # extra_tag = 'poly_lr_0.05_lU_0.005_me40_pp1'
-    # extra_tag = 'tile_offset_6_poly_lr_0.05_lU_0.005_me20_pp1'
-    # extra_tag = 'tile_offset_6_step_0.005_df0.9_10'
-    # extra_tag = 'tile_offset_6_step_lr_0.05_lU_0.005_df0.9_10'
-    # extra_tag = 'const_lr_0.0005'
-    # extra_tag = 'tile_offset_6'
-    # extra_tag = 'tile_offset_8'
-    # extra_tag = 'tile_offset_0'
-    # extra_tag = 'cboost_1'
-    # extra_tag = 'cboost_5'
-    # extra_tag = 'cboost_50'
-    # extra_tag = 'cboost_100'
-    # extra_tag = 'cboost_1000'
-    # extra_tag = 'cboost_4000'
-    # extra_tag = 'tile_offset_6_poly_lr_0.005_lU_0.005_me40_pp1'
-    extra_tag = '-'
+        if os.path.exists("./" + desired_dataset):
+            dataset_in = open(desired_dataset, "rb")
+            X_train, y_train = pickle.load(dataset_in)
+            dataset_in.close()
+
+            print("\n" + "I. Dataset " + desired_dataset + " successfully loaded from local dir" + "\n")
+
+        else:
+            X_train, y_train = preprocess(data_source, num_imgs, prepro, numxpxls, numypxls, tlornot, numtiles, numtlxpxls, numtlypxls, tlxoffset, tlyoffset)
+            dataset_out = open(desired_dataset, "wb")
+            pickle.dump((X_train, y_train), dataset_out)
+            dataset_out.close()
+
+        return X_train, y_train
+
+    X_train, y_train = dataset_find_or_create()
+
+    ####
 
     """
-    Pickle In Training Image Set
-    comment-in correct image set
+    II. The Model
+
+    1. Name model parameters (not exhaustive: some model parameters will be called from section I.1)
+    2. Check to see if requested model exists in local dir
+        i. If it does, print that it does and either overwrite or terminate program
+        ii. If it does not, initialize the model
     """
 
-    # load preprocessed data saved by preprocessing.py
-    # for a linear model training on a linear-optimized training set of 10digs x 10imgs open "linear_10x10.pydb"
-    # comment out the below three lines if using tanh model
+    ### Set some model parameters for directory search
 
-    # linear_data_in = open('linear_10x10.pydb','rb')
-    # X_train, y_train, training_img, non_training_img, scrm_training_img, lena_pw, lena_zoom = pickle.load(linear_data_in)
-    # linear_data_in.close()
+    ## Number of hidden layers
+    # num_nonin_lyrs = 1
+    # num_nonin_lyrs = 2
+    num_nonin_lyrs = 3
 
-    # linear_tile_data_in = open('linear_100x10_size_24x24.pydb','rb')
-    # X_train, y_train, training_img, non_training_img, scrm_training_img, lena_pw, lena_zoom = pickle.load(linear_tile_data_in)
-    # linear_tile_data_in.close()
+    ## Layer (r) sizes
+    lyr_sizes = (96, 128, 5)
 
-    # for a tanh model training on a tanh-optimized training set of 10digs x 10imgs open "tanh_10x10.pydb"
-    # for 100x10, use the associated tanh_100x10.pydb
-    # for 1000x10, use the associated tanh_1000x10.pydb
-    # comment out the below three lines if using linear model
+    ## Num r[1] modules (= numtiles)
+    num_r1_mods = numtiles
 
-    # tanh_data_in = open('tanh_10x10.pydb','rb')
-    # X_train, y_train, training_img, non_training_img, scrm_training_img, lena_pw, lena_zoom = pickle.load(tanh_data_in)
-    # tanh_data_in.close()
+    ## Activation function
+    act_fxn = "lin"
+    # act_fxn = "tan"
 
-    tanh_data_in = open('tanh_100x10.pydb','rb')
-    X_train, y_train, training_img, non_training_img, scrm_training_img, lena_pw, lena_zoom = pickle.load(tanh_data_in)
-    tanh_data_in.close()
+    ## r, U priors
+    # r_prior, U_prior = "gaus", "gaus"
+    r_prior, U_prior = "kurt", "kurt"
 
-    # tanh_tile_data_in = open('tanh_100x10_size_24x24.pydb','rb')
-    # X_train, y_train, training_img, non_training_img, scrm_training_img, lena_pw, lena_zoom = pickle.load(tanh_tile_data_in)
-    # tanh_tile_data_in.close()
+    ## Classification paradigm
+    # class_scheme = "nc"
+    class_scheme = "c1"
+    # class_scheme = "c2"
 
-    # tanh_data_in = open('tanh_1000x10.pydb','rb')
-    # X_train, y_train, training_img, non_training_img, scrm_training_img, lena_pw, lena_zoom = pickle.load(tanh_data_in)
-    # tanh_data_in.close()
+    ## Number of epochs to train
+    # num_epochs = 0
+    num_epochs = 500
+    # num_epochs = 1000
 
+    ### Set some more model parameters for model creation
+
+    ## Learning rate scheme
+    # lr_scheme = "constant"
+    # lr_scheme = "poly"
+    lr_scheme = "step"
+
+    ## Initial learning rates
+    ## r
+    r_init = 0.005
+
+    ## U
+    U_init = 0.01
+
+    ## o (only used during C2 classification)
+    o_init = 0.00005
+
+    '''
+    ## Polynomial decay LR schedule
+    ## r
+    r_max_eps = num_epochs
+    r_poly_power = 1
+
+    ## U
+    U_max_eps = num_epochs
+    U_poly_power = 1
+
+    ## o
+    o_max_eps = num_epochs
+    o_poly_power = 1
+    '''
+
+    ## Step decay LR schedule (d_f = 1 means LR is constant; d_e 40 epochs is Li's number)
+    ## r
+    r_drop_factor = 1
+    r_drop_every = 40
+
+    ## U (0.98522 = 1/1.015; Li's LR divisor for classifying linear PC model)
+    # U_drop_factor = 1
+    U_drop_factor = 0.98522
+    U_drop_every = 40
+
+    ## o
+    o_drop_factor = 1
+    o_drop_every = 40
+
+    def LR_params_to_dict():
+
+        ### Logic to automatically arrange LR parameters dict for p object
+
+        k_r_sched = {lr_scheme:{"initial":r_init}}
+        k_U_sched = {lr_scheme:{"initial":U_init}}
+        k_o_sched = {lr_scheme:{"initial":o_init}}
+
+        if lr_scheme == "constant":
+            pass
+
+        elif lr_scheme == "poly":
+            k_r_sched[lr_scheme]["max_epochs"] = r_max_eps
+            k_U_sched[lr_scheme]["max_epochs"] = U_max_eps
+            k_o_sched[lr_scheme]["max_epochs"] = o_max_eps
+
+            k_r_sched[lr_scheme]["poly_power"] = r_poly_power
+            k_U_sched[lr_scheme]["poly_power"] = U_poly_power
+            k_o_sched[lr_scheme]["poly_power"] = o_poly_power
+
+        # If lr_scheme == "step"
+        else:
+            k_r_sched[lr_scheme]["drop_factor"] = r_drop_factor
+            k_U_sched[lr_scheme]["drop_factor"] = U_drop_factor
+            k_o_sched[lr_scheme]["drop_factor"] = o_drop_factor
+
+            k_r_sched[lr_scheme]["drop_every"] = r_drop_every
+            k_U_sched[lr_scheme]["drop_every"] = U_drop_every
+            k_o_sched[lr_scheme]["drop_every"] = o_drop_every
+
+        return k_r_sched, k_U_sched, k_o_sched
+
+    k_r_sched, k_U_sched, k_o_sched = LR_params_to_dict()
+
+    def size_params_to_p_format():
+
+        ### Automatically set the remainder of model parameters for parameters (p) object creation, loading
+
+        ## Image input size
+        input_size = numxpxls * numypxls
+
+        ## Hidden layer sizes
+        hidden_sizes = []
+        for hl in range(0,num_nonin_lyrs-1):
+            hidden_sizes.append(lyr_sizes[hl])
+
+        ## Model output size (last layer)
+        output_size = lyr_sizes[-1]
+        if output_size != num_imgs:
+            print("Output size (output_size) must == number of input images (num_imgs)")
+            exit()
+
+        return input_size, hidden_sizes, output_size
+
+    input_size, hidden_sizes, output_size = size_params_to_p_format()
+
+    ## Parameters object
+
+    p = ModelParameters(input_size = input_size, hidden_sizes = hidden_sizes, output_size = output_size,
+        num_r1_mods = num_r1_mods, act_fxn = act_fxn, r_prior = r_prior, U_prior = U_prior,
+        class_scheme = class_scheme,
+        k_r_sched = k_r_sched,
+        k_U_sched = k_r_sched,
+        k_o_sched = k_o_sched)
+
+    def model_find_and_or_create():
+
+        ### Directory search for named model
+
+        # Initiate model name string
+        desired_model = "mod.{}_".format(num_nonin_lyrs)
+
+        if len(lyr_sizes) != num_nonin_lyrs:
+            print("Number of non-input layers (num_nonin_lyrs) must == length of lyr_sizes tuple")
+            exit()
+
+        for lyr in range(0,num_nonin_lyrs):
+            str_lyr = str(lyr_sizes[lyr])
+            if lyr < num_nonin_lyrs - 1:
+                desired_model += (str_lyr + "-")
+            else:
+                desired_model += (str_lyr + "_")
+
+        ### Check for model in local directory: if present, quit (creation / training not needed); if not, create, save
+
+        desired_model += "{}_{}_{}_{}_{}_{}.pydb".format(num_r1_mods, act_fxn, r_prior, U_prior, class_scheme, num_epochs)
+
+        print("II. Desired model is {}".format(desired_model) + "\n")
+
+        if os.path.exists("./" + desired_model):
+            print("Desired model " + desired_model + " already present in local dir: would you like to overwrite it? (y/n)")
+            ans = input()
+            # For overwrite
+            if ans == "y":
+                # Initialize model
+                mod = PredictiveCodingClassifier(p)
+
+            else:
+                print("Quitting main.py..." + "\n")
+                exit()
+        # For first save
+        else:
+            # Initialize model
+            mod = PredictiveCodingClassifier(p)
+
+        return mod
+
+    mod = model_find_and_or_create()
+
+    ####
 
     """
-    Train
+    III. Training
+
+    1. Train the model on the dataset
+        NOTE:
+        i. Model automatically pickles desired training checkpoints
+        ii. Model generates a terminal readout for time taken and estimated time remaining
+        iii. Training profile (cProfile) saved upon completion in a separate file
     """
 
-    # list naming parameters above: if anything left unset, train() will not run
-    naming_parameters = [model_size,transform_type,prior_type,class_type,\
-        trained,num_epochs,training_dataset, evaluated, eval_dataset, used_for_pred, pred_dataset,extra_tag]
+    ### Train
 
-    # NOTE: comment out pcmod.train() line below to leave model untrained
-
-    # # instantiate model
-    pcmod = PredictiveCodingClassifier(p)
     # train on training set
-    pcmod.train(X_train, y_train)
-
-    # # instantiate and train tiled model
-    # tiled_pcmod = TiledPredictiveCodingClassifier(p)
-
-    # # safeguard against training a non-tiled model
-    # if tiled_pcmod.is_tiled == True:
-    #     tiled_pcmod.train(X_train, y_train)
-
-
-    """
-    Pickle Out Trained or Untrained Model
-    """
-
-    # # pickle output model
-
-    pcmod_out = open('pc.{}.{}.{}.{}.{}.{}.{}.{}.{}.{}.{}.{}.pydb'.format(model_size,transform_type,prior_type,class_type,\
-        trained,num_epochs,training_dataset, evaluated, eval_dataset, used_for_pred, pred_dataset,extra_tag),'wb')
-    pickle.dump(pcmod, pcmod_out)
-    pcmod_out.close()
-
-    # pickle tiled output model
-
-    # tiled_pcmod_out = open('pc.{}.{}.{}.{}.{}.{}.{}.{}.{}.{}.{}.{}.pydb'.format(model_size,transform_type,prior_type,class_type,\
-    #     trained,num_epochs,training_dataset, evaluated, eval_dataset, used_for_pred, pred_dataset,extra_tag),'wb')
-    # pickle.dump(tiled_pcmod, tiled_pcmod_out)
-    # tiled_pcmod_out.close()
-
+    mod.train(X_train, y_train)
 
 
 if __name__ == '__main__':
-    # for unabridged cProfile readout in bash shell type: 'python -m cProfile main.py'
 
     main()
-
-    # for truncated cProfile readout in IDE, use logic below
-
-    # NOTE: fix this
-    # pst = pstats.Stats('restats')
-    # pst.strip_dirs().sort_stats(-1).print_stats()
-    # cProfile.run('main()')
