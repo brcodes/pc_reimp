@@ -9,6 +9,63 @@ def file_not_found(instance,attribute,value):
     if not os.path.exists(value):
         raise ValueError('{} does not exist!'.format(attribute.name))
 
+def size_params_to_p_format(num_nonin_lyrs=3, lyr_sizes=(96,128,5), num_imgs=5, numxpxls=128, numypxls=128):
+
+        ### Automatically set the remainder of model parameters for parameters (p) object creation, loading
+        # Defaults are Li classification model params
+
+        ## Image input size
+        input_size = numxpxls * numypxls
+
+        ## Hidden layer sizes
+        hidden_sizes = []
+        for hl in range(0,num_nonin_lyrs-1):
+            hidden_sizes.append(lyr_sizes[hl])
+
+        ## Model output size (last layer)
+        output_size = lyr_sizes[-1]
+        if output_size != num_imgs:
+            print("Output size (output_size) must == number of input images (num_imgs)")
+            exit()
+
+        return input_size, hidden_sizes, output_size
+
+def LR_params_to_dict(r_init=0.005, U_init=0.01, o_init=0.0005,
+    r_max_eps=500, U_max_eps=500, o_max_eps=500,
+    r_poly_power=1, U_poly_power=1, o_poly_power=1,
+    r_drop_factor=1, U_drop_factor=0.98522, o_drop_factor=1,
+    r_drop_every=40, U_drop_every=40, o_drop_every=40):
+
+        ### Logic to automatically arrange LR parameters dict for p object
+
+        k_r_sched = {lr_scheme:{"initial":r_init}}
+        k_U_sched = {lr_scheme:{"initial":U_init}}
+        k_o_sched = {lr_scheme:{"initial":o_init}}
+
+        if lr_scheme == "constant":
+            pass
+
+        elif lr_scheme == "poly":
+            k_r_sched[lr_scheme]["max_epochs"] = r_max_eps
+            k_U_sched[lr_scheme]["max_epochs"] = U_max_eps
+            k_o_sched[lr_scheme]["max_epochs"] = o_max_eps
+
+            k_r_sched[lr_scheme]["poly_power"] = r_poly_power
+            k_U_sched[lr_scheme]["poly_power"] = U_poly_power
+            k_o_sched[lr_scheme]["poly_power"] = o_poly_power
+
+        # If lr_scheme == "step"
+        else:
+            k_r_sched[lr_scheme]["drop_factor"] = r_drop_factor
+            k_U_sched[lr_scheme]["drop_factor"] = U_drop_factor
+            k_o_sched[lr_scheme]["drop_factor"] = o_drop_factor
+
+            k_r_sched[lr_scheme]["drop_every"] = r_drop_every
+            k_U_sched[lr_scheme]["drop_every"] = U_drop_every
+            k_o_sched[lr_scheme]["drop_every"] = o_drop_every
+
+        return k_r_sched, k_U_sched, k_o_sched
+
 
 @attr.s(kw_only=True)
 class ModelParameters(object):

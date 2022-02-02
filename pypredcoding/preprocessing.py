@@ -95,27 +95,49 @@ def apply_tanh(images):
 
 def cut_into_tiles(images, numxpxls, numypxls, numtiles, numtlxpxls, numtlypxls, tlxoffset, tlyoffset):
     ### Cut images into tiles
-    # images must be
 
     ## Tile size check
     if numtlxpxls > numxpxls:
-        print("cut_into_tiles(): tile x dimension ({}) cannot be bigger than image x dimension ({})".format(numxpxls, numtlxpxls))
+        print("cut_into_tiles(): tile x dimension ({}) cannot be bigger than image x dimension ({})".format(numtlxpxls, numxpxls))
         exit()
     elif numtlypxls > numypxls:
-        print("cut_into_tiles(): tile y dimension ({}) cannot be bigger than image y dimension ({})".format(numypxls, numtlypxls))
+        print("cut_into_tiles(): tile y dimension ({}) cannot be bigger than image y dimension ({})".format(numtlypxls, numypxls))
         exit()
     # If passes size check
     else:
         tiles_all_imgs = []
 
-        # If only horizontal offset (RB99)
+        # If only horizontal offset (will default to RB99; 3 tiles centered in image center)
         if tlyoffset == 0 and tlxoffset != 0:
             tilecols == numtiles
+
             # Find image "center" using first image
             center_x = int(numxpxls / 2)
             center_y = int(numypxls / 2)
-            for img in images:
 
+            # Tile 1 (center left)
+            tl1xidxlo = int(center_x - numtlxpxls / 2 - numtlxpxls)
+            tl1xidxhi = int(center_x - numtlxpxls / 2)
+            tl1yidxlo = int(center_y - numtlypxls / 2)
+            tl1yidxhi = int(center_y + numtlypxls / 2)
+            # Tile 2 (center)
+            tl2xidxlo = int(center_x - numtlxpxls / 2)
+            tl2xidxhi = int(center_x + numtlxpxls / 2)
+            tl2yidxlo = int(center_y - numtlypxls / 2)
+            tl2yidxhi = int(center_y + numtlypxls / 2)
+            # Tile 3 (center right)
+            tl3xidxlo = int(center_x + numtlxpxls / 2)
+            tl3xidxhi = int(center_x + numtlxpxls / 2 + numtlxpxls)
+            tl3yidxlo = int(center_y - numtlypxls / 2)
+            tl3yidxhi = int(center_y + numtlypxls / 2)
+
+            for img in images:
+                tiles_one_img = []
+                img_tl1 = img[tl1xidxlo:tl1xidxhi][tl1yidxlo:tl1yidxhi]
+                img_tl2 = img[tl2xidxlo:tl2xidxhi][tl2yidxlo:tl2yidxhi]
+                img_tl3 = img[tl3xidxlo:tl3xidxhi][tl3yidxlo:tl3yidxhi]
+                tiles_one_img.append(img_tl1, img_tl2, img_tl3)
+                tiles_all_imgs.append(tiles_one_img)
 
         # If only vertical offset
         elif tlyoffset != 0 and tlxoffset == 0:
@@ -123,14 +145,40 @@ def cut_into_tiles(images, numxpxls, numypxls, numtiles, numtlxpxls, numtlypxls,
             print("cut_into_tiles(): vertical offset only, not yet written")
             exit()
 
-        # If vertical and horizontal offset (RB97a and Li)
+        # If vertical and horizontal offset (RB97a: 4 tiles no overlap and Li: 225 tiles, 8px x,y overlap)
         else:
+            tilecols = np.sqrt(numtiles)
+            tilerows = tilecols
+
             for img in images:
                 tiles_one_img = []
-                tilecols = np.sqrt(numtiles)
+
+                tlxidxlo = 0
+                tlxidxhi = numtlxpxls
+
                 for tilecol in range(0, tilecols):
 
-                tiles_all_imgs.append(tiles_one_img)
+                    while tlxidxhi <= numxpxls:
+
+                        tlyidxlo = 0
+                        tlyidxhi = numtlypxls
+
+                        for tilerow in range(0, tilerows):
+
+                            while tlyidxhi <= numypxls:
+
+                                tile = img[tlxidxlo:tlxidxhi][tlyidxlo:tlyidxhi]
+                                tiles_one_img.append(tile)
+
+                                # Advance cutting by one tile up the column (advance one row's height up)
+                                tlyidxlo += tlyoffset
+                                tlyidxhi += tlyoffset
+
+                        tiles_all_imgs.append(tiles_one_img)
+
+                        # After column cutting is finished, advance by one column's width to the right
+                        tlxidxlo += tlxoffset
+                        tlxidxhi += tlxoffset
 
     return tiles_all_imgs
 
@@ -189,3 +237,10 @@ def preprocess(data_source, num_imgs, prepro, numxpxls, numypxls, tlornot, numti
         exit()
 
     return X, y
+
+####
+
+### If you want to preprocess and pickle a dataset outside of a main.py model-training operation, over just overwrite an old one, do it here.
+
+
+X, y = preprocess(data_source, num_imgs, prepro, numxpxls, numypxls, tlornot, numtiles, numtlxpxls, numtlypxls, tlxoffset, tlyoffset)

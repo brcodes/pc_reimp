@@ -159,55 +159,96 @@ def cut(image_array, tile_offset, flat=True):
 
     returns a tuple.
     '''
-    
+
     if flat == True:
 
         image_width = image_array.shape[1]
-    
+
         t1_index1 = 0
         t1_index2 = image_width - (tile_offset*2)
-    
+
         # take all rows (:) within some horizontal slice
         tile1 = image_array[:,t1_index1:t1_index2]
         tile1flat = flatten_images(tile1[None,:,:])
-    
+
         t2_index1 = t1_index1 + tile_offset
         t2_index2 = image_width - tile_offset
-    
+
         tile2 = image_array[:,t2_index1:t2_index2]
         tile2flat = flatten_images(tile2[None,:,:])
-    
+
         t3_index1 = t2_index1 + tile_offset
         t3_index2 = image_width
-    
+
         tile3 = image_array[:,t3_index1:t3_index2]
         tile3flat = flatten_images(tile3[None,:,:])
-    
+
         return (tile1flat, tile2flat, tile3flat)
-    
+
     elif flat == False:
-        
+
         image_width = image_array.shape[1]
-    
+
         t1_index1 = 0
         t1_index2 = image_width - (tile_offset*2)
-    
+
         # take all rows (:) within some horizontal slice
         tile1 = image_array[:,t1_index1:t1_index2]
-    
+
         t2_index1 = t1_index1 + tile_offset
         t2_index2 = image_width - tile_offset
-    
+
         tile2 = image_array[:,t2_index1:t2_index2]
-    
+
         t3_index1 = t2_index1 + tile_offset
         t3_index2 = image_width
-    
+
         tile3 = image_array[:,t3_index1:t3_index2]
-    
+
         return (tile1, tile2, tile3)
-    
+
     else:
-        
+
         print('flat must = True or False bool')
         return
+
+def dataset_find_or_create(data_source="rb99", num_imgs=5, prepro="lifull",
+    numxpxls=128, numypxls=128, tlornot="tl", numtiles=225,
+    numtlxpxls=16, numtlypxls=16, tlxoffset=8, tlyoffset=8):
+
+    ### Check for dataset in local directory: if present, load; if not, create, save for later
+    # Default values are Li classification set values
+
+    desired_dataset = "ds.{}_{}_{}_{}_{}_{}_{}_{}_{}_{}_{}.pydb".format(data_source, num_imgs, prepro, numxpxls, numypxls, tlornot, numtiles, numtlxpxls, numtlypxls, tlxoffset, tlyoffset)
+
+    if os.path.exists("./" + desired_dataset):
+        if __name__ == "__main__":
+            dataset_in = open(desired_dataset, "rb")
+            X_train, y_train = pickle.load(dataset_in)
+            dataset_in.close()
+
+            print("\n" + "I. Dataset " + desired_dataset + " successfully loaded from local dir" + "\n")
+
+        # I.e. if __name__ == "__preprocessing__", or we are in some other script
+        else:
+            print("Desired dataset " + desired_dataset + " already present in local dir: would you like to overwrite it? (y/n)")
+            ans = input()
+            # For overwrite
+            if ans == "y":
+                # Create dataset per specifications
+                X_train, y_train = preprocess(data_source, num_imgs, prepro, numxpxls, numypxls, tlornot, numtiles, numtlxpxls, numtlypxls, tlxoffset, tlyoffset)
+                dataset_out = open(desired_dataset, "wb")
+                pickle.dump((X_train, y_train), dataset_out)
+                dataset_out.close()
+
+            else:
+                print("Quitting dataset creation.py..." + "\n")
+                exit()
+
+    else:
+        X_train, y_train = preprocess(data_source, num_imgs, prepro, numxpxls, numypxls, tlornot, numtiles, numtlxpxls, numtlypxls, tlxoffset, tlyoffset)
+        dataset_out = open(desired_dataset, "wb")
+        pickle.dump((X_train, y_train), dataset_out)
+        dataset_out.close()
+
+    return X_train, y_train

@@ -1,10 +1,11 @@
 import os.path
 import cv2
-from parameters import ModelParameters
-from model import PredictiveCodingClassifier
+from parameters import ModelParameters, LR_params_to_dict, size_params_to_p_format
+from model import PredictiveCodingClassifier, model_find_and_or_create
 from preprocessing import preprocess
 import pickle
 from sys import exit
+from data import dataset_find_or_create
 
 
 """ Train a Predictive Coding Classifier according to the mathematical dictates
@@ -110,28 +111,11 @@ def main():
     # tlxoffset, tlyoffset = 6, 0
     tlxoffset, tlyoffset = 8, 8
 
-    def dataset_find_or_create():
+    ### Check for dataset in local directory: if present, load; if not, create, save for later
 
-        ### Check for dataset in local directory: if present, load; if not, create, save for later
-
-        desired_dataset = "ds.{}_{}_{}_{}_{}_{}_{}_{}_{}_{}_{}.pydb".format(data_source, num_imgs, prepro, numxpxls, numypxls, tlornot, numtiles, numtlxpxls, numtlypxls, tlxoffset, tlyoffset)
-
-        if os.path.exists("./" + desired_dataset):
-            dataset_in = open(desired_dataset, "rb")
-            X_train, y_train = pickle.load(dataset_in)
-            dataset_in.close()
-
-            print("\n" + "I. Dataset " + desired_dataset + " successfully loaded from local dir" + "\n")
-
-        else:
-            X_train, y_train = preprocess(data_source, num_imgs, prepro, numxpxls, numypxls, tlornot, numtiles, numtlxpxls, numtlypxls, tlxoffset, tlyoffset)
-            dataset_out = open(desired_dataset, "wb")
-            pickle.dump((X_train, y_train), dataset_out)
-            dataset_out.close()
-
-        return X_train, y_train
-
-    X_train, y_train = dataset_find_or_create()
+    X_train, y_train = dataset_find_or_create(data_source=data_source, num_imgs=num_imgs, prepro=prepro,
+        numxpxls=numxpxls, numypxls=numypxls, tlornot=tlornot, numtiles=numtiles,
+        numtlxpxls=numtlxpxls, numtlypxls=numtlypxls, tlxoffset=tlxoffset, tlyoffset=tlyoffset)
 
     ####
 
@@ -221,63 +205,20 @@ def main():
     o_drop_factor = 1
     o_drop_every = 40
 
-    def LR_params_to_dict():
+    ### Automatically arrange LR parameters dict for p object, model creation
 
-        ### Logic to automatically arrange LR parameters dict for p object
+    k_r_sched, k_U_sched, k_o_sched = LR_params_to_dict(r_init=r_init, U_init=U_init, o_init=o_init,
+    r_max_eps=r_max_eps, U_max_eps=U_max_eps, o_max_eps=o_max_eps,
+    r_poly_power=r_poly_power, U_poly_power=U_poly_power, o_poly_power=o_poly_power,
+    r_drop_factor=r_drop_factor, U_drop_factor=U_drop_factor, o_drop_factor=o_drop_factor,
+    r_drop_every=r_drop_every, U_drop_every=U_drop_every, o_drop_every=o_drop_every)
 
-        k_r_sched = {lr_scheme:{"initial":r_init}}
-        k_U_sched = {lr_scheme:{"initial":U_init}}
-        k_o_sched = {lr_scheme:{"initial":o_init}}
+    ### Automatically set the remainder of model parameters for parameters (p) object, model creation
 
-        if lr_scheme == "constant":
-            pass
+    input_size, hidden_sizes, output_size = size_params_to_p_format(num_nonin_lyrs=num_nonin_lyrs,
+    lyr_sizes=lyr_sizes, num_imgs=num_imgs, numxpxls=numxpxls, numypxls=numypxls)
 
-        elif lr_scheme == "poly":
-            k_r_sched[lr_scheme]["max_epochs"] = r_max_eps
-            k_U_sched[lr_scheme]["max_epochs"] = U_max_eps
-            k_o_sched[lr_scheme]["max_epochs"] = o_max_eps
-
-            k_r_sched[lr_scheme]["poly_power"] = r_poly_power
-            k_U_sched[lr_scheme]["poly_power"] = U_poly_power
-            k_o_sched[lr_scheme]["poly_power"] = o_poly_power
-
-        # If lr_scheme == "step"
-        else:
-            k_r_sched[lr_scheme]["drop_factor"] = r_drop_factor
-            k_U_sched[lr_scheme]["drop_factor"] = U_drop_factor
-            k_o_sched[lr_scheme]["drop_factor"] = o_drop_factor
-
-            k_r_sched[lr_scheme]["drop_every"] = r_drop_every
-            k_U_sched[lr_scheme]["drop_every"] = U_drop_every
-            k_o_sched[lr_scheme]["drop_every"] = o_drop_every
-
-        return k_r_sched, k_U_sched, k_o_sched
-
-    k_r_sched, k_U_sched, k_o_sched = LR_params_to_dict()
-
-    def size_params_to_p_format():
-
-        ### Automatically set the remainder of model parameters for parameters (p) object creation, loading
-
-        ## Image input size
-        input_size = numxpxls * numypxls
-
-        ## Hidden layer sizes
-        hidden_sizes = []
-        for hl in range(0,num_nonin_lyrs-1):
-            hidden_sizes.append(lyr_sizes[hl])
-
-        ## Model output size (last layer)
-        output_size = lyr_sizes[-1]
-        if output_size != num_imgs:
-            print("Output size (output_size) must == number of input images (num_imgs)")
-            exit()
-
-        return input_size, hidden_sizes, output_size
-
-    input_size, hidden_sizes, output_size = size_params_to_p_format()
-
-    ## Parameters object
+    ## Parameters object creation
 
     p = ModelParameters(input_size = input_size, hidden_sizes = hidden_sizes, output_size = output_size,
         num_r1_mods = num_r1_mods, act_fxn = act_fxn, r_prior = r_prior, U_prior = U_prior,
@@ -286,49 +227,10 @@ def main():
         k_U_sched = k_r_sched,
         k_o_sched = k_o_sched)
 
-    def model_find_and_or_create():
+    ## Model object creation
 
-        ### Directory search for named model
-
-        # Initiate model name string
-        desired_model = "mod.{}_".format(num_nonin_lyrs)
-
-        if len(lyr_sizes) != num_nonin_lyrs:
-            print("Number of non-input layers (num_nonin_lyrs) must == length of lyr_sizes tuple")
-            exit()
-
-        for lyr in range(0,num_nonin_lyrs):
-            str_lyr = str(lyr_sizes[lyr])
-            if lyr < num_nonin_lyrs - 1:
-                desired_model += (str_lyr + "-")
-            else:
-                desired_model += (str_lyr + "_")
-
-        ### Check for model in local directory: if present, quit (creation / training not needed); if not, create, save
-
-        desired_model += "{}_{}_{}_{}_{}_{}.pydb".format(num_r1_mods, act_fxn, r_prior, U_prior, class_scheme, num_epochs)
-
-        print("II. Desired model is {}".format(desired_model) + "\n")
-
-        if os.path.exists("./" + desired_model):
-            print("Desired model " + desired_model + " already present in local dir: would you like to overwrite it? (y/n)")
-            ans = input()
-            # For overwrite
-            if ans == "y":
-                # Initialize model
-                mod = PredictiveCodingClassifier(p)
-
-            else:
-                print("Quitting main.py..." + "\n")
-                exit()
-        # For first save
-        else:
-            # Initialize model
-            mod = PredictiveCodingClassifier(p)
-
-        return mod
-
-    mod = model_find_and_or_create()
+    mod = model_find_and_or_create(num_nonin_lyrs=num_nonin_lyrs, lyr_sizes=lyr_sizes, num_r1_mods=num_r1_mods,
+        act_fxn=act_fxn, r_prior=r_prior, U_prior=U_prior, class_scheme=class_scheme, num_epochs=num_epochs)
 
     ####
 
