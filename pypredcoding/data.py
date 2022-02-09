@@ -369,7 +369,6 @@ def cut_into_tiles(images, numxpxls, numypxls, numtiles, numtlxpxls, numtlypxls,
             tilerows = tilecols
 
             for img in images:
-                tiles_one_img = []
 
                 tlxidxlo = 0
                 tlxidxhi = numtlxpxls
@@ -385,14 +384,13 @@ def cut_into_tiles(images, numxpxls, numypxls, numtiles, numtlxpxls, numtlypxls,
 
                             while tlyidxhi <= numypxls:
 
+                                # Create tile by indexing image, and put the tile in the array
                                 tile = img[tlxidxlo:tlxidxhi][tlyidxlo:tlyidxhi]
-                                tiles_one_img.append(tile)
+                                tiles_all_imgs.append(tile)
 
                                 # Advance cutting by one tile up the column (advance one row's height up)
                                 tlyidxlo += tlyoffset
                                 tlyidxhi += tlyoffset
-
-                        tiles_all_imgs.append(tiles_one_img)
 
                         # After column cutting is finished, advance by one column's width to the right
                         tlxidxlo += tlxoffset
@@ -402,7 +400,7 @@ def cut_into_tiles(images, numxpxls, numypxls, numtiles, numtlxpxls, numtlypxls,
     tiles_all_imgs = np.array(tiles_all_imgs, dtype=list)
 
     print("size of tiles all images: {}".format(tiles_all_imgs.shape))
-    print("size of tiles all images[0] (aka tiles one img, first image): {}".format(tiles_all_imgs[0].shape) + "\n")
+    print("size of tiles all images[0] (first image's first tile): {}".format(tiles_all_imgs[0].shape) + "\n")
     return tiles_all_imgs
 
 def preprocess(data_source, num_imgs, prepro, numxpxls, numypxls, tlornot, numtiles, numtlxpxls, numtlypxls, tlxoffset, tlyoffset):
@@ -487,7 +485,7 @@ def dataset_find_or_create(data_source="rb99", num_imgs=5, prepro="lifull",
 
         # I.e. if __name__ == "__preprocessing__", or we are in some other script
         else:
-            print("\n" + "Desired dataset " + desired_dataset + " already present in local dir: would you like to overwrite it? (y/n)")
+            print("\n" + "I. Desired dataset " + desired_dataset + " already present in local dir: would you like to overwrite it? (y/n)")
             ans = input()
             # For overwrite
             if ans == "y":

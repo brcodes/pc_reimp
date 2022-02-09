@@ -101,7 +101,7 @@ if os.path.exists("./" + desired_dataset):
             imgidxhi = numtiles
 
             for img in range(0, num_imgs):
-                
+
                 img_in_x = X[imgidxlo:imgidxhi]
 
                 tl_num = 1
@@ -113,6 +113,8 @@ if os.path.exists("./" + desired_dataset):
 
                 imgidxlo += numtiles
                 imgidxhi += numtiles
+
+            
 
     # Color case
     elif len(X.shape) == 4:
