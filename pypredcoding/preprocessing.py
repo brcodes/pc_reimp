@@ -1,13 +1,15 @@
-from data import get_mnist_data,flatten_images,standardization_filter,rescaling_filter, inflate_vectors
 import numpy as np
 import pickle
 import cv2
 from matplotlib import pyplot as plt
 import random
-import sys.exit
+from sys import exit
+import os
 
 
-""" Preprocess image data to be input into Predictive Coding Classifier """
+"""
+Preprocess image data to be input into Predictive Coding Classifier
+"""
 
 def load_raw_imgs(data_source, num_imgs, numxpxls, numypxls):
 
@@ -45,15 +47,19 @@ def load_raw_imgs(data_source, num_imgs, numxpxls, numypxls):
 def convert_to_gray(images):
     ### Only supports conversion from RGB (RB99, Rao99, CIFAR-10); MNIST, FMNIST already grayscale
     # Check RGB status here
-        if len(images.shape) == 3:
+    print("shape of images is")
+    print(images.shape)
+    if len(images.shape) == 4:
         grayed_imgs = []
         for img in images:
-            gray_img = cv2.cvtColor(img)
+            gray_img = cv2.cvtColor(img, cv2.COLOR_RGB2GRAY)
             grayed_imgs.append(gray_img)
 
-        # If already grayscale
-        else:
-            print("convert_to_gray(): input images detected to be already grayscale; input matrix shape (n,n)")
+    # If already grayscale
+    else:
+        print("convert_to_gray(): input images detected to be already grayscale: input matrix shape is (numimgs,xpxls,ypxls" \
+        " [vs RGB input matrix shape of (numimgs, xpxls, ypxls, 3)]")
+        exit()
 
     return np.array(grayed_imgs)
 
@@ -80,7 +86,7 @@ def apply_DoG(images, ksize=(5,5), sigma1=1.3, sigma2=2.6):
         g1 = cv2.GaussianBlur(img, ksize, sigma1)
         g2 = cv2.GaussianBlur(img, ksize, sigma2)
         DoG_img = g1 - g2
-        DoG_images.append(DoG)
+        DoG_images.append(DoG_img)
 
     return np.array(DoG_images)
 
@@ -109,7 +115,7 @@ def cut_into_tiles(images, numxpxls, numypxls, numtiles, numtlxpxls, numtlypxls,
 
         # If only horizontal offset (will default to RB99; 3 tiles centered in image center)
         if tlyoffset == 0 and tlxoffset != 0:
-            tilecols == numtiles
+            tilecols = numtiles
 
             # Find image "center" using first image
             center_x = int(numxpxls / 2)
@@ -147,7 +153,7 @@ def cut_into_tiles(images, numxpxls, numypxls, numtiles, numtlxpxls, numtlypxls,
 
         # If vertical and horizontal offset (RB97a: 4 tiles no overlap and Li: 225 tiles, 8px x,y overlap)
         else:
-            tilecols = np.sqrt(numtiles)
+            tilecols = int(np.sqrt(numtiles))
             tilerows = tilecols
 
             for img in images:
@@ -180,6 +186,11 @@ def cut_into_tiles(images, numxpxls, numypxls, numtiles, numtlxpxls, numtlypxls,
                         tlxidxlo += tlxoffset
                         tlxidxhi += tlxoffset
 
+    # Convert to numpy array
+    tiles_all_imgs = np.array(tiles_all_imgs, dtype=list)
+
+    print("size of tiles all images: {}".format(tiles_all_imgs.shape))
+    print("size of tiles all images[0] (aka tiles one img, first image): {}".format(tiles_all_imgs[0].shape))
     return tiles_all_imgs
 
 def preprocess(data_source, num_imgs, prepro, numxpxls, numypxls, tlornot, numtiles, numtlxpxls, numtlypxls, tlxoffset, tlyoffset):
@@ -190,7 +201,14 @@ def preprocess(data_source, num_imgs, prepro, numxpxls, numypxls, tlornot, numti
 
         else:
             raw_imgs = load_raw_imgs(data_source, num_imgs, numxpxls, numypxls)
-            if prepro == "lifull":
+            if prepro == "lifull_lin":
+                grayed_imgs = convert_to_gray(raw_imgs)
+                gm_imgs = apply_gaussian_mask(grayed_imgs)
+                dog_imgs = apply_DoG(gm_imgs)
+                # Input
+                X = dog_imgs
+
+            elif prepro == "lifull_tanh":
                 grayed_imgs = convert_to_gray(raw_imgs)
                 gm_imgs = apply_gaussian_mask(grayed_imgs)
                 dog_imgs = apply_DoG(gm_imgs)
@@ -210,7 +228,7 @@ def preprocess(data_source, num_imgs, prepro, numxpxls, numypxls, tlornot, numti
                 X = tanh_imgs
 
             else:
-                print("preprocess(): prepro schema other than Li's full suite (lifull), grayed only (grayonly), and gray+tanh (graytanh) not yet written")
+                print("preprocess(): prepro schema other than Li's full suite (lifull_lin, lifull_tanh), grayed only (grayonly), and gray+tanh (graytanh) not yet written")
                 exit()
 
             # Labels (5, 5), one hot diagonal from top left to bottom right
@@ -238,9 +256,103 @@ def preprocess(data_source, num_imgs, prepro, numxpxls, numypxls, tlornot, numti
 
     return X, y
 
+def dataset_find_or_create(data_source="rb99", num_imgs=5, prepro="lifull",
+    numxpxls=128, numypxls=128, tlornot="tl", numtiles=225,
+    numtlxpxls=16, numtlypxls=16, tlxoffset=8, tlyoffset=8):
+
+    ### Check for dataset in local directory: if present, load; if not, create, save for later
+    # Default values are Li classification set values
+
+    desired_dataset = "ds.{}_{}_{}_{}_{}_{}_{}_{}_{}_{}_{}.pydb".format(data_source, num_imgs, prepro, numxpxls, numypxls, tlornot, numtiles, numtlxpxls, numtlypxls, tlxoffset, tlyoffset)
+
+    if os.path.exists("./" + desired_dataset):
+        if __name__ == "__main__":
+            dataset_in = open(desired_dataset, "rb")
+            X_train, y_train = pickle.load(dataset_in)
+            dataset_in.close()
+
+            print("\n" + "I. Dataset " + desired_dataset + " successfully loaded from local dir" + "\n")
+
+        # I.e. if __name__ == "__preprocessing__", or we are in some other script
+        else:
+            print("Desired dataset " + desired_dataset + " already present in local dir: would you like to overwrite it? (y/n)")
+            ans = input()
+            # For overwrite
+            if ans == "y":
+                # Create dataset per specifications
+                X_train, y_train = preprocess(data_source, num_imgs, prepro, numxpxls, numypxls, tlornot, numtiles, numtlxpxls, numtlypxls, tlxoffset, tlyoffset)
+                dataset_out = open(desired_dataset, "wb")
+                pickle.dump((X_train, y_train), dataset_out)
+                dataset_out.close()
+
+            else:
+                print("Quitting dataset creation..." + "\n")
+                exit()
+
+    else:
+        X_train, y_train = preprocess(data_source, num_imgs, prepro, numxpxls, numypxls, tlornot, numtiles, numtlxpxls, numtlypxls, tlxoffset, tlyoffset)
+        dataset_out = open(desired_dataset, "wb")
+        pickle.dump((X_train, y_train), dataset_out)
+        dataset_out.close()
+
+    return X_train, y_train
+
+
 ####
 
-### If you want to preprocess and pickle a dataset outside of a main.py model-training operation, over just overwrite an old one, do it here.
+### If you want to preprocess and pickle a dataset outside of a main.py model-training operation, or just overwrite an old one, do it here.
+
+### Set parameters of datset to create
+
+## Data source
+data_source = "rb99"
+# data_source = "rao99"
+# data_source = "rb97a"
+# data_source = "mnist"
+
+## Number of images
+num_imgs = 5
+# num_imgs = 10
+# num_imgs = 100
+# num_imgs = 1000
+# num_imgs = 10000
+# num_imgs = 600000
+
+## Preprocessing scheme
+prepro = "lifull_lin"
+# prepro = "lifull_tanh"
+# prepro = "grayonly"
+# prepro = "graytanh"
+
+## Image x,y dimensions
+# numxpxls, numypxls = 28, 28
+# numxpxls, numypxls = 38, 38
+# numxpxls, numypxls = 48, 48
+# numxpxls, numypxls = 68, 68
+numxpxls, numypxls = 128, 128
+# numxpxls, numypxls = 512, 408
+# numxpxls, numypxls = 512, 512
+
+## Tiled or not
+tlornot = "tl"
+# tlornot = "ntl"
+
+## Number of tiles
+# numtiles = 0
+# numtiles = 3
+numtiles = 225
+
+## Tile x,y dimensions
+# numtlxpxls, numtlypxls = 0, 0
+# numtlxpxls, numtlypxls = 15, 15
+numtlxpxls, numtlypxls = 16, 16
+# numtlxpxls, numtlypxls = 12, 24
+
+## Tile x,y offset
+# tlxoffset, tlyoffset = 0, 0
+# tlxoffset, tlyoffset = 5, 0
+# tlxoffset, tlyoffset = 6, 0
+tlxoffset, tlyoffset = 8, 8
 
 
 X, y = preprocess(data_source, num_imgs, prepro, numxpxls, numypxls, tlornot, numtiles, numtlxpxls, numtlypxls, tlxoffset, tlyoffset)

@@ -1,11 +1,10 @@
-import os.path
+import os
 import cv2
 from parameters import ModelParameters, LR_params_to_dict, size_params_to_p_format
-from model import PredictiveCodingClassifier, model_find_and_or_create
-from preprocessing import preprocess
+from model_draft import PredictiveCodingClassifier, model_find_and_or_create
+from data import preprocess, dataset_find_or_create
 import pickle
 from sys import exit
-from data import dataset_find_or_create
 
 
 """ Train a Predictive Coding Classifier according to the mathematical dictates
@@ -78,8 +77,10 @@ def main():
     # num_imgs = 600000
 
     ## Preprocessing scheme
-    prepro = "lifull"
+    prepro = "lifull_lin"
+    # prepro = "lifull_tanh"
     # prepro = "grayonly"
+    # prepro = "graytanh"
 
     ## Image x,y dimensions
     # numxpxls, numypxls = 28, 28
@@ -101,8 +102,8 @@ def main():
 
     ## Tile x,y dimensions
     # numtlxpxls, numtlypxls = 0, 0
-    numtlxpxls, numtlypxls = 15, 15
-    # numtlxpxls, numtlypxls = 16, 16
+    # numtlxpxls, numtlypxls = 15, 15
+    numtlxpxls, numtlypxls = 16, 16
     # numtlxpxls, numtlypxls = 12, 24
 
     ## Tile x,y offset
@@ -176,7 +177,7 @@ def main():
     ## o (only used during C2 classification)
     o_init = 0.00005
 
-    '''
+
     ## Polynomial decay LR schedule
     ## r
     r_max_eps = num_epochs
@@ -189,7 +190,7 @@ def main():
     ## o
     o_max_eps = num_epochs
     o_poly_power = 1
-    '''
+
 
     ## Step decay LR schedule (d_f = 1 means LR is constant; d_e 40 epochs is Li's number)
     ## r
@@ -207,7 +208,7 @@ def main():
 
     ### Automatically arrange LR parameters dict for p object, model creation
 
-    k_r_sched, k_U_sched, k_o_sched = LR_params_to_dict(r_init=r_init, U_init=U_init, o_init=o_init,
+    k_r_sched, k_U_sched, k_o_sched = LR_params_to_dict(lr_scheme=lr_scheme, r_init=r_init, U_init=U_init, o_init=o_init,
     r_max_eps=r_max_eps, U_max_eps=U_max_eps, o_max_eps=o_max_eps,
     r_poly_power=r_poly_power, U_poly_power=U_poly_power, o_poly_power=o_poly_power,
     r_drop_factor=r_drop_factor, U_drop_factor=U_drop_factor, o_drop_factor=o_drop_factor,
@@ -219,7 +220,6 @@ def main():
     lyr_sizes=lyr_sizes, num_imgs=num_imgs, numxpxls=numxpxls, numypxls=numypxls)
 
     ## Parameters object creation
-
     p = ModelParameters(input_size = input_size, hidden_sizes = hidden_sizes, output_size = output_size,
         num_r1_mods = num_r1_mods, act_fxn = act_fxn, r_prior = r_prior, U_prior = U_prior,
         class_scheme = class_scheme,
@@ -227,8 +227,55 @@ def main():
         k_U_sched = k_r_sched,
         k_o_sched = k_o_sched)
 
-    ## Model object creation
 
+    ### Helper fxn: search local dir for requested model, if it exists: initialize (for overwrite) or abort;
+    ### if it doesn't exist, initialize
+
+    def model_find_and_or_create(num_nonin_lyrs=3, lyr_sizes=(96,128,5), num_r1_mods=225, act_fxn="lin",
+        r_prior="kurt", U_prior="kurt", class_scheme="c1", num_epochs=500):
+
+        ### Directory search for named model
+
+        # Initiate model name string
+        desired_model = "mod.{}_".format(num_nonin_lyrs)
+
+        if len(lyr_sizes) != num_nonin_lyrs:
+            print("Number of non-input layers (num_nonin_lyrs) must == length of lyr_sizes tuple")
+            exit()
+
+        for lyr in range(0,num_nonin_lyrs):
+            str_lyr = str(lyr_sizes[lyr])
+            if lyr < num_nonin_lyrs - 1:
+                desired_model += (str_lyr + "-")
+            else:
+                desired_model += (str_lyr + "_")
+
+        ### Check for model in local directory: if present, quit (creation / training not needed); if not, create
+
+        desired_model += "{}_{}_{}_{}_{}_{}.pydb".format(num_r1_mods, act_fxn, r_prior, U_prior, class_scheme, num_epochs)
+
+        print("II. Desired model is {}".format(desired_model) + "\n")
+
+        if os.path.exists("./" + desired_model):
+            print("Desired model " + desired_model + " already present in local dir: would you like to overwrite it? (y/n)")
+            ans = input()
+            # For overwrite
+            if ans == "y":
+                # Initialize model
+
+                mod = PredictiveCodingClassifier(p)
+
+            else:
+                print("Quitting main.py..." + "\n")
+                exit()
+        # For first save
+        else:
+            # Initialize model
+            mod = PredictiveCodingClassifier(p)
+
+        return mod
+
+    ## Model object creation
     mod = model_find_and_or_create(num_nonin_lyrs=num_nonin_lyrs, lyr_sizes=lyr_sizes, num_r1_mods=num_r1_mods,
         act_fxn=act_fxn, r_prior=r_prior, U_prior=U_prior, class_scheme=class_scheme, num_epochs=num_epochs)
 

@@ -30,7 +30,7 @@ def size_params_to_p_format(num_nonin_lyrs=3, lyr_sizes=(96,128,5), num_imgs=5, 
 
         return input_size, hidden_sizes, output_size
 
-def LR_params_to_dict(r_init=0.005, U_init=0.01, o_init=0.0005,
+def LR_params_to_dict(lr_scheme="constant", r_init=0.005, U_init=0.01, o_init=0.0005,
     r_max_eps=500, U_max_eps=500, o_max_eps=500,
     r_poly_power=1, U_poly_power=1, o_poly_power=1,
     r_drop_factor=1, U_drop_factor=0.98522, o_drop_factor=1,
@@ -81,8 +81,8 @@ class ModelParameters(object):
     # Unit activation function (linear, tanh, relu, etc.)
     act_fxn = attr.ib(default="lin",validator=attr.validators.in_(['lin','tan']))
     # Priors
-    r_prior = attr.ib(default="gaus",validator=attr.validators.in_(['gaus','kurt']))
-    U_prior = attr.ib(default="gaus",validator=attr.validators.in_(['gaus','kurt']))
+    r_prior = attr.ib(default="kurt",validator=attr.validators.in_(['gaus','kurt']))
+    U_prior = attr.ib(default="kurt",validator=attr.validators.in_(['gaus','kurt']))
     # Classification cost scheme
     class_scheme = attr.ib(default="c1",validator=attr.validators.in_(['nc','c1','c2']))
     # Training time
