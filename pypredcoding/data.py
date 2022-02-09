@@ -367,35 +367,56 @@ def cut_into_tiles(images, numxpxls, numypxls, numtiles, numtlxpxls, numtlypxls,
         else:
             tilecols = int(np.sqrt(numtiles))
             tilerows = tilecols
+            
+            tiles_all_imgs = []
+            
+            # Initiate image counter for plot title
+            img_num = 1
 
             for img in images:
 
-                tlxidxlo = 0
-                tlxidxhi = numtlxpxls
-
-                for tilecol in range(0, tilecols):
-
-                    while tlxidxhi <= numxpxls:
-
-                        tlyidxlo = 0
-                        tlyidxhi = numtlypxls
-
-                        for tilerow in range(0, tilerows):
-
-                            while tlyidxhi <= numypxls:
-
-                                # Create tile by indexing image, and put the tile in the array
-                                tile = img[tlxidxlo:tlxidxhi][tlyidxlo:tlyidxhi]
-                                tiles_all_imgs.append(tile)
-
-                                # Advance cutting by one tile up the column (advance one row's height up)
-                                tlyidxlo += tlyoffset
-                                tlyidxhi += tlyoffset
-
-                        # After column cutting is finished, advance by one column's width to the right
-                        tlxidxlo += tlxoffset
-                        tlxidxhi += tlxoffset
-
+                # Start at the top left corner of the image
+                # Traversing across a row of tiles by tlxoffset each iteration
+                # Then down by tlyoffset once row of tiles cut and stored
+                
+                rowidxlo = 0
+                rowidxhi = numtlypxls
+                
+                # Initiate cut tile counter for plot title
+                cut_tile_num = 1
+                
+                for row in range(0,tilerows):
+                    # Set row vertical dimensions
+                    onerow = img[rowidxlo:rowidxhi]
+                    
+                    print("onerow size is {}".format(onerow.shape))
+                    
+                    tlidxlo = 0
+                    tlidxhi = numtlxpxls
+                    
+                    for col in range(0,tilecols):
+                        
+                        tile = onerow[:,tlidxlo:tlidxhi]
+                        
+                        print("tile size is {}".format(tile.shape))
+                        
+                        # Optional: plot tiles to check
+                        plt.imshow(tile, cmap="gray")
+                        plt.title("{}x{} tile".format(numtlxpxls,numtlypxls) + "\n" + "image {} ".format(img_num) + "tile {}".format(cut_tile_num))
+                        plt.show()
+                        
+                        cut_tile_num += 1
+                        
+                        tiles_all_imgs.append(tile)
+                        
+                        tlidxlo += tlxoffset
+                        tlidxhi += tlyoffset
+                        
+                    rowidxlo += tlyoffset
+                    rowidxhi += tlxoffset
+                    
+                img_num += 1
+                    
     # Convert to numpy array
     tiles_all_imgs = np.array(tiles_all_imgs, dtype=list)
 

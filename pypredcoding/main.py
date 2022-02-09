@@ -201,7 +201,7 @@ def main():
     # U_drop_factor = 1
     U_drop_factor = 0.98522
     U_drop_every = 40
-
+ 
     ## o
     o_drop_factor = 1
     o_drop_every = 40
