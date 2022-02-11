@@ -6,144 +6,123 @@ Created on Tue Feb  8 11:08:01 2022
 @author: everett
 """
 import numpy as np
-
 import matplotlib as mpl
 mpl.rcParams["figure.dpi"] = 600
-
 from matplotlib import pyplot as plt
-
 import pickle
+from learning import *
+from functools import partial
+import math
+import data
+import cv2
+from parameters import ModelParameters
+from sys import exit
 
 
 """ 
-dataset_test troubleshooting
+general troubleshooting (save scripts here until pushing finished results)
 """
     
-    
-    
-# X = np.ones((225,16,16))
 
-# for img in X:
-#     print(img)
-    
-desired_dataset = 'ds.rb99_5_lifull_lin_128_128_tl_225_16_16_8_8.pydb'
+"""
+Tiled training case
+30 simultaneous rU updates case
+"""
+
+"""
+variables to transfer when importing into model.py
+
+num_epochs -> self.p.num_epochs
+num_training_imgs -> self.p.num_training_imgs
+update_scheme -> self.p.update_scheme
+"""
+
+# Surrogate variables
+
+num_epochs = 1
+numtiles = 225
+update_scheme = "rU_simultaneous"
+num_synced_rU_upds_per_img = 30
+
+desired_dataset = "ds.rb99_5_lifull_lin_128_128_tl_225_16_16_8_8.pydb"
 
 dataset_in = open(desired_dataset, "rb")
 X, y = pickle.load(dataset_in)
 dataset_in.close()
 
+# Li case
+# X (1125, 16, 16)
+# y (5, 5)
 
-xshape = X.shape
-x0shape = X[0].shape
 
+
+
+# # def train(self, X, y):
     
+# # Number of training images
+# num_training_images = int(X.shape[0] / numtiles)
 
-num_imgs = 5
-numtiles = 225
-numrows = 15
-numcols = 15
-tlxoffset, tlyoffset = 8, 8
-numtlxpxls, numtlypxls = 16, 16
+
+# # Logic specific to parsing and training on a tiled X
+# imgidxlo = 0
+# imgidxhi = numtiles
+
+# tiles_parsed_for_all_imgs = []
+
+# for img in range(0, num_training_images):
     
+#     tiles_of_one_img = X[imgidxlo:imgidxhi]
 
-
-imgidxlo = 0
-imgidxhi = numtiles
-
-tiles_of_all_images = []
-
-# Tile parsing and plotting (singles) loop
-
-for img in range(0, num_imgs):
-            
-    img_in_x = X[imgidxlo:imgidxhi]
+#     tiles_parsed_for_all_imgs.append(tiles_of_one_img)
     
-    tiles_of_single_img = []
+#     imgidxlo += numtiles
+#     imgidxhi += numtiles
     
-    tl_num = 1
     
-    for tl in img_in_x:
+# tiles_parsed_for_all_imgs = np.array(tiles_parsed_for_all_imgs, dtype=list)
+    
+# # Parsed X set as new X
+# X = tiles_parsed_for_all_imgs
+
+
+# for epoch in range(0,num_epochs):
+    
+#     # Shuffle order of training set input image / output vector pairs each epoch
+#     N_permuted_indices = np.random.permutation(X.shape[0])
+#     X_shuffled = X[N_permuted_indices]
+#     y_shuffled = y[N_permuted_indices]
+    
+#     E = 0
+#     C = 0
+    
+#     # Online classification success counter
+#     num_correct = 0
+    
+#     # # Set learning rates at the start of each epoch
+#     # k_r = self.k_r_lr(epoch)
+#     # k_U = self.k_U_lr(epoch)
+#     # k_o = self.k_o_lr(epoch)
+    
+#     k_r = 0.0005
+#     k_U = 0.005
+#     k_o = 0.00005
+    
+#     print("Epoch {}".format(epoch+1))
+    
+#     for tile in range(0, num_training_images):
         
-        tiles_of_single_img.append(tl)
-        
-        # Single tile plotting
-        
-        tl = np.array(tl).astype(float)
-
-        # plt.imshow(tl, cmap="gray")
-        # plt.title("{}".format(desired_dataset) + "\n" + "image {} ".format(img+1) + "tile {}".format(tl_num))
-        # plt.show()
-        
-        tl_num += 1
-        
-    tiles_of_all_images.append(tiles_of_single_img)
-
-    imgidxlo += numtiles
-    imgidxhi += numtiles
+#         # Copy first image into r[0]
+#         single_tile = X_shuffled[image,:][:,None]
+#         self.r[0] = single_image
     
-# Tile stacking and plotting (stacked collage) loop
-
-tiles_of_all_images = np.array(tiles_of_all_images, dtype=list)
-
-for img in range(0, num_imgs):
     
-    # In Li case, this is (225,16,16) but generally is (numtiles, tlxpxls, tlypxls)
-    tiles_of_single_img = tiles_of_all_images[img]
     
-    rowidxlo = 0
-    rowidxhi = numcols
     
-    vstackedrows = np.zeros([numtlypxls,numtlxpxls*numcols])
-    
-    for row in range(0,numrows):
-        
-        onerow = tiles_of_single_img[rowidxlo:rowidxhi,:,:]
-        
-        # Initiate left-to-right stacking, completing a full row
-        hstackedrow = np.array(onerow[0])[:,:]
-        
-        for col in range(1, numcols):
-            nonfirsttileinrow = np.array(onerow[col])[:,:]
-            hstackedrow = np.concatenate((hstackedrow, nonfirsttileinrow), axis=1)
-            
-        # With collaged row complete, stack rows for full collage
-        vstackedrows = np.vstack([vstackedrows, hstackedrow])
-        
-        rowidxlo += numcols
-        rowidxhi += numcols
-         
-    # Remove collage row of zeros used to initiate collage, convert to float64
-    stackedtilecollage = vstackedrows[numtlypxls:,:].astype(float)
-    
-    # Plot
-    plt.imshow(stackedtilecollage, cmap="gray")
-    plt.title("{} img {}".format(desired_dataset, img+1) + "\n" + 
-              "{}-tile collage ({}x{}tls); each {}x{}pxls " \
-              "with x, y offsets {},{}".format(numtiles, numrows, numcols, numtlxpxls, numtlypxls, tlxoffset, tlyoffset))
-    
-    plt.show()
-        
-# fig, ax_mat = plt.subplots(numrows, numcols)
 
-# for i, ax_row in enumerate(ax_mat):
-#     for j, axes in enumerate(ax_row):
-#         axes.set_yticklabels([])
-#         axes.set_xticklabels([])
-        
-# plt.show()
+b = np.random.rand(3, 256, 32)
 
-# a = np.array([[1,2],[3,4]])
-# print(a)
-# print(a.shape)
-# b = np.array([[5,6],[7,8]])
-# print(b)
-# print(b.shape)
 
-# c = np.concatenate((a,b), axis=1)
-# print(c)
-# print(c.shape)
 
-# list = [1,2,3,4]
+print(b)
+print(b.shape)
 
-# l = list[0:0]
-# print(l)

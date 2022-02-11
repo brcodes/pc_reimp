@@ -102,23 +102,13 @@ class PredictiveCodingClassifier:
 
         # all the representations (including the image r[0] which is not trained)
         self.r = {}
-
         # synaptic weights controlling reconstruction in the network
         self.U = {}
 
-        # priors and transforms
+        # Transforms and priors
         self.f = self.unit_act[self.p.act_fxn]
-        # how to call f(x): self.f(self.U.dot(self.r))[0]
-        # how to call F(x): self.f(self.U.dot(self.r))[1]
-
         self.g = self.prior_dict[self.p.r_prior]
-        # how to call g(r): self.g(self.r,self.p.alpha)[0]
-        # how to call g'(r): self.g(self.r,self.p.alpha)[1]
-
         self.h = self.prior_dict[self.p.U_prior]
-        # how to call h(U): self.h(self.U,self.p.lam)[0]
-        # how to call h'(U): self.h(self.U,self.p.lam)[1]
-
 
         # # classification method
         # self.class_cost = self.class_cost_dict[self.p.classification]

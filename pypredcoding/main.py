@@ -87,8 +87,8 @@ def main():
     # numxpxls, numypxls = 38, 38
     # numxpxls, numypxls = 48, 48
     # numxpxls, numypxls = 68, 68
-    numxpxls, numypxls = 128, 128
-    # numxpxls, numypxls = 512, 408
+    # numxpxls, numypxls = 128, 128
+    numxpxls, numypxls = 512, 408
     # numxpxls, numypxls = 512, 512
 
     ## Tiled or not
@@ -97,8 +97,8 @@ def main():
 
     ## Number of tiles
     # numtiles = 0
-    # numtiles = 3
-    numtiles = 225
+    numtiles = 3
+    # numtiles = 225
 
     ## Tile x,y dimensions
     # numtlxpxls, numtlypxls = 0, 0
@@ -108,9 +108,9 @@ def main():
 
     ## Tile x,y offset
     # tlxoffset, tlyoffset = 0, 0
-    # tlxoffset, tlyoffset = 5, 0
+    tlxoffset, tlyoffset = 5, 0
     # tlxoffset, tlyoffset = 6, 0
-    tlxoffset, tlyoffset = 8, 8
+    # tlxoffset, tlyoffset = 8, 8
 
     ### Check for dataset in local directory: if present, load; if not, create, save for later
 

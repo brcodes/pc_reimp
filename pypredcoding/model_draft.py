@@ -59,7 +59,6 @@ def kurt_prior(r_or_U, alph_or_lam):
     gprime_or_hprime = 2 * alph_or_lam * r_or_U / (1 + np.square(r_or_U))
     return (g_or_h, gprime_or_hprime)
 
-
 def model_find_and_or_create(num_nonin_lyrs=3, lyr_sizes=(96,128,5), num_r1_mods=225, act_fxn="lin",
     r_prior="kurt", U_prior="kurt", class_scheme="c1", num_epochs=500):
 
@@ -104,7 +103,6 @@ def model_find_and_or_create(num_nonin_lyrs=3, lyr_sizes=(96,128,5), num_r1_mods
     return mod
 
 
-
 class PredictiveCodingClassifier:
     def __init__(self, parameters):
 
@@ -113,6 +111,43 @@ class PredictiveCodingClassifier:
         # Choices for transformation functions, priors
         self.act_fxn_dict = {'lin':linear_trans,'tan':tanh_trans}
         self.prior_dict = {'gaus':gauss_prior, 'kurt':kurt_prior}
+
+        # all the representations (including the image r[0] which is not trained)
+        self.r = {}
+        # synaptic weights controlling reconstruction in the network
+        self.U = {}
+
+        # Transforms and priors
+        self.f = self.act_fxn_dict[self.p.act_fxn]
+        self.g = self.prior_dict[self.p.r_prior]
+        self.h = self.prior_dict[self.p.U_prior]
+
+        # learning rate functions (can't figure out how to dispatch this)
+        lr_r = list(self.p.k_r_sched.keys())[0]
+        if lr_r == 'constant':
+            self.k_r_lr = partial(constant_lr,initial=self.p.k_r_sched['constant']['initial'])
+        elif lr_r == 'step':
+            self.k_r_lr = partial(step_decay_lr,initial=self.p.k_r_sched['step']['initial'],drop_every=self.p.k_r_sched['step']['drop_every'],drop_factor=self.p.k_r_sched['step']['drop_factor'])
+        elif lr_r == 'poly':
+            self.k_r_lr = partial(polynomial_decay_lr,initial=self.p.k_r_sched['poly']['initial'],max_epochs=self.p.k_r_sched['poly']['max_epochs'],poly_power=self.p.k_r_sched['poly']['poly_power'])
+
+        lr_U = list(self.p.k_U_sched.keys())[0]
+        if lr_U == 'constant':
+            self.k_U_lr = partial(constant_lr,initial=self.p.k_U_sched['constant']['initial'])
+        elif lr_U == 'step':
+            self.k_U_lr = partial(step_decay_lr,initial=self.p.k_U_sched['step']['initial'],drop_every=self.p.k_U_sched['step']['drop_every'],drop_factor=self.p.k_U_sched['step']['drop_factor'])
+        elif lr_U == 'poly':
+            self.k_U_lr = partial(polynomial_decay_lr,initial=self.p.k_U_sched['poly']['initial'],max_epochs=self.p.k_U_sched['poly']['max_epochs'],poly_power=self.p.k_U_sched['poly']['poly_power'])
+
+        lr_o = list(self.p.k_o_sched.keys())[0]
+        if lr_o == 'constant':
+            self.k_o_lr = partial(constant_lr,initial=self.p.k_o_sched['constant']['initial'])
+        elif lr_o == 'step':
+            self.k_o_lr = partial(step_decay_lr,initial=self.p.k_o_sched['step']['initial'],drop_every=self.p.k_o_sched['step']['drop_every'],drop_factor=self.p.k_o_sched['step']['drop_factor'])
+        elif lr_o == 'poly':
+            self.k_o_lr = partial(polynomial_decay_lr,initial=self.p.k_o_sched['poly']['initial'],max_epochs=self.p.k_o_sched['poly']['max_epochs'],poly_power=self.p.k_o_sched['poly']['poly_power'])
+
+
 
 
     def train(self, X, y):
@@ -136,5 +171,5 @@ class PredictiveCodingClassifier:
             exit()
 
         else:
-            print("Model num_r1_mods attribute needs to be in [1,inf-1]")
+            print("Model num_r1_mods attribute needs to be in [1,n=int<inf]")
             exit()

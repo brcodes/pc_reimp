@@ -325,7 +325,7 @@ def cut_into_tiles(images, numxpxls, numypxls, numtiles, numtlxpxls, numtlypxls,
     else:
         tiles_all_imgs = []
 
-        # If only horizontal offset (will default to RB99; 3 tiles centered in image center)
+        # If only horizontal offset (will default to RB99; 3 overlapping tiles centered on image center)
         if tlyoffset == 0 and tlxoffset != 0:
             tilecols = numtiles
 
@@ -333,29 +333,81 @@ def cut_into_tiles(images, numxpxls, numypxls, numtiles, numtlxpxls, numtlypxls,
             center_x = int(numxpxls / 2)
             center_y = int(numypxls / 2)
 
-            # Tile 1 (center left)
-            tl1xidxlo = int(center_x - numtlxpxls / 2 - numtlxpxls)
-            tl1xidxhi = int(center_x - numtlxpxls / 2)
-            tl1yidxlo = int(center_y - numtlypxls / 2)
-            tl1yidxhi = int(center_y + numtlypxls / 2)
             # Tile 2 (center)
             tl2xidxlo = int(center_x - numtlxpxls / 2)
             tl2xidxhi = int(center_x + numtlxpxls / 2)
             tl2yidxlo = int(center_y - numtlypxls / 2)
             tl2yidxhi = int(center_y + numtlypxls / 2)
+            # Tile 1 (center left)
+            tl1xidxlo = tl2xidxlo - tlxoffset
+            tl1xidxhi = tl2xidxhi - tlxoffset
+            tl1yidxlo = tl2yidxlo
+            tl1yidxhi = tl2yidxhi
             # Tile 3 (center right)
-            tl3xidxlo = int(center_x + numtlxpxls / 2)
-            tl3xidxhi = int(center_x + numtlxpxls / 2 + numtlxpxls)
-            tl3yidxlo = int(center_y - numtlypxls / 2)
-            tl3yidxhi = int(center_y + numtlypxls / 2)
+            tl3xidxlo = tl2xidxlo + tlxoffset
+            tl3xidxhi = tl2xidxhi + tlxoffset
+            tl3yidxlo = tl2yidxlo
+            tl3yidxhi = tl2yidxhi
+
+
+            # Old logic which ignores offset and creates 3 flush tiles
+            # # Tile 1 (center left)
+            # tl1xidxlo = int(center_x - numtlxpxls / 2 - numtlxpxls)
+            # tl1xidxhi = int(center_x - numtlxpxls / 2)
+            # tl1yidxlo = int(center_y - numtlypxls / 2)
+            # tl1yidxhi = int(center_y + numtlypxls / 2)
+            # # Tile 2 (center)
+            # tl2xidxlo = int(center_x - numtlxpxls / 2)
+            # tl2xidxhi = int(center_x + numtlxpxls / 2)
+            # tl2yidxlo = int(center_y - numtlypxls / 2)
+            # tl2yidxhi = int(center_y + numtlypxls / 2)
+            # # Tile 3 (center right)
+            # tl3xidxlo = int(center_x + numtlxpxls / 2)
+            # tl3xidxhi = int(center_x + numtlxpxls / 2 + numtlxpxls)
+            # tl3yidxlo = int(center_y - numtlypxls / 2)
+            # tl3yidxhi = int(center_y + numtlypxls / 2)
+
+            # Initiate image counter for plot title
+            img_num = 1
 
             for img in images:
-                tiles_one_img = []
-                img_tl1 = img[tl1xidxlo:tl1xidxhi][tl1yidxlo:tl1yidxhi]
-                img_tl2 = img[tl2xidxlo:tl2xidxhi][tl2yidxlo:tl2yidxhi]
-                img_tl3 = img[tl3xidxlo:tl3xidxhi][tl3yidxlo:tl3yidxhi]
-                tiles_one_img.append(img_tl1, img_tl2, img_tl3)
-                tiles_all_imgs.append(tiles_one_img)
+
+
+                # New way: index by ys first (rows), then xs (cols)
+                img_tl1 = img[tl1yidxlo:tl1yidxhi,tl1xidxlo:tl1xidxhi]
+                img_tl2 = img[tl2yidxlo:tl2yidxhi,tl2xidxlo:tl2xidxhi]
+                img_tl3 = img[tl3yidxlo:tl3yidxhi,tl3xidxlo:tl3xidxhi]
+
+                # # Mid way appears to offset in the y direction
+                # img_tl1 = img[tl1xidxlo:tl1xidxhi,tl1yidxlo:tl1yidxhi]
+                # img_tl2 = img[tl2xidxlo:tl2xidxhi,tl2yidxlo:tl2yidxhi]
+                # img_tl3 = img[tl3xidxlo:tl3xidxhi,tl3yidxlo:tl3yidxhi]
+
+                # Old way didn't work
+                # img_tl1 = img[tl1xidxlo:tl1xidxhi][tl1yidxlo:tl1yidxhi]
+                # img_tl2 = img[tl2xidxlo:tl2xidxhi][tl2yidxlo:tl2yidxhi]
+                # img_tl3 = img[tl3xidxlo:tl3xidxhi][tl3yidxlo:tl3yidxhi]
+
+                """
+                Optional: plot tiles to check cutting function fidelity
+                """
+                plt.imshow(img_tl1, cmap="gray")
+                plt.title("{}x{} tile".format(numtlxpxls,numtlypxls) + "\n" + "image {} ".format(img_num) + "tile 1")
+                plt.show()
+
+                plt.imshow(img_tl2, cmap="gray")
+                plt.title("{}x{} tile".format(numtlxpxls,numtlypxls) + "\n" + "image {} ".format(img_num) + "tile 2")
+                plt.show()
+
+                plt.imshow(img_tl3, cmap="gray")
+                plt.title("{}x{} tile".format(numtlxpxls,numtlypxls) + "\n" + "image {} ".format(img_num) + "tile 3")
+                plt.show()
+
+                tiles_all_imgs.append(img_tl1)
+                tiles_all_imgs.append(img_tl2)
+                tiles_all_imgs.append(img_tl3)
+
+                img_num += 1
 
         # If only vertical offset
         elif tlyoffset != 0 and tlxoffset == 0:
@@ -367,9 +419,9 @@ def cut_into_tiles(images, numxpxls, numypxls, numtiles, numtlxpxls, numtlypxls,
         else:
             tilecols = int(np.sqrt(numtiles))
             tilerows = tilecols
-            
+
             tiles_all_imgs = []
-            
+
             # Initiate image counter for plot title
             img_num = 1
 
@@ -378,45 +430,47 @@ def cut_into_tiles(images, numxpxls, numypxls, numtiles, numtlxpxls, numtlypxls,
                 # Start at the top left corner of the image
                 # Traversing across a row of tiles by tlxoffset each iteration
                 # Then down by tlyoffset once row of tiles cut and stored
-                
+
                 rowidxlo = 0
                 rowidxhi = numtlypxls
-                
+
                 # Initiate cut tile counter for plot title
                 cut_tile_num = 1
-                
+
                 for row in range(0,tilerows):
                     # Set row vertical dimensions
                     onerow = img[rowidxlo:rowidxhi]
-                    
+
                     print("onerow size is {}".format(onerow.shape))
-                    
+
                     tlidxlo = 0
                     tlidxhi = numtlxpxls
-                    
+
                     for col in range(0,tilecols):
-                        
+
                         tile = onerow[:,tlidxlo:tlidxhi]
-                        
+
                         print("tile size is {}".format(tile.shape))
-                        
-                        # Optional: plot tiles to check
-                        plt.imshow(tile, cmap="gray")
-                        plt.title("{}x{} tile".format(numtlxpxls,numtlypxls) + "\n" + "image {} ".format(img_num) + "tile {}".format(cut_tile_num))
-                        plt.show()
-                        
-                        cut_tile_num += 1
-                        
+
+                        """
+                        Optional: plot tiles to check cutting function fidelity
+                        """
+                        # plt.imshow(tile, cmap="gray")
+                        # plt.title("{}x{} tile".format(numtlxpxls,numtlypxls) + "\n" + "image {} ".format(img_num) + "tile {}".format(cut_tile_num))
+                        # plt.show()
+
                         tiles_all_imgs.append(tile)
-                        
+
+                        cut_tile_num += 1
+
                         tlidxlo += tlxoffset
                         tlidxhi += tlyoffset
-                        
+
                     rowidxlo += tlyoffset
                     rowidxhi += tlxoffset
-                    
+
                 img_num += 1
-                    
+
     # Convert to numpy array
     tiles_all_imgs = np.array(tiles_all_imgs, dtype=list)
 
@@ -434,7 +488,7 @@ def preprocess(data_source, num_imgs, prepro, numxpxls, numypxls, tlornot, numti
             raw_imgs = load_raw_imgs(data_source, num_imgs, numxpxls, numypxls)
             if prepro == "lifull_lin":
                 grayed_imgs = convert_to_gray(raw_imgs)
-                gm_imgs = apply_gaussian_mask(grayed_imgs)
+                gm_imgs = apply_gaussian_mask(grayed_imgs, numxpxls=numxpxls, numypxls=numypxls)
                 dog_imgs = apply_DoG(gm_imgs)
                 # Input
                 X = dog_imgs

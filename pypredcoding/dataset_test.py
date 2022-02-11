@@ -40,8 +40,8 @@ prepro = "lifull_lin"
 # numxpxls, numypxls = 38, 38
 # numxpxls, numypxls = 48, 48
 # numxpxls, numypxls = 68, 68
-numxpxls, numypxls = 128, 128
-# numxpxls, numypxls = 512, 408
+# numxpxls, numypxls = 128, 128
+numxpxls, numypxls = 512, 408
 # numxpxls, numypxls = 512, 512
 
 ## Tiled or not
@@ -50,8 +50,8 @@ tlornot = "tl"
 
 ## Number of tiles
 # numtiles = 0
-# numtiles = 3
-numtiles = 225
+numtiles = 3
+# numtiles = 225
 
 ## Tile x,y dimensions
 # numtlxpxls, numtlypxls = 0, 0
@@ -61,9 +61,9 @@ numtlxpxls, numtlypxls = 16, 16
 
 ## Tile x,y offset
 # tlxoffset, tlyoffset = 0, 0
-# tlxoffset, tlyoffset = 5, 0
+tlxoffset, tlyoffset = 5, 0
 # tlxoffset, tlyoffset = 6, 0
-tlxoffset, tlyoffset = 8, 8
+# tlxoffset, tlyoffset = 8, 8
 
 
 desired_dataset = "ds.{}_{}_{}_{}_{}_{}_{}_{}_{}_{}_{}.pydb".format(data_source, num_imgs, prepro, numxpxls, numypxls, tlornot, numtiles, numtlxpxls, numtlypxls, tlxoffset, tlyoffset)
@@ -212,4 +212,4 @@ if os.path.exists("./" + desired_dataset):
 
 else:
 
-    print("Desired dataset " + desired_dataset + "does not exist in local dir: please create using data.py or main.py")
+    print("Desired dataset " + desired_dataset + " does not exist in local dir: please create using data.py or main.py")

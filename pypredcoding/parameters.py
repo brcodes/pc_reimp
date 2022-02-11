@@ -83,6 +83,8 @@ class ModelParameters(object):
     # Priors
     r_prior = attr.ib(default="kurt",validator=attr.validators.in_(['gaus','kurt']))
     U_prior = attr.ib(default="kurt",validator=attr.validators.in_(['gaus','kurt']))
+    # Gradient update scheme (r update equilibration before U update [RB99] or 30 simultaneous r,U updates [Li])
+    update_scheme = attr.ib(default="rU_simultaneous",validator=attr.validators.in_(["rU_simultaneous", "r_eq_then_U"]))
     # Classification cost scheme
     class_scheme = attr.ib(default="c1",validator=attr.validators.in_(['nc','c1','c2']))
     # Training time
