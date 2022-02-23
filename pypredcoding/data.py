@@ -349,24 +349,6 @@ def cut_into_tiles(images, numxpxls, numypxls, numtiles, numtlxpxls, numtlypxls,
             tl3yidxlo = tl2yidxlo
             tl3yidxhi = tl2yidxhi
 
-
-            # Old logic which ignores offset and creates 3 flush tiles
-            # # Tile 1 (center left)
-            # tl1xidxlo = int(center_x - numtlxpxls / 2 - numtlxpxls)
-            # tl1xidxhi = int(center_x - numtlxpxls / 2)
-            # tl1yidxlo = int(center_y - numtlypxls / 2)
-            # tl1yidxhi = int(center_y + numtlypxls / 2)
-            # # Tile 2 (center)
-            # tl2xidxlo = int(center_x - numtlxpxls / 2)
-            # tl2xidxhi = int(center_x + numtlxpxls / 2)
-            # tl2yidxlo = int(center_y - numtlypxls / 2)
-            # tl2yidxhi = int(center_y + numtlypxls / 2)
-            # # Tile 3 (center right)
-            # tl3xidxlo = int(center_x + numtlxpxls / 2)
-            # tl3xidxhi = int(center_x + numtlxpxls / 2 + numtlxpxls)
-            # tl3yidxlo = int(center_y - numtlypxls / 2)
-            # tl3yidxhi = int(center_y + numtlypxls / 2)
-
             # Initiate image counter for plot title
             img_num = 1
 
@@ -378,15 +360,6 @@ def cut_into_tiles(images, numxpxls, numypxls, numtiles, numtlxpxls, numtlypxls,
                 img_tl2 = img[tl2yidxlo:tl2yidxhi,tl2xidxlo:tl2xidxhi]
                 img_tl3 = img[tl3yidxlo:tl3yidxhi,tl3xidxlo:tl3xidxhi]
 
-                # # Mid way appears to offset in the y direction
-                # img_tl1 = img[tl1xidxlo:tl1xidxhi,tl1yidxlo:tl1yidxhi]
-                # img_tl2 = img[tl2xidxlo:tl2xidxhi,tl2yidxlo:tl2yidxhi]
-                # img_tl3 = img[tl3xidxlo:tl3xidxhi,tl3yidxlo:tl3yidxhi]
-
-                # Old way didn't work
-                # img_tl1 = img[tl1xidxlo:tl1xidxhi][tl1yidxlo:tl1yidxhi]
-                # img_tl2 = img[tl2xidxlo:tl2xidxhi][tl2yidxlo:tl2yidxhi]
-                # img_tl3 = img[tl3xidxlo:tl3xidxhi][tl3yidxlo:tl3yidxhi]
 
                 """
                 Optional: plot tiles to check cutting function fidelity
@@ -486,6 +459,7 @@ def preprocess(data_source, num_imgs, prepro, numxpxls, numypxls, tlornot, numti
 
         else:
             raw_imgs = load_raw_imgs(data_source, num_imgs, numxpxls, numypxls)
+
             if prepro == "lifull_lin":
                 grayed_imgs = convert_to_gray(raw_imgs)
                 gm_imgs = apply_gaussian_mask(grayed_imgs, numxpxls=numxpxls, numypxls=numypxls)
@@ -500,6 +474,14 @@ def preprocess(data_source, num_imgs, prepro, numxpxls, numypxls, tlornot, numti
                 tanh_imgs = apply_tanh(dog_imgs)
                 # Input
                 X = tanh_imgs
+
+            # RB99 orig prepro is not what Monica did
+            # Theirs seems to be (p.86): 5 imgs first grayed, then whole images DoG'd, then tiles were individually Gaus.-masked
+
+            elif prepro == "rb99full_lin":
+                grayed_imgs = convert_to_gray(raw_imgs)
+                # DoG images here are not final X, but will be passed through cut_into_tiles and then masked
+                dog_imgs = apply_DoG(grayed_imgs)
 
             elif prepro == "grayonly":
                 grayed_imgs = convert_to_gray(raw_imgs)
@@ -521,7 +503,15 @@ def preprocess(data_source, num_imgs, prepro, numxpxls, numypxls, tlornot, numti
 
             # If tiling desired, cut into tiles
             if tlornot == "tl":
-                X = cut_into_tiles(X, numxpxls, numypxls, numtiles, numtlxpxls, numtlypxls, tlxoffset, tlyoffset)
+                # All non RB99-original dset cases
+                if prepro != "rb99full_lin" and prepro != "rb99full_tanh":
+                    X = cut_into_tiles(X, numxpxls, numypxls, numtiles, numtlxpxls, numtlypxls, tlxoffset, tlyoffset)
+
+                # RB99 original dset: mask after cutting
+                elif prepro == "rb99full_lin" or prepro == "rb99full_tanh":
+                    cut_tiles = cut_into_tiles(dog_imgs, numxpxls, numypxls, numtiles, numtlxpxls, numtlypxls, tlxoffset, tlyoffset)
+                    # Verify this last step!!! (2022.02.11)
+                    X = apply_gaussian_mask(cut_tiles)
 
     elif data_source == "rao99":
         print("preprocess(): rao99 loading not yet written")
@@ -551,26 +541,40 @@ def dataset_find_or_create(data_source="rb99", num_imgs=5, prepro="lifull",
     desired_dataset = "ds.{}_{}_{}_{}_{}_{}_{}_{}_{}_{}_{}.pydb".format(data_source, num_imgs, prepro, numxpxls, numypxls, tlornot, numtiles, numtlxpxls, numtlypxls, tlxoffset, tlyoffset)
 
     if os.path.exists("./" + desired_dataset):
-        if __name__ == "__data__":
+        
+        print("\n" + "I. Desired dataset " + desired_dataset + " already present in local dir: import it? (y/n)")
+        ans = input()
+        
+        # For import
+        if ans == "y":
             dataset_in = open(desired_dataset, "rb")
             X, y = pickle.load(dataset_in)
             dataset_in.close()
 
-            print("\n" + "I. Dataset " + desired_dataset + " successfully loaded from local dir" + "\n")
+        print("\n" + "I. Dataset " + desired_dataset + " successfully loaded from local dir" + "\n")
+   
+        # For overwrite or quit
+        elif ans == "n":
+            
+            dataset_in = open(desired_dataset, "rb")
+            X, y = pickle.load(dataset_in)
+            dataset_in.close()
 
-        # I.e. if __name__ == "__preprocessing__", or we are in some other script
-        else:
-            print("\n" + "I. Desired dataset " + desired_dataset + " already present in local dir: would you like to overwrite it? (y/n)")
-            ans = input()
+            print("\n" + "Desired dataset " + desired_dataset + " import cancelled: create and overwrite instead? (y/n)")
+                
             # For overwrite
             if ans == "y":
-                # Create dataset per specifications
+            # Create dataset per specifications
                 X, y = preprocess(data_source, num_imgs, prepro, numxpxls, numypxls, tlornot, numtiles, numtlxpxls, numtlypxls, tlxoffset, tlyoffset)
+                print("\n" + "Dataset " + desired_dataset + " successfully created" + "\n")
                 dataset_out = open(desired_dataset, "wb")
                 pickle.dump((X, y), dataset_out)
                 dataset_out.close()
 
-            else:
+                print("\n" + "Dataset " + desired_dataset + " successfully pickled in local dir" + "\n")
+
+            # For quit
+            elif ans == "n":
                 print("Quitting dataset creation..." + "\n")
                 exit()
 

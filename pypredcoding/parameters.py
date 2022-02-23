@@ -74,7 +74,9 @@ class ModelParameters(object):
     '''
     # Sizes of representations and weights
     input_size = attr.ib(default=16384,validator=attr.validators.instance_of(int))
-    hidden_sizes = attr.ib(default=[96,128],validator=attr.validators.instance_of(list))
+    # First element in hidden_sizes is the size of only one single layer 1 module
+    # If tiled data input into model, sum of all layer 1 module params becomes hidden_sizes[0] * numtiles (Li case: 32*225: 7200)
+    hidden_sizes = attr.ib(default=[32,128],validator=attr.validators.instance_of(list))
     output_size = attr.ib(default=5,validator=attr.validators.instance_of(int))
     # Tiling (if num_r1_mods > 1: model will respond as if it receiving tiled input)
     num_r1_mods = attr.ib(default=225,validator=attr.validators.instance_of(int))

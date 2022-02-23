@@ -43,48 +43,7 @@ def kurt_prior(r_or_U, alph_or_lam):
 def softmax(r):
     return np.exp(r) / np.exp(r).sum()
 
-def model_find_and_or_create(num_nonin_lyrs=3, lyr_sizes=(96,128,5), num_r1_mods=225, act_fxn="lin",
-    r_prior="kurt", U_prior="kurt", class_scheme="c1", num_epochs=500):
 
-    ### Directory search for named model
-
-    # Initiate model name string
-    desired_model = "mod.{}_".format(num_nonin_lyrs)
-
-    if len(lyr_sizes) != num_nonin_lyrs:
-        print("Number of non-input layers (num_nonin_lyrs) must == length of lyr_sizes tuple")
-        exit()
-
-    for lyr in range(0,num_nonin_lyrs):
-        str_lyr = str(lyr_sizes[lyr])
-        if lyr < num_nonin_lyrs - 1:
-            desired_model += (str_lyr + "-")
-        else:
-            desired_model += (str_lyr + "_")
-
-    ### Check for model in local directory: if present, quit (creation / training not needed); if not, create, save
-
-    desired_model += "{}_{}_{}_{}_{}_{}.pydb".format(num_r1_mods, act_fxn, r_prior, U_prior, class_scheme, num_epochs)
-
-    print("II. Desired model is {}".format(desired_model) + "\n")
-
-    if os.path.exists("./" + desired_model):
-        print("Desired model " + desired_model + " already present in local dir: would you like to overwrite it? (y/n)")
-        ans = input()
-        # For overwrite
-        if ans == "y":
-            # Initialize model
-            mod = PredictiveCodingClassifier(p)
-
-        else:
-            print("Quitting main.py..." + "\n")
-            exit()
-    # For first save
-    else:
-        # Initialize model
-        mod = PredictiveCodingClassifier(p)
-
-    return mod
 
 
 class PredictiveCodingClassifier:
