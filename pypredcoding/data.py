@@ -364,17 +364,22 @@ def cut_into_tiles(images, numxpxls, numypxls, numtiles, numtlxpxls, numtlypxls,
                 """
                 Optional: plot tiles to check cutting function fidelity
                 """
-                plt.imshow(img_tl1, cmap="gray")
-                plt.title("{}x{} tile".format(numtlxpxls,numtlypxls) + "\n" + "image {} ".format(img_num) + "tile 1")
-                plt.show()
+                # plt.imshow(img_tl1, cmap="gray")
+                # plt.title("{}x{} tile".format(numtlxpxls,numtlypxls) + "\n" + "image {} ".format(img_num) + "tile 1")
+                # plt.show()
+                #
+                # plt.imshow(img_tl2, cmap="gray")
+                # plt.title("{}x{} tile".format(numtlxpxls,numtlypxls) + "\n" + "image {} ".format(img_num) + "tile 2")
+                # plt.show()
+                #
+                # plt.imshow(img_tl3, cmap="gray")
+                # plt.title("{}x{} tile".format(numtlxpxls,numtlypxls) + "\n" + "image {} ".format(img_num) + "tile 3")
+                # plt.show()
 
-                plt.imshow(img_tl2, cmap="gray")
-                plt.title("{}x{} tile".format(numtlxpxls,numtlypxls) + "\n" + "image {} ".format(img_num) + "tile 2")
-                plt.show()
-
-                plt.imshow(img_tl3, cmap="gray")
-                plt.title("{}x{} tile".format(numtlxpxls,numtlypxls) + "\n" + "image {} ".format(img_num) + "tile 3")
-                plt.show()
+                # Array-ify and flatten the tiles for export to "X" (training input)
+                img_tl1 = np.array(img_tl1).reshape(-1)
+                img_tl2 = np.array(img_tl2).reshape(-1)
+                img_tl3 = np.array(img_tl3).reshape(-1)
 
                 tiles_all_imgs.append(img_tl1)
                 tiles_all_imgs.append(img_tl2)
@@ -392,8 +397,6 @@ def cut_into_tiles(images, numxpxls, numypxls, numtiles, numtlxpxls, numtlypxls,
         else:
             tilecols = int(np.sqrt(numtiles))
             tilerows = tilecols
-
-            tiles_all_imgs = []
 
             # Initiate image counter for plot title
             img_num = 1
@@ -414,7 +417,7 @@ def cut_into_tiles(images, numxpxls, numypxls, numtiles, numtlxpxls, numtlypxls,
                     # Set row vertical dimensions
                     onerow = img[rowidxlo:rowidxhi]
 
-                    print("onerow size is {}".format(onerow.shape))
+                    # print("onerow size is {}".format(onerow.shape))
 
                     tlidxlo = 0
                     tlidxhi = numtlxpxls
@@ -423,7 +426,7 @@ def cut_into_tiles(images, numxpxls, numypxls, numtiles, numtlxpxls, numtlypxls,
 
                         tile = onerow[:,tlidxlo:tlidxhi]
 
-                        print("tile size is {}".format(tile.shape))
+                        # print("tile size is {}".format(tile.shape))
 
                         """
                         Optional: plot tiles to check cutting function fidelity
@@ -431,6 +434,9 @@ def cut_into_tiles(images, numxpxls, numypxls, numtiles, numtlxpxls, numtlypxls,
                         # plt.imshow(tile, cmap="gray")
                         # plt.title("{}x{} tile".format(numtlxpxls,numtlypxls) + "\n" + "image {} ".format(img_num) + "tile {}".format(cut_tile_num))
                         # plt.show()
+
+                        # Array-ify and flatten the tile for export to "X" (training input)
+                        tile = np.array(tile).reshape(-1)
 
                         tiles_all_imgs.append(tile)
 
@@ -540,51 +546,71 @@ def dataset_find_or_create(data_source="rb99", num_imgs=5, prepro="lifull",
 
     desired_dataset = "ds.{}_{}_{}_{}_{}_{}_{}_{}_{}_{}_{}.pydb".format(data_source, num_imgs, prepro, numxpxls, numypxls, tlornot, numtiles, numtlxpxls, numtlypxls, tlxoffset, tlyoffset)
 
+    print("I. Desired dataset is {}".format(desired_dataset) + "\n")
+
     if os.path.exists("./" + desired_dataset):
-        
-        print("\n" + "I. Desired dataset " + desired_dataset + " already present in local dir: import it? (y/n)")
+
+        print("Desired dataset " + desired_dataset + " already present in local dir: import it? (y/n)")
+
         ans = input()
-        
+
         # For import
         if ans == "y":
             dataset_in = open(desired_dataset, "rb")
-            X, y = pickle.load(dataset_in)
+            X, Y = pickle.load(dataset_in)
             dataset_in.close()
 
-        print("\n" + "I. Dataset " + desired_dataset + " successfully loaded from local dir" + "\n")
-   
+            print("\n" + "Desired dataset " + desired_dataset + " successfully loaded from local dir" + "\n")
+
         # For overwrite or quit
         elif ans == "n":
-            
+
             dataset_in = open(desired_dataset, "rb")
-            X, y = pickle.load(dataset_in)
+            X, Y = pickle.load(dataset_in)
             dataset_in.close()
 
             print("\n" + "Desired dataset " + desired_dataset + " import cancelled: create and overwrite instead? (y/n)")
-                
+
+            ans = input()
+
             # For overwrite
             if ans == "y":
             # Create dataset per specifications
-                X, y = preprocess(data_source, num_imgs, prepro, numxpxls, numypxls, tlornot, numtiles, numtlxpxls, numtlypxls, tlxoffset, tlyoffset)
-                print("\n" + "Dataset " + desired_dataset + " successfully created" + "\n")
+                X, Y = preprocess(data_source, num_imgs, prepro, numxpxls, numypxls, tlornot, numtiles, numtlxpxls, numtlypxls, tlxoffset, tlyoffset)
+                print("Desired dataset " + desired_dataset + " successfully created" + "\n")
                 dataset_out = open(desired_dataset, "wb")
-                pickle.dump((X, y), dataset_out)
+                pickle.dump((X, Y), dataset_out)
                 dataset_out.close()
 
-                print("\n" + "Dataset " + desired_dataset + " successfully pickled in local dir" + "\n")
+                print("Desired dataset " + desired_dataset + " successfully pickled in local dir" + "\n")
 
             # For quit
             elif ans == "n":
-                print("Quitting dataset creation..." + "\n")
+                print("Need to either import a training dataset or create one: quitting main.py..." + "\n")
                 exit()
 
     else:
-        X, y = preprocess(data_source, num_imgs, prepro, numxpxls, numypxls, tlornot, numtiles, numtlxpxls, numtlypxls, tlxoffset, tlyoffset)
-        dataset_out = open(desired_dataset, "wb")
-        pickle.dump((X, y), dataset_out)
-        dataset_out.close()
 
-    return X, y
+        print("\n" + "I. Desired dataset " + desired_dataset + " is not present in local dir: create it? (y/n)")
+
+        ans = input()
+
+        if ans == "y":
+
+            X, Y = preprocess(data_source, num_imgs, prepro, numxpxls, numypxls, tlornot, numtiles, numtlxpxls, numtlypxls, tlxoffset, tlyoffset)
+            print("\n" + "I. Desired dataset " + desired_dataset + " successfully created" + "\n")
+            dataset_out = open(desired_dataset, "wb")
+            pickle.dump((X, Y), dataset_out)
+            dataset_out.close()
+
+            print("\n" + "I. Desired dataset " + desired_dataset + " successfully pickled in local dir" + "\n")
+
+        # For quit
+        elif ans == "n":
+            print("Need to either import a training dataset or create one: quitting main.py..." + "\n")
+            exit()
+
+    return X, Y
 
 
 ####
@@ -648,10 +674,10 @@ tlxoffset, tlyoffset = 8, 8
 def main():
 
     print("Running data.py to generated desired dataset outside of main.py")
-    X, y = preprocess(data_source, num_imgs, prepro, numxpxls, numypxls, tlornot, numtiles, numtlxpxls, numtlypxls, tlxoffset, tlyoffset)
-    return X, y
+    X, Y = preprocess(data_source, num_imgs, prepro, numxpxls, numypxls, tlornot, numtiles, numtlxpxls, numtlypxls, tlxoffset, tlyoffset)
+    return X, Y
 
 
 if __name__ == '__main__':
 
-    X, y = main()
+    X, Y = main()

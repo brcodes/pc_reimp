@@ -1,8 +1,7 @@
 import os
-import cv2
 from parameters import ModelParameters, LR_params_to_dict, size_params_to_p_format
-from model_draft import PredictiveCodingClassifier, model_find_and_or_create
-from data import preprocess, dataset_find_or_create
+from model_draft import PredictiveCodingClassifier
+from data import dataset_find_or_create
 import pickle
 from sys import exit
 
@@ -137,7 +136,7 @@ def main():
     num_nonin_lyrs = 3
 
     ## Layer (r) sizes
-    lyr_sizes = (96, 128, 5)
+    lyr_sizes = (32, 128, 5)
 
     ## Num r[1] modules (= numtiles)
     num_r1_mods = numtiles
@@ -231,7 +230,7 @@ def main():
     ### Helper fxn: search local dir for requested model, if it exists: initialize (for overwrite) or abort;
     ### if it doesn't exist, initialize
 
-    def model_find_and_or_create(num_nonin_lyrs=3, lyr_sizes=(96,128,5), num_r1_mods=225, act_fxn="lin",
+    def model_find_and_or_create(num_nonin_lyrs=3, lyr_sizes=(32,128,5), num_r1_mods=225, act_fxn="lin",
         r_prior="kurt", U_prior="kurt", class_scheme="c1", num_epochs=500):
 
         ### Directory search for named model
@@ -264,14 +263,17 @@ def main():
                 # Initialize model
 
                 mod = PredictiveCodingClassifier(p)
+                print("Desired model " + desired_model + " object initialized for training (not yet pickled)")
 
-            else:
-                print("Quitting main.py..." + "\n")
+            elif ans == "n":
+                print("main.py is a training script right now: if you're not overwriting your desired model, " \
+                "it exists, so no need to run main.py. Quitting..." + "\n")
                 exit()
         # For first save
         else:
             # Initialize model
             mod = PredictiveCodingClassifier(p)
+            print("Desired model " + desired_model + " not present in local dir: object initialized for training (but not yet saved to local dir)" + "\n")
 
         return mod
 

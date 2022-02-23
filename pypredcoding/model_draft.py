@@ -79,7 +79,7 @@ class PredictiveCodingClassifier:
         # Number of non-input layers for model architecture init: always num hidden layers + 1 output layer (Li case: 3)
         self.num_nonin_lyrs = self.num_hidden_lyrs + 1
         # Total num includes input "layer" (Li case: 4)
-        self.num_tot_lyrs = len(self.num_nonin_lyrs) + 1
+        self.num_tot_lyrs = self.num_nonin_lyrs + 1
 
         # Choices for transformation functions, priors
         self.act_fxn_dict = {'lin':linear_trans,'tan':tanh_trans}
@@ -126,6 +126,8 @@ class PredictiveCodingClassifier:
         Model layer architecture not initialized until model.train() called (train() needs to read X for tile dimensions)
         """
 
+        ### Model layer architecture initializaiton
+
         ## Detect WHOLE IMAGE case: model will be constructed with only 1 r[1] module
         if self.p.num_r1_mods == 1:
 
@@ -134,15 +136,21 @@ class PredictiveCodingClassifier:
             self.sgl_tile_area = 0
 
             ## Initiate r[0] - r[n] layers, U[1] - U[n] layers
+            # Li uses np.zeros for r inits, np.random.rand (unif) for U inits: may have to switch to those
 
             # Input IMAGE layer of size (self.p.input_size,1)
-            self.r[0] = np.random.randn(self.p.input_size,1)
+            self.r[0] = np.random.randn(self.p.input_size, 1)
 
             # Non-input layers (1 - n): hidden layers (1 - n-1) plus output layer (Li's "localist" layer n)
             # Ought maybe to switch initialized r, U's from strictly Gaussian (randn) to tunable based on specified model.p.r_prior, U_prior
-            for layer_num in range(1, self.num_nonin_lyrs + 1)
-                self.r[layer_num] = np.random.randn(self.p.hidden_sizes[i-1],1)
-                self.U[layer_num] = np.random.randn(len(self.r[i-1]),len(self.r[i]))
+            # Hidden layers
+            for layer_num in range(1, self.num_nonin_lyrs + 1):
+                self.r[layer_num] = np.random.randn(self.p.hidden_sizes[i-1], 1)
+                self.U[layer_num] = np.random.randn(len(self.r[i-1]), len(self.r[i]))
+
+            # "Localist" layer (relates size of Y (num classes) to final hidden layer)
+            self.r[self.num_nonin_lyrs] = np.random.randn(self.p.output_size, 1)
+            self.U[self.num_nonin_lyrs] = np.random.randn(len(self.r[i-1]), len(self.r[i]))
 
 
         ## Detect TILED image case: model will be constructed with num r[1] modules (num_r1_mods) == (dataset) numtiles [specified in main.py]
@@ -150,10 +158,11 @@ class PredictiveCodingClassifier:
 
             # Set attrs
             self.is_tiled = True
-            # X dims for Li case should be: (5, 225, 256)
-            self.sgl_tile_area = X.shape[2]
+            # X dims for Li case should be: (1125, 256); thus sgl_tile_area 256
+            self.sgl_tile_area = X.shape[1]
 
             ## Initiate r[0] - r[n] layers, U[1] - U[n] layers; tiled case
+            # Li uses np.zeros for r inits, np.random.rand (unif) for U inits: may have to switch to those
 
             # Input image TILES layer of size (number of tiles == number of r1 modules, area of a single tile); Li case: 225, 256
             self.r[0] = np.random.randn(self.p.num_r1_mods,self.sgl_tile_area)
@@ -161,7 +170,7 @@ class PredictiveCodingClassifier:
             # Non-input layers (1 - n): hidden layers (1 - n-1) plus output layer (Li's "localist" layer n)
             # Ought maybe to switch initialized r, U's from strictly Gaussian (randn) to tunable based on specified model.p.r_prior, U_prior
 
-            ## Hidden layer 1 & 2 first (only hidden layers directly dependent on num tiles)
+            ## Hidden layers 1 & 2 first (only hidden layers directly dependent on num tiles)
             # Hidden layer 1
             # Li case: r1: 225, 32
             #          U1: 225, 256, 32
@@ -174,12 +183,15 @@ class PredictiveCodingClassifier:
             self.r[2] = np.random.randn(self.p.hidden_sizes[1])
             self.U[2] = np.random.randn(self.p.num_r1_mods * self.p.hidden_sizes[0], self.p.hidden_sizes[1])
 
-            # Hidden layers > 2
-            for layer_num in range(1, self.num_nonin_lyrs + 1)
-                self.r[layer_num] = np.random.randn(self.p.hidden_sizes[i-1],1)
-                self.U[layer_num] = np.random.randn(len(self.r[i-1]),len(self.r[i]))
+            if self.num_hidden_lyrs > 2:
+                # Hidden layer 3 or more
+                for layer_num in range(3, self.num_nonin_lyrs + 1):
+                    self.r[layer_num] = np.random.randn(self.p.hidden_sizes[layer_num-1], 1)
+                    self.U[layer_num] = np.random.randn(len(self.r[layer_num-1]), len(self.r[layer_num]))
 
-            # "Localist" layer
+            # "Localist" layer (relates size of Y (num classes) to final hidden layer)
+            self.r[self.num_nonin_lyrs] = np.random.randn(self.p.output_size, 1)
+            self.U[self.num_nonin_lyrs] = np.random.randn(len(self.r[self.num_nonin_lyrs-1]), len(self.r[self.num_nonin_lyrs]))
 
         else:
             print("Model.num_r1_mods attribute needs to be in [1,n=int<<inf]")
@@ -187,6 +199,7 @@ class PredictiveCodingClassifier:
 
 
         # If self.p.class_scheme == 'c2', initiate o and Uo layers
+        # NOTE: May have to change these sizes to account for Li localist layer (is o redundant in that case?)
         if self.p.class_scheme == 'c2':
             # Initialize output layer (Li case: 5, 1)
             self.o = np.random.randn(self.p.output_size,1)
@@ -197,11 +210,86 @@ class PredictiveCodingClassifier:
         ### Non-tiled (whole) image input case
 
         if self.is_tiled is False:
-            print("Model training on NON-TILED input")
+            print("Model training on NON-TILED input" + "\n")
+            print("Model parameters by layer:")
+
+            tot_num_params = 0
+
+            for r, rvec in self.r.items():
+                rdims = []
+                for rdim in rvec.shape:
+                    rdims.append(rdim)
+
+                rshape = ""
+                rparams = 1
+                for rdim in rdims:
+                    rshape += str(rdim) + ","
+                    rparams *= rdim
+
+                print(f"r[{r}] size: ({rshape}); total params: {rparams}")
+                tot_num_params += rparams
+
+            for U, Uvec in self.U.items():
+                Udims = []
+                for Udim in Uvec.shape:
+                    Udims.append(Udim)
+
+                Ushape = ""
+                Uparams = 1
+                for Udim in Udims:
+                    Ushape += str(Udim) + ","
+                    Uparams *= Udim
+
+                print(f"U[{U}] size: ({Ushape}); total params: {Uparams}")
+                tot_num_params += Uparams
+
+            # Take out size of input (these are not actually parameters within the model proper)
+            # Only param logic line that differs from tiled image case where r[0] != self.p.input_size
+            tot_num_params -= self.p.input_size
+            print(f"Total number of model parameters: {tot_num_params}")
+
             exit()
 
         ### Tiled (sliced) image input case
 
         elif self.is_tiled is True:
                 print("Model training on TILED input")
+                print(f"Area of a single tile is: {self.sgl_tile_area}" + "\n")
+                print("Model parameters by layer:")
+
+                tot_num_params = 0
+
+                for r, rvec in self.r.items():
+                    rdims = []
+                    for rdim in rvec.shape:
+                        rdims.append(rdim)
+
+                    rshape = ""
+                    rparams = 1
+                    for rdim in rdims:
+                        rshape += str(rdim) + ","
+                        rparams *= rdim
+
+                    print(f"r[{r}] size: ({rshape}); total params: {rparams}")
+                    tot_num_params += rparams
+
+                for U, Uvec in self.U.items():
+                    Udims = []
+                    for Udim in Uvec.shape:
+                        Udims.append(Udim)
+
+                    Ushape = ""
+                    Uparams = 1
+                    for Udim in Udims:
+                        Ushape += str(Udim) + ","
+                        Uparams *= Udim
+
+                    print(f"U[{U}] size: ({Ushape}); total params: {Uparams}")
+                    tot_num_params += Uparams
+
+                # Take out size of input (these are not actually parameters within the model proper)
+                # Only param logic line that differs from whole image case where r[0] == self.p.input_size
+                tot_num_params -= self.r[0].shape[0] * self.r[0].shape[1]
+                print(f"Total number of model parameters: {tot_num_params}")
+
                 exit()

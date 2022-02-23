@@ -119,21 +119,35 @@ general troubleshooting (save scripts here until pushing finished results)
     
     
 
-b = np.random.rand(225, 256, 32)
-a = np.random.rand(225,32,1)
+# b = np.random.rand(225, 256, 32)
+# a = np.random.rand(225,32,1)
 
 
 
-# print(b)
-print(b.shape)
-print(a.shape)
+# # print(b)
+# print(b.shape)
+# print(a.shape)
 
-c = np.matmul(b, a)
-print(c.shape)
-csqueez = c.squeeze()
-print(csqueez.shape)
+# c = np.matmul(b, a)
+# print(c.shape)
+# csqueez = c.squeeze()
+# print(csqueez.shape)
 
-i = np.random.randn(225,256)
+# i = np.random.randn(225,256)
 
-e0 = i- csqueez
-print(e0.shape)
+# e0 = i- csqueez
+# print(e0.shape)
+
+
+
+list = [[1,1],[1,1]]
+
+print(list)
+print(type(list))
+
+a = np.array(list).reshape(-1)
+
+print(a)
+print(type(a))
+
+
