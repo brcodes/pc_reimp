@@ -140,14 +140,8 @@ general troubleshooting (save scripts here until pushing finished results)
 
 
 
-list = [[1,1],[1,1]]
+tup = ()
 
-print(list)
-print(type(list))
-
-a = np.array(list).reshape(-1)
-
-print(a)
-print(type(a))
+print(tup.append(2))
 
 

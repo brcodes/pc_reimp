@@ -7,6 +7,9 @@ import data
 import cv2
 from parameters import ModelParameters
 from sys import exit
+import pickle
+import time
+import datetime
 
 """
 A Predictive Coding Classifier according to the mathematical dictates of Rao & Ballard 1999.
@@ -119,14 +122,14 @@ class PredictiveCodingClassifier:
     def train(self, X, Y):
         """
         X: input matrix (two cases)
-            i. num_imgs x numxpxls x numypxls: set of whole images
-            ii. numtiles x numtlxpxls x numtlypxls: set of tiles
+            i. num_imgs, numxpxls * numypxls: set of whole images
+            ii. num_imgs * numtiles, numtlxpxls * numtlypxls: set of tiles
                 NOTE: these cases will only be distinguishable using PCC attribute self.num_r1_mods (if > 1: tiled, if == 1, non-tiled)
 
         Model layer architecture not initialized until model.train() called (train() needs to read X for tile dimensions)
         """
 
-        ### Model layer architecture initializaiton
+        #### ARCHITECTURE INITIALIZATION
 
         ## Detect WHOLE IMAGE case: model will be constructed with only 1 r[1] module
         if self.p.num_r1_mods == 1:
@@ -197,7 +200,6 @@ class PredictiveCodingClassifier:
             print("Model.num_r1_mods attribute needs to be in [1,n=int<<inf]")
             exit()
 
-
         # If self.p.class_scheme == 'c2', initiate o and Uo layers
         # NOTE: May have to change these sizes to account for Li localist layer (is o redundant in that case?)
         if self.p.class_scheme == 'c2':
@@ -207,89 +209,155 @@ class PredictiveCodingClassifier:
             self.U_o = np.random.randn(self.p.output_size, self.p.hidden_sizes[-1])
 
 
-        ### Non-tiled (whole) image input case
+        #### MODEL PARAM READOUT IN TERMINAL
+
+        print("Model parameters by layer:")
+
+        tot_num_params = 0
+        # Save for metadata too
+        rs = {}
+        Us = {}
+
+        for r, rvec in self.r.items():
+            rdims = []
+            for rdim in rvec.shape:
+                rdims.append(rdim)
+
+            rshape = ""
+            rparams = 1
+            for rdim in rdims:
+                rshape += str(rdim) + ","
+                rparams *= rdim
+
+            print(f"r[{r}] size: ({rshape}); total params: {rparams}")
+            tot_num_params += rparams
+
+        for U, Uvec in self.U.items():
+            Udims = []
+            for Udim in Uvec.shape:
+                Udims.append(Udim)
+
+            Ushape = ""
+            Uparams = 1
+            for Udim in Udims:
+                Ushape += str(Udim) + ","
+                Uparams *= Udim
+
+            print(f"U[{U}] size: ({Ushape}); total params: {Uparams}")
+            tot_num_params += Uparams
+
+        # If C2 classification
+        if self.p.class_scheme == 'c2':
+            odims = []
+            for odim in self.o.shape:
+                odims.append(odim)
+
+            oshape = ""
+            oparams = 1
+            for odim in odims:
+                oshape += str(odim) + ","
+                oparams *= odim
+            print(f"o size: ({oshape}); total params: {oparams}")
+            tot_num_params += oparams
+
+            Uodims = []
+            for Uodim in self.U_o.shape:
+                Uodims.append(Uodim)
+
+            Uoshape = ""
+            Uoparams = 1
+            for Uodim in Uodims:
+                Uoshape += str(Uodim) + ","
+                Uoparams *= Uodim
+            print(f"Uo size: ({Uoshape}); total params: {Uoparams}")
+            tot_num_params += Uoparams
+
+        # Take out size of input (these are not actually parameters within the model proper)
 
         if self.is_tiled is False:
-            print("Model training on NON-TILED input" + "\n")
-            print("Model parameters by layer:")
-
-            tot_num_params = 0
-
-            for r, rvec in self.r.items():
-                rdims = []
-                for rdim in rvec.shape:
-                    rdims.append(rdim)
-
-                rshape = ""
-                rparams = 1
-                for rdim in rdims:
-                    rshape += str(rdim) + ","
-                    rparams *= rdim
-
-                print(f"r[{r}] size: ({rshape}); total params: {rparams}")
-                tot_num_params += rparams
-
-            for U, Uvec in self.U.items():
-                Udims = []
-                for Udim in Uvec.shape:
-                    Udims.append(Udim)
-
-                Ushape = ""
-                Uparams = 1
-                for Udim in Udims:
-                    Ushape += str(Udim) + ","
-                    Uparams *= Udim
-
-                print(f"U[{U}] size: ({Ushape}); total params: {Uparams}")
-                tot_num_params += Uparams
-
-            # Take out size of input (these are not actually parameters within the model proper)
-            # Only param logic line that differs from tiled image case where r[0] != self.p.input_size
+            # Whole image case: r0 == self.p.input_size
             tot_num_params -= self.p.input_size
-            print(f"Total number of model parameters: {tot_num_params}")
-
-            exit()
-
-        ### Tiled (sliced) image input case
 
         elif self.is_tiled is True:
-                print("Model training on TILED input")
-                print(f"Area of a single tile is: {self.sgl_tile_area}" + "\n")
-                print("Model parameters by layer:")
+            # Tiled image case: r0 != self.p.input_size
+            tot_num_params -= self.r[0].shape[0] * self.r[0].shape[1]
 
-                tot_num_params = 0
+        # Print total num model params
+        print(f"Total number of model parameters: {tot_num_params}" + "\n")
 
-                for r, rvec in self.r.items():
-                    rdims = []
-                    for rdim in rvec.shape:
-                        rdims.append(rdim)
+        #### PICKLE UNTRAINED MODEL (EPOCH "0") AND METADATA
 
-                    rshape = ""
-                    rparams = 1
-                    for rdim in rdims:
-                        rshape += str(rdim) + ","
-                        rparams *= rdim
+        model_name = f"mod.{self.num_nonin_lyrs}_"
 
-                    print(f"r[{r}] size: ({rshape}); total params: {rparams}")
-                    tot_num_params += rparams
+        # Get layer sizes for (hl1-hl2-...hln-localist) model pickle naming format
+        lyr_sizes = []
+        for nonin_lyr in range(0, self.num_hidden_lyrs):
+            lyr_sizes.append(self.p.hidden_sizes[nonin_lyr])
+        lyr_sizes.append(self.p.output_size)
 
-                for U, Uvec in self.U.items():
-                    Udims = []
-                    for Udim in Uvec.shape:
-                        Udims.append(Udim)
+        # Add those sizes to the model name string
+        for lyr in range(0,self.num_nonin_lyrs):
+            str_lyr = str(lyr_sizes[lyr])
+            if lyr < self.num_nonin_lyrs - 1:
+                model_name += (str_lyr + "-")
+            else:
+                model_name += (str_lyr + "_")
 
-                    Ushape = ""
-                    Uparams = 1
-                    for Udim in Udims:
-                        Ushape += str(Udim) + ","
-                        Uparams *= Udim
+        # Add the rest of the model naming params to name
+        model_name += f"{self.p.num_r1_mods}_{self.p.act_fxn}_{self.p.r_prior}_{self.p.U_prior}_{self.p.class_scheme}_0"
 
-                    print(f"U[{U}] size: ({Ushape}); total params: {Uparams}")
-                    tot_num_params += Uparams
+        model_pkl_name = model_name + ".pydb"
+        model_metadata_name = model_name + ".txt"
 
-                # Take out size of input (these are not actually parameters within the model proper)
-                # Only param logic line that differs from whole image case where r[0] == self.p.input_size
-                tot_num_params -= self.r[0].shape[0] * self.r[0].shape[1]
-                print(f"Total number of model parameters: {tot_num_params}")
+        print(f"Untrained model name is {model_name}")
 
-                exit()
+        # Pickle model
+        with open(model_pkl_name, "wb") as model_out:
+            pickle.dump(self, model_out)
+            print(f"Untrained model {model_pkl_name} saved in local dir")
+
+        ### METADATA (model attributes that aren't listed in model name); e.g. learning rate at epoch
+
+        header = f"Metadata for untrained model {model_name} \n"
+        is_tiled = f"Tiled: {self.is_tiled}"
+        update_scheme = f"Update scheme: {self.p.update_scheme}"
+        batch_size = f"Batch size: {self.p.batch_size}"
+        epoch_counter = f"Number of epochs completed / Total number of epochs in regimen: 0 / {self.p.num_epochs}"
+        k_r_sched = f"r LR schedule: {self.p.k_r_sched}"
+        k_r_at_start = f"r LR at start (has not occurred yet): {self.k_r_lr(0)}"
+        k_U_sched = f"U LR schedule: {self.p.k_U_sched}"
+        k_U_at_start = f"U LR at start (has not occurred yet): {self.k_U_lr(0)}"
+        k_o_sched = f"o LR schedule: {self.p.k_o_sched}"
+        k_o_at_start = f"o LR at start (has not occurred yet): {self.k_o_lr(0)}"
+        sigma_sq = f"Sigma squared values at each layer: {self.p.sigma_sq}"
+        alpha = f"Alpha values at each layer: {self.p.alpha}"
+        lam = f"Lambda values at each layer: {self.p.lam}"
+        size_of_starting_img = f"Num params in an original whole input image, regardless of whether images will become tiled for training: {self.p.input_size}"
+        time_created = datetime.datetime.now()
+        train_time_elapsed = time_created - time_created
+        time_created = f"Time at model creation: {time_created}"
+        train_time_elapsed = f"Training time elapsed: {train_time_elapsed}"
+
+        metadata_lines = [header, is_tiled, update_scheme, batch_size, epoch_counter, k_r_sched,
+                            k_r_at_start, k_U_sched, k_U_at_start, k_o_sched, k_o_at_start, sigma_sq, alpha, lam, size_of_starting_img, time_created, train_time_elapsed]
+
+        # Write metadata
+        with open(model_metadata_name, "w") as metadata_out:
+            for line in metadata_lines:
+                metadata_out.write(line)
+                metadata_out.write("\n")
+            print(f"Untrained model metadata {model_metadata_name} saved in local dir" + "\n")
+
+
+        #### TRAINING LOOP
+
+        ### Whole image case
+        if self.is_tiled is False:
+            print("Model training on NON-TILED input")
+            print("not yet written, quitting...")
+            exit()
+
+        ### Tiled (sliced) image case
+        elif self.is_tiled is True:
+            print("Model training on TILED input")
+            print(f"Area of a single tile is: {self.sgl_tile_area}" + "\n")

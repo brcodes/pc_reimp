@@ -1,0 +1,18 @@
+Metadata for untrained model mod.3_32-128-5_225_lin_kurt_kurt_c1_0 
+
+Tiled: True
+Update scheme: rU_simultaneous
+Batch size: 1
+Number of epochs completed / Total number of epochs in regimen: 0 / 500
+r LR schedule: {'step': {'initial': 0.005, 'drop_factor': 1, 'drop_every': 40}}
+r LR at start (has not occurred yet): 0.005
+U LR schedule: {'step': {'initial': 0.01, 'drop_factor': 0.98522, 'drop_every': 40}}
+U LR at start (has not occurred yet): 0.01
+o LR schedule: {'step': {'initial': 5e-05, 'drop_factor': 1, 'drop_every': 40}}
+o LR at start (has not occurred yet): 5e-05
+Sigma squared values at each layer: {1: 1.0, 2: 10.0, 3: 10.0, 4: 10.0, 5: 10.0, 6: 10.0, 7: 10.0, 8: 10.0, 9: 2.0}
+Alpha values at each layer: {1: 1.0, 2: 0.05, 3: 0.05, 4: 0.05, 5: 0.05, 6: 0.05, 7: 0.05}
+Lambda values at each layer: {1: 0.02, 2: 1e-05, 3: 1e-05, 4: 1e-05, 5: 1e-05, 6: 1e-05, 7: 1e-05}
+Num params in an original whole input image, regardless of whether images will become tiled for training: 16384
+Time at model creation: 2022-02-23 17:56:36.298045
+Training time elapsed: 0:00:00

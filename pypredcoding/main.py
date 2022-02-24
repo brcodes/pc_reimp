@@ -177,7 +177,7 @@ def main():
     o_init = 0.00005
 
 
-    ## Polynomial decay LR schedule
+    ## POLYNOMIAL DECAY LR schedule
     ## r
     r_max_eps = num_epochs
     r_poly_power = 1
@@ -191,7 +191,7 @@ def main():
     o_poly_power = 1
 
 
-    ## Step decay LR schedule (d_f = 1 means LR is constant; d_e 40 epochs is Li's number)
+    ## STEP DECAY LR schedule (d_f = 1 means LR is constant; d_e 40 epochs is Li's number)
     ## r
     r_drop_factor = 1
     r_drop_every = 40
@@ -219,11 +219,12 @@ def main():
     lyr_sizes=lyr_sizes, num_imgs=num_imgs, numxpxls=numxpxls, numypxls=numypxls)
 
     ## Parameters object creation
+    # NOTE: Add batch size, alpha, etc. to this and above, if they later become important enough to toggle in main.py
     p = ModelParameters(input_size = input_size, hidden_sizes = hidden_sizes, output_size = output_size,
         num_r1_mods = num_r1_mods, act_fxn = act_fxn, r_prior = r_prior, U_prior = U_prior,
-        class_scheme = class_scheme,
+        class_scheme = class_scheme, num_epochs = num_epochs,
         k_r_sched = k_r_sched,
-        k_U_sched = k_r_sched,
+        k_U_sched = k_U_sched,
         k_o_sched = k_o_sched)
 
 
@@ -297,6 +298,9 @@ def main():
 
     # train on training set
     mod.train(X_train, y_train)
+
+    ### Add a line to each metadata file saved during training that contains the name of the dataset trained on
+    
 
 
 if __name__ == '__main__':
