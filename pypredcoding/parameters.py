@@ -102,3 +102,5 @@ class ModelParameters(object):
     alpha = attr.ib(default={1: 1.0, 2: 0.05, 3: 0.05, 4: 0.05, 5: 0.05, 6: 0.05, 7: 0.05},validator=attr.validators.instance_of(dict)) #" related to variance of Gaussian priors "
     # Layer 1 has RB99 value, the rest are from Li PC model
     lam = attr.ib(default={1: 0.02, 2: 0.00001, 3: 0.00001, 4: 0.00001, 5: 0.00001, 6: 0.00001, 7: 0.00001},validator=attr.validators.instance_of(dict)) #" related to variance of Gaussian priors "
+    # Checkpointing during training; def is checkpoint every 10 epochs
+    checkpointing = attr.ib(default=["every_n_ep",10],validator=attr.validators.instance_of(list)

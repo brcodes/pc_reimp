@@ -610,7 +610,7 @@ def dataset_find_or_create(data_source="rb99", num_imgs=5, prepro="lifull",
             print("Need to either import a training dataset or create one: quitting main.py..." + "\n")
             exit()
 
-    return X, Y
+    return X, Y, desired_dataset
 
 
 ####

@@ -4,6 +4,7 @@ from model_draft import PredictiveCodingClassifier
 from data import dataset_find_or_create
 import pickle
 from sys import exit
+import glob
 
 
 """ Train a Predictive Coding Classifier according to the mathematical dictates
@@ -113,7 +114,7 @@ def main():
 
     ### Check for dataset in local directory: if present, load; if not, create, save for later
 
-    X_train, y_train = dataset_find_or_create(data_source=data_source, num_imgs=num_imgs, prepro=prepro,
+    X_train, Y_train, dataset_name = dataset_find_or_create(data_source=data_source, num_imgs=num_imgs, prepro=prepro,
         numxpxls=numxpxls, numypxls=numypxls, tlornot=tlornot, numtiles=numtiles,
         numtlxpxls=numtlxpxls, numtlypxls=numtlypxls, tlxoffset=tlxoffset, tlyoffset=tlyoffset)
 
@@ -205,6 +206,17 @@ def main():
     o_drop_factor = 1
     o_drop_every = 40
 
+    ### Set final model parameters for checkpointing preferences
+
+    ## Fraction: If frac = 10, chkpt every 1/10th of training time
+    ## E.g. 500 total epochs / frac 10 = 10 checkpoints, one every 50 epochs
+    # checkpointing = "fraction"
+    checkpointing = ["fraction", 10]
+    ## Every_n_ep: e.g. chkpt every 10 epochs
+    checkpointing = ["every_n_ep",10]
+    ## If "off": will only store model and metadata at epoch 0 (untrained) and epoch final (fully trained)
+    checkpointing = ["off"]
+
     ### Automatically arrange LR parameters dict for p object, model creation
 
     k_r_sched, k_U_sched, k_o_sched = LR_params_to_dict(lr_scheme=lr_scheme, r_init=r_init, U_init=U_init, o_init=o_init,
@@ -223,9 +235,8 @@ def main():
     p = ModelParameters(input_size = input_size, hidden_sizes = hidden_sizes, output_size = output_size,
         num_r1_mods = num_r1_mods, act_fxn = act_fxn, r_prior = r_prior, U_prior = U_prior,
         class_scheme = class_scheme, num_epochs = num_epochs,
-        k_r_sched = k_r_sched,
-        k_U_sched = k_U_sched,
-        k_o_sched = k_o_sched)
+        k_r_sched = k_r_sched, k_U_sched = k_U_sched, k_o_sched = k_o_sched,
+        checkpointing = checkpointing)
 
 
     ### Helper fxn: search local dir for requested model, if it exists: initialize (for overwrite) or abort;
@@ -252,7 +263,8 @@ def main():
 
         ### Check for model in local directory: if present, quit (creation / training not needed); if not, create
 
-        desired_model += "{}_{}_{}_{}_{}_{}.pydb".format(num_r1_mods, act_fxn, r_prior, U_prior, class_scheme, num_epochs)
+        model_name_pre_epoch = desired_model + "{}_{}_{}_{}_{}_".format(num_r1_mods, act_fxn, r_prior, U_prior, class_scheme)
+        desired_model = model_name_pre_epoch + "{}.pydb".format(num_epochs)
 
         print("II. Desired model is {}".format(desired_model) + "\n")
 
@@ -276,13 +288,11 @@ def main():
             mod = PredictiveCodingClassifier(p)
             print("Desired model " + desired_model + " not present in local dir: object initialized for training (but not yet saved to local dir)" + "\n")
 
-        return mod
+        return mod, desired_model, model_name_pre_epoch
 
     ## Model object creation
-    mod = model_find_and_or_create(num_nonin_lyrs=num_nonin_lyrs, lyr_sizes=lyr_sizes, num_r1_mods=num_r1_mods,
+    mod, model_name, model_name_pre_epoch = model_find_and_or_create(num_nonin_lyrs=num_nonin_lyrs, lyr_sizes=lyr_sizes, num_r1_mods=num_r1_mods,
         act_fxn=act_fxn, r_prior=r_prior, U_prior=U_prior, class_scheme=class_scheme, num_epochs=num_epochs)
-
-    ####
 
     """
     III. Training
@@ -297,10 +307,24 @@ def main():
     ### Train
 
     # train on training set
-    mod.train(X_train, y_train)
+    mod.train(X_train, Y_train)
+
+    print("TRAINING FINISHED" + "\n")
 
     ### Add a line to each metadata file saved during training that contains the name of the dataset trained on
-    
+
+    all_mod_chkpts_in_local_dir = glob.glob(model_name_pre_epoch + "*.txt")
+
+    print(f"All model checkpoints in local dir: {all_mod_chkpts_in_local_dir}" + "\n")
+
+    training_set_line = f"Dataset trained on: {dataset_name}"
+
+    for mod_chkpt_in_local_dir in all_mod_chkpts_in_local_dir:
+
+        with open(mod_chkpt_in_local_dir, "a") as metadata_out:
+            metadata_out.write(training_set_line)
+            metadata_out.write("\n")
+            print(f"Training set name {dataset_name} added to metadata file {mod_chkpt_in_local_dir} in local dir" + "\n")
 
 
 if __name__ == '__main__':
