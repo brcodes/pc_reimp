@@ -138,8 +138,18 @@ general troubleshooting (save scripts here until pushing finished results)
 # e0 = i- csqueez
 # print(e0.shape)
 
-modname = "mod.3_32-128-5_225_lin_kurt_kurt_c1_*.txt"
+# modname = "mod.3_32-128-5_225_lin_kurt_kurt_c1_*.txt"
 
-namelist = glob.glob(modname)
+# namelist = glob.glob(modname)
 
-print(namelist)
+# print(namelist)
+
+# chkpt_every_n = 50
+# chkpt_every_n = 10
+chkpt_every_n = 500
+
+for epoch in range(1,500+1):
+    if epoch % chkpt_every_n == 0:
+        print(epoch)
+        
+    

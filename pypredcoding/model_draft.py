@@ -304,10 +304,11 @@ class PredictiveCodingClassifier:
                 model_name += (str_lyr + "_")
 
         # Add the rest of the model naming params to name
-        model_name += f"{self.p.num_r1_mods}_{self.p.act_fxn}_{self.p.r_prior}_{self.p.U_prior}_{self.p.class_scheme}_0"
-
-        model_pkl_name = model_name + ".pydb"
-        model_metadata_name = model_name + ".txt"
+        model_name += f"{self.p.num_r1_mods}_{self.p.act_fxn}_{self.p.r_prior}_{self.p.U_prior}_{self.p.class_scheme}_"
+        model_name_pre_epoch = model_name
+        model_name_untrained = model_name_pre_epoch + "0"
+        model_pkl_name = model_name_untrained + ".pydb"
+        model_metadata_name = model_name_untrained + ".txt"
 
         print(f"Untrained model name is {model_name}")
 
@@ -318,7 +319,7 @@ class PredictiveCodingClassifier:
 
         ### METADATA (model attributes that aren't listed in model name); e.g. learning rate at epoch
 
-        header = f"Metadata for untrained model {model_name} \n"
+        header = f"Metadata for UNTRAINED model {model_pkl_name} \n"
         is_tiled = f"Tiled: {self.is_tiled}"
         update_scheme = f"Update scheme: {self.p.update_scheme}"
         batch_size = f"Batch size: {self.p.batch_size}"
@@ -335,14 +336,14 @@ class PredictiveCodingClassifier:
         size_of_starting_img = f"Num params in an original whole input image, regardless of whether images will become tiled for training: {self.p.input_size}"
         time_created = datetime.datetime.now()
         time_at_chkpt = time_created
-        train_time_elapsed = time_created - time_at_chkpt
-        time_created = f"Time at model creation: {time_created}"
+        train_time_elapsed = time_at_chkpt - time_created
+        time_created_str = f"Time at model creation: {time_created}"
         time_at_chkpt = f"Time at checkpoint: {time_at_chkpt}"
         train_time_elapsed = f"Training time elapsed: {train_time_elapsed}"
 
         metadata_lines = [header, is_tiled, update_scheme, batch_size, epoch_counter, k_r_sched,
                             k_r_at_start, k_U_sched, k_U_at_start, k_o_sched, k_o_at_start, sigma_sq, alpha, lam, size_of_starting_img,
-                            time_created, time_at_chkpt, train_time_elapsed]
+                            time_created_str, time_at_chkpt, train_time_elapsed]
 
         # Write metadata
         with open(model_metadata_name, "w") as metadata_out:
@@ -352,12 +353,29 @@ class PredictiveCodingClassifier:
             print(f"Untrained model metadata {model_metadata_name} saved in local dir" + "\n")
 
 
-        #### TRAINING LOOP
+        #### TRAINING LOGIC
+
+        ### Parse which epochs to checkpoint
+
+        chkpt_scheme = self.p.checkpointing[0]
+
+        if chkpt_scheme == "fraction":
+
+            divisor = self.p.checkpointing[1]
+            chkpt_every_n = int(self.p.num_epochs / divisor)
+
+        elif chkpt_scheme == "every_n_ep":
+
+            chkpt_every_n = int(self.p.checkpointing[1])
+
+        elif chkpt_scheme == "off":
+
+            chkpt_every_n = self.p.num_epochs
 
         ### WHOLE IMAGE TRAINING case
         if self.is_tiled is False:
             print("Model training on NON-TILED input")
-            print("not yet written, quitting...")
+            print("non-tiled not yet written, quitting...")
             exit()
 
         ### TILED TRAINING case
@@ -365,4 +383,52 @@ class PredictiveCodingClassifier:
             print("Model training on TILED input")
             print(f"Area of a single tile is: {self.sgl_tile_area}" + "\n")
 
-            for epo
+            for epoch in range(1, self.p.num_epochs + 1):
+
+                print(f"Epoch: {epoch}")
+
+                # Checkpointing logic
+                if epoch % chkpt_every_n == 0:
+
+                    # Pickle model
+                    mod_chkpt_name = model_name_pre_epoch + str(epoch)
+                    mod_chkpt_name_pkl = mod_chkpt_name + ".pydb"
+
+                    with open(mod_chkpt_name_pkl, "wb") as model_out:
+                        pickle.dump(self, model_out)
+                        print(f"Trained model at epoch {epoch} {mod_chkpt_name_pkl} saved in local dir")
+
+                    # Save current metadata
+                    header = f"Metadata for TRAINED model at epoch {epoch} {mod_chkpt_name_pkl} \n"
+                    is_tiled = f"Tiled: {self.is_tiled}"
+                    update_scheme = f"Update scheme: {self.p.update_scheme}"
+                    batch_size = f"Batch size: {self.p.batch_size}"
+                    epoch_counter = f"Number of epochs completed / Total number of epochs in regimen: {epoch} / {self.p.num_epochs}"
+                    k_r_sched = f"r LR schedule: {self.p.k_r_sched}"
+                    k_r_at_start = f"r LR at start of ep {epoch}: {self.k_r_lr(epoch)}"
+                    k_U_sched = f"U LR schedule: {self.p.k_U_sched}"
+                    k_U_at_start = f"U LR at start of ep {epoch}: {self.k_U_lr(epoch)}"
+                    k_o_sched = f"o LR schedule: {self.p.k_o_sched}"
+                    k_o_at_start = f"o LR at start of ep {epoch}: {self.k_o_lr(epoch)}"
+                    sigma_sq = f"Sigma squared values at each layer: {self.p.sigma_sq}"
+                    alpha = f"Alpha values at each layer: {self.p.alpha}"
+                    lam = f"Lambda values at each layer: {self.p.lam}"
+                    size_of_starting_img = f"Num params in an original whole input image, regardless of whether images will become tiled for training: {self.p.input_size}"
+                    time_created = time_created
+                    time_at_chkpt = datetime.datetime.now()
+                    train_time_elapsed = time_at_chkpt - time_created
+                    time_created_str = f"Time at model creation: {time_created}"
+                    time_at_chkpt = f"Time at checkpoint: {time_at_chkpt}"
+                    train_time_elapsed = f"Training time elapsed at end of ep {epoch}: {train_time_elapsed}"
+
+                    metadata_lines = [header, is_tiled, update_scheme, batch_size, epoch_counter, k_r_sched,
+                                        k_r_at_start, k_U_sched, k_U_at_start, k_o_sched, k_o_at_start, sigma_sq, alpha, lam, size_of_starting_img,
+                                        time_created_str, time_at_chkpt, train_time_elapsed]
+
+                    # Write metadata
+                    mod_chkpt_name_txt = mod_chkpt_name + ".txt"
+                    with open(mod_chkpt_name_txt, "w") as metadata_out:
+                        for line in metadata_lines:
+                            metadata_out.write(line)
+                            metadata_out.write("\n")
+                        print(f"Trained model metadata at epoch {epoch} {mod_chkpt_name_txt} saved in local dir" + "\n")

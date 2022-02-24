@@ -192,12 +192,12 @@ def main():
     o_poly_power = 1
 
 
-    ## STEP DECAY LR schedule (d_f = 1 means LR is constant; d_e 40 epochs is Li's number)
+    ## STEP DECAY LR schedule (drop_factor = 1 means LR is constant; drop_every 40 epochs is Li's number)
     ## r
     r_drop_factor = 1
     r_drop_every = 40
 
-    ## U (0.98522 = 1/1.015; Li's LR divisor for classifying linear PC model)
+    ## U (0.98522 = 1 / 1.015; Li's LR divisor for her classifying linear static PC model)
     # U_drop_factor = 1
     U_drop_factor = 0.98522
     U_drop_every = 40
@@ -210,10 +210,9 @@ def main():
 
     ## Fraction: If frac = 10, chkpt every 1/10th of training time
     ## E.g. 500 total epochs / frac 10 = 10 checkpoints, one every 50 epochs
-    # checkpointing = "fraction"
-    checkpointing = ["fraction", 10]
+    # checkpointing = ["fraction", 10]
     ## Every_n_ep: e.g. chkpt every 10 epochs
-    checkpointing = ["every_n_ep",10]
+    # checkpointing = ["every_n_ep",10]
     ## If "off": will only store model and metadata at epoch 0 (untrained) and epoch final (fully trained)
     checkpointing = ["off"]
 
@@ -313,7 +312,9 @@ def main():
 
     ### Add a line to each metadata file saved during training that contains the name of the dataset trained on
 
-    all_mod_chkpts_in_local_dir = glob.glob(model_name_pre_epoch + "*.txt")
+    mod_name_pre_ep_wildcard = model_name_pre_epoch + "*.txt"
+
+    all_mod_chkpts_in_local_dir = glob.glob(mod_name_pre_ep_wildcard)
 
     print(f"All model checkpoints in local dir: {all_mod_chkpts_in_local_dir}" + "\n")
 
@@ -324,7 +325,8 @@ def main():
         with open(mod_chkpt_in_local_dir, "a") as metadata_out:
             metadata_out.write(training_set_line)
             metadata_out.write("\n")
-            print(f"Training set name {dataset_name} added to metadata file {mod_chkpt_in_local_dir} in local dir" + "\n")
+            
+    print(f"Training set name {dataset_name} added to all metadata files named {mod_name_pre_ep_wildcard} in local dir" + "\n")
 
 
 if __name__ == '__main__':
