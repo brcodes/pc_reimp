@@ -14,7 +14,19 @@ Sigma squared values at each layer: {1: 1.0, 2: 10.0, 3: 10.0, 4: 10.0, 5: 10.0,
 Alpha values at each layer: {1: 1.0, 2: 0.05, 3: 0.05, 4: 0.05, 5: 0.05, 6: 0.05, 7: 0.05}
 Lambda values at each layer: {1: 0.02, 2: 1e-05, 3: 1e-05, 4: 1e-05, 5: 1e-05, 6: 1e-05, 7: 1e-05}
 Num params in an original whole input image, regardless of whether images will become tiled for training: 16384
-Time at model creation: 2022-02-24 15:41:54.269590
-Time at checkpoint: 2022-02-24 15:41:54.289613
-Training time elapsed at end of ep 500: 0:00:00.020023
+Time at model creation: 2022-02-24 16:24:14.028124
+Time at checkpoint: 2022-02-24 16:24:14.052605
+Training time elapsed at end of epoch 500: 0:00:00.024481
+
+r[0] size: (225,256,); total params: 57600
+r[1] size: (225,32,); total params: 7200
+r[2] size: (128,); total params: 128
+r[3] size: (5,1,); total params: 5
+U[1] size: (225,256,32,); total params: 1843200
+U[2] size: (7200,128,); total params: 921600
+U[3] size: (128,5,); total params: 640
+o size: n/a
+Uo size: n/a
+Total number of model parameters: 2772773
+
 Dataset trained on: ds.rb99_5_lifull_lin_128_128_tl_225_16_16_8_8.pydb

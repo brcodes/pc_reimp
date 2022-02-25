@@ -214,9 +214,8 @@ class PredictiveCodingClassifier:
         print("Model parameters by layer:")
 
         tot_num_params = 0
-        # Save for metadata too
-        rs = {}
-        Us = {}
+        r_param_lines = []
+        U_param_lines = []
 
         for r, rvec in self.r.items():
             rdims = []
@@ -229,7 +228,11 @@ class PredictiveCodingClassifier:
                 rshape += str(rdim) + ","
                 rparams *= rdim
 
-            print(f"r[{r}] size: ({rshape}); total params: {rparams}")
+            # Print and save for metadata too
+            r_param_line = f"r[{r}] size: ({rshape}); total params: {rparams}"
+            r_param_lines.append(r_param_line)
+            print(r_param_line)
+
             tot_num_params += rparams
 
         for U, Uvec in self.U.items():
@@ -243,11 +246,22 @@ class PredictiveCodingClassifier:
                 Ushape += str(Udim) + ","
                 Uparams *= Udim
 
-            print(f"U[{U}] size: ({Ushape}); total params: {Uparams}")
+            # Print and save for metadata
+            U_param_line = f"U[{U}] size: ({Ushape}); total params: {Uparams}"
+            U_param_lines.append(U_param_line)
+            print(U_param_line)
+
             tot_num_params += Uparams
+
+        # Dummy line variables for non-C2 cases
+        o_param_line = "o size: n/a"
+        Uo_param_line = "Uo size: n/a"
 
         # If C2 classification: o and Uo layers
         if self.p.class_scheme == 'c2':
+            o = []
+            Uo = []
+
             odims = []
             for odim in self.o.shape:
                 odims.append(odim)
@@ -257,7 +271,11 @@ class PredictiveCodingClassifier:
             for odim in odims:
                 oshape += str(odim) + ","
                 oparams *= odim
-            print(f"o size: ({oshape}); total params: {oparams}")
+
+            # Print and save for metadata
+            o_param_line = f"o size: ({oshape}); total params: {oparams}"
+            print(o_param_line)
+
             tot_num_params += oparams
 
             Uodims = []
@@ -269,8 +287,13 @@ class PredictiveCodingClassifier:
             for Uodim in Uodims:
                 Uoshape += str(Uodim) + ","
                 Uoparams *= Uodim
-            print(f"Uo size: ({Uoshape}); total params: {Uoparams}")
+
+            # Print and save for metadata
+            Uo_param_line = f"Uo size: ({Uoshape}); total params: {Uoparams}"
+            print(Uo_param_line)
+
             tot_num_params += Uoparams
+
 
         # Take out size of input (these are not actually parameters within the model proper)
 
@@ -282,8 +305,9 @@ class PredictiveCodingClassifier:
             # Tiled image case: r0 != self.p.input_size
             tot_num_params -= self.r[0].shape[0] * self.r[0].shape[1]
 
-        # Print total num model params
-        print(f"Total number of model parameters: {tot_num_params}" + "\n")
+        # Print and save for metadata
+        tot_params_line = f"Total number of model parameters: {tot_num_params}" + "\n"
+        print(tot_params_line)
 
         #### PICKLE UNTRAINED MODEL (EPOCH "0") AND METADATA
 
@@ -350,6 +374,23 @@ class PredictiveCodingClassifier:
             for line in metadata_lines:
                 metadata_out.write(line)
                 metadata_out.write("\n")
+
+            metadata_out.write("\n")
+            for line in r_param_lines:
+                metadata_out.write(line)
+                metadata_out.write("\n")
+
+            for line in U_param_lines:
+                metadata_out.write(line)
+                metadata_out.write("\n")
+
+            metadata_out.write(o_param_line)
+            metadata_out.write("\n")
+            metadata_out.write(Uo_param_line)
+            metadata_out.write("\n")
+            metadata_out.write(tot_params_line)
+            metadata_out.write("\n")
+
             print(f"Untrained model metadata {model_metadata_name} saved in local dir" + "\n")
 
 
@@ -419,7 +460,7 @@ class PredictiveCodingClassifier:
                     train_time_elapsed = time_at_chkpt - time_created
                     time_created_str = f"Time at model creation: {time_created}"
                     time_at_chkpt = f"Time at checkpoint: {time_at_chkpt}"
-                    train_time_elapsed = f"Training time elapsed at end of ep {epoch}: {train_time_elapsed}"
+                    train_time_elapsed = f"Training time elapsed at end of epoch {epoch}: {train_time_elapsed}"
 
                     metadata_lines = [header, is_tiled, update_scheme, batch_size, epoch_counter, k_r_sched,
                                         k_r_at_start, k_U_sched, k_U_at_start, k_o_sched, k_o_at_start, sigma_sq, alpha, lam, size_of_starting_img,
@@ -431,4 +472,21 @@ class PredictiveCodingClassifier:
                         for line in metadata_lines:
                             metadata_out.write(line)
                             metadata_out.write("\n")
+
+                        metadata_out.write("\n")
+                        for line in r_param_lines:
+                            metadata_out.write(line)
+                            metadata_out.write("\n")
+
+                        for line in U_param_lines:
+                            metadata_out.write(line)
+                            metadata_out.write("\n")
+
+                        metadata_out.write(o_param_line)
+                        metadata_out.write("\n")
+                        metadata_out.write(Uo_param_line)
+                        metadata_out.write("\n")
+                        metadata_out.write(tot_params_line)
+                        metadata_out.write("\n")
+
                         print(f"Trained model metadata at epoch {epoch} {mod_chkpt_name_txt} saved in local dir" + "\n")
