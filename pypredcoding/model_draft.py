@@ -1,4 +1,5 @@
 import numpy as np
+import matplotlib as mpl
 from matplotlib import pyplot as plt
 from learning import *
 from functools import partial
@@ -94,30 +95,38 @@ class PredictiveCodingClassifier:
         self.h = self.prior_dict[self.p.U_prior]
 
         # learning rate functions (can't figure out how to dispatch this)
-        lr_r = list(self.p.k_r_sched.keys())[0]
-        if lr_r == 'constant':
+        lr_r_sched = list(self.p.k_r_sched.keys())[0]
+        if lr_r_sched == 'constant':
             self.k_r_lr = partial(constant_lr,initial=self.p.k_r_sched['constant']['initial'])
-        elif lr_r == 'step':
+        elif lr_r_sched == 'step':
             self.k_r_lr = partial(step_decay_lr,initial=self.p.k_r_sched['step']['initial'],drop_every=self.p.k_r_sched['step']['drop_every'],drop_factor=self.p.k_r_sched['step']['drop_factor'])
-        elif lr_r == 'poly':
+        elif lr_r_sched == 'poly':
             self.k_r_lr = partial(polynomial_decay_lr,initial=self.p.k_r_sched['poly']['initial'],max_epochs=self.p.k_r_sched['poly']['max_epochs'],poly_power=self.p.k_r_sched['poly']['poly_power'])
 
-        lr_U = list(self.p.k_U_sched.keys())[0]
-        if lr_U == 'constant':
+        lr_U_sched = list(self.p.k_U_sched.keys())[0]
+        if lr_U_sched == 'constant':
             self.k_U_lr = partial(constant_lr,initial=self.p.k_U_sched['constant']['initial'])
-        elif lr_U == 'step':
+        elif lr_U_sched == 'step':
             self.k_U_lr = partial(step_decay_lr,initial=self.p.k_U_sched['step']['initial'],drop_every=self.p.k_U_sched['step']['drop_every'],drop_factor=self.p.k_U_sched['step']['drop_factor'])
-        elif lr_U == 'poly':
+        elif lr_U_sched == 'poly':
             self.k_U_lr = partial(polynomial_decay_lr,initial=self.p.k_U_sched['poly']['initial'],max_epochs=self.p.k_U_sched['poly']['max_epochs'],poly_power=self.p.k_U_sched['poly']['poly_power'])
 
-        lr_o = list(self.p.k_o_sched.keys())[0]
-        if lr_o == 'constant':
+        lr_o_sched = list(self.p.k_o_sched.keys())[0]
+        if lr_o_sched == 'constant':
             self.k_o_lr = partial(constant_lr,initial=self.p.k_o_sched['constant']['initial'])
-        elif lr_o == 'step':
+        elif lr_o_sched == 'step':
             self.k_o_lr = partial(step_decay_lr,initial=self.p.k_o_sched['step']['initial'],drop_every=self.p.k_o_sched['step']['drop_every'],drop_factor=self.p.k_o_sched['step']['drop_factor'])
-        elif lr_o == 'poly':
+        elif lr_o_sched == 'poly':
             self.k_o_lr = partial(polynomial_decay_lr,initial=self.p.k_o_sched['poly']['initial'],max_epochs=self.p.k_o_sched['poly']['max_epochs'],poly_power=self.p.k_o_sched['poly']['poly_power'])
 
+        # Avg cost per epoch during training; just representation terms
+        self.avg_E_per_ep = []
+        # Avg cost per epoch during training; just classification terms
+        self.avg_C_per_ep = []
+        # Avg prediction error across all layers, avg'd over each image in epoch, during training
+        self.avg_PE_all_lyrs_avg_per_ep = []
+        # Accuracy per epoch during training
+        self.acc_per_ep = []
 
     def train(self, X, Y):
         """
@@ -129,14 +138,18 @@ class PredictiveCodingClassifier:
         Model layer architecture not initialized until model.train() called (train() needs to read X for tile dimensions)
         """
 
+        print(f"beginning X.shape is {X.shape}")
+        print(f"beginning Y.shape is {Y.shape}")
+
         #### ARCHITECTURE INITIALIZATION
 
         ## Detect WHOLE IMAGE case: model will be constructed with only 1 r[1] module
         if self.p.num_r1_mods == 1:
 
-            # Set attrs
+            # Set some general attrs
             self.is_tiled = False
             self.sgl_tile_area = 0
+            self.num_training_imgs = X.shape[0]
 
             ## Initiate r[0] - r[n] layers, U[1] - U[n] layers
             # Li uses np.zeros for r inits, np.random.rand (unif) for U inits: may have to switch to those
@@ -155,14 +168,15 @@ class PredictiveCodingClassifier:
             self.r[self.num_nonin_lyrs] = np.random.randn(self.p.output_size, 1)
             self.U[self.num_nonin_lyrs] = np.random.randn(len(self.r[i-1]), len(self.r[i]))
 
-
         ## Detect TILED image case: model will be constructed with num r[1] modules (num_r1_mods) == (dataset) numtiles [specified in main.py]
         elif self.p.num_r1_mods > 1:
 
-            # Set attrs
+            # Set some general attrs
             self.is_tiled = True
             # X dims for Li case should be: (1125, 256); thus sgl_tile_area 256
             self.sgl_tile_area = X.shape[1]
+            self.num_tiles_per_img = self.p.num_r1_mods
+            self.num_training_imgs = int(X.shape[0] / self.num_tiles_per_img)
 
             ## Initiate r[0] - r[n] layers, U[1] - U[n] layers; tiled case
             # Li uses np.zeros for r inits, np.random.rand (unif) for U inits: may have to switch to those
@@ -207,7 +221,6 @@ class PredictiveCodingClassifier:
             self.o = np.random.randn(self.p.output_size,1)
             # And final set of weights to the output (Li case: 5, 128)
             self.U_o = np.random.randn(self.p.output_size, self.p.hidden_sizes[-1])
-
 
         #### MODEL PARAM READOUT IN TERMINAL
 
@@ -294,7 +307,6 @@ class PredictiveCodingClassifier:
 
             tot_num_params += Uoparams
 
-
         # Take out size of input (these are not actually parameters within the model proper)
 
         if self.is_tiled is False:
@@ -334,7 +346,7 @@ class PredictiveCodingClassifier:
         model_pkl_name = model_name_untrained + ".pydb"
         model_metadata_name = model_name_untrained + ".txt"
 
-        print(f"Untrained model name is {model_name}")
+        print(f"Untrained model name is {model_pkl_name}")
 
         # Pickle model
         with open(model_pkl_name, "wb") as model_out:
@@ -349,11 +361,11 @@ class PredictiveCodingClassifier:
         batch_size = f"Batch size: {self.p.batch_size}"
         epoch_counter = f"Number of epochs completed / Total number of epochs in regimen: 0 / {self.p.num_epochs}"
         k_r_sched = f"r LR schedule: {self.p.k_r_sched}"
-        k_r_at_start = f"r LR at start (has not occurred yet): {self.k_r_lr(0)}"
+        k_r_at_start = f"r LR at start of ep 1 (has not occurred yet): {self.k_r_lr(0)}"
         k_U_sched = f"U LR schedule: {self.p.k_U_sched}"
-        k_U_at_start = f"U LR at start (has not occurred yet): {self.k_U_lr(0)}"
+        k_U_at_start = f"U LR at start of ep 1 (has not occurred yet): {self.k_U_lr(0)}"
         k_o_sched = f"o LR schedule: {self.p.k_o_sched}"
-        k_o_at_start = f"o LR at start (has not occurred yet): {self.k_o_lr(0)}"
+        k_o_at_start = f"o LR at start of ep 1 (has not occurred yet): {self.k_o_lr(0)}"
         sigma_sq = f"Sigma squared values at each layer: {self.p.sigma_sq}"
         alpha = f"Alpha values at each layer: {self.p.alpha}"
         lam = f"Lambda values at each layer: {self.p.lam}"
@@ -369,7 +381,7 @@ class PredictiveCodingClassifier:
                             k_r_at_start, k_U_sched, k_U_at_start, k_o_sched, k_o_at_start, sigma_sq, alpha, lam, size_of_starting_img,
                             time_created_str, time_at_chkpt, train_time_elapsed]
 
-        # Write metadata
+        # Write metadata untrained model
         with open(model_metadata_name, "w") as metadata_out:
             for line in metadata_lines:
                 metadata_out.write(line)
@@ -392,7 +404,6 @@ class PredictiveCodingClassifier:
             metadata_out.write("\n")
 
             print(f"Untrained model metadata {model_metadata_name} saved in local dir" + "\n")
-
 
         #### TRAINING LOGIC
 
@@ -424,9 +435,75 @@ class PredictiveCodingClassifier:
             print("Model training on TILED input")
             print(f"Area of a single tile is: {self.sgl_tile_area}" + "\n")
 
+            # Split X (alltiles, tilearea) into (num imgs, tiles for one img, tilearea)
+            tlsidxlo = 0
+            tlsidxhi = self.num_tiles_per_img
+
+            split_X = []
+
+            # NOTE: If interested in speed later, modify PCC program such that data.py saves X in form (numimgs, num_tiles_per_img, tilearea)
+            # and train() takes it in that format as well.
+            # This indexing and splitting operation will add a lengthy preprocessing step to the beginning of train() if numimgs >>~ 1000
+            for image in range(0, self.num_training_imgs):
+                split_single = X[tlsidxlo:tlsidxhi]
+                split_X.append(split_single)
+                tlsidxlo += self.num_tiles_per_img
+                tlsidxhi += self.num_tiles_per_img
+
+            split_X = np.array(split_X)
+            print(f"split_X.shape is {split_X.shape}")
+            X = split_X
+            print(f"later X.shape is {X.shape}")
+
             for epoch in range(1, self.p.num_epochs + 1):
 
                 print(f"Epoch: {epoch}")
+
+                # Shuffle indices of X, Y together, each epoch
+                N_permuted_indices = np.random.permutation(self.num_training_imgs)
+                X_shuffled = X[N_permuted_indices]
+                print(f"X_shuffled.shape is {X_shuffled.shape}")
+                Y_shuffled = Y[N_permuted_indices]
+
+                # Representation cost reset
+                E = 0
+                # Classification cost reset
+                C = 0
+                # Prediction error reset
+                PE = 0
+
+                # Set learning rates at the start of each epoch
+                k_r = self.k_r_lr(epoch-1)
+                k_U = self.k_U_lr(epoch-1)
+                k_o = self.k_o_lr(epoch-1)
+
+                #### GRADIENT DESCENT LOOP
+                for image in range(0, self.num_training_imgs):
+
+                    ## Set image and label
+                    # "Sgl image" is really a set of n (self.num_tiles_per_img) tiles; Li case: shape (225, 256)
+                    single_image = X_shuffled[image]
+                    print(f"single_image.shape is {single_image.shape}")
+
+                    plt.imshow(img)
+                    plt.title("{}".format(desired_dataset) + "\n" + "image {}".format(img_num))
+                    plt.show()
+
+                    label = Y_shuffled[image]
+                    print(f"single label.shape is {label.shape}")
+
+                    pass
+
+
+
+
+
+
+
+
+
+
+
 
                 # Checkpointing logic
                 if epoch % chkpt_every_n == 0:
@@ -446,11 +523,11 @@ class PredictiveCodingClassifier:
                     batch_size = f"Batch size: {self.p.batch_size}"
                     epoch_counter = f"Number of epochs completed / Total number of epochs in regimen: {epoch} / {self.p.num_epochs}"
                     k_r_sched = f"r LR schedule: {self.p.k_r_sched}"
-                    k_r_at_start = f"r LR at start of ep {epoch}: {self.k_r_lr(epoch)}"
+                    k_r_at_start = f"r LR for ep {epoch}: {self.k_r_lr(epoch-1)}"
                     k_U_sched = f"U LR schedule: {self.p.k_U_sched}"
-                    k_U_at_start = f"U LR at start of ep {epoch}: {self.k_U_lr(epoch)}"
+                    k_U_at_start = f"U LR for ep {epoch}: {self.k_U_lr(epoch-1)}"
                     k_o_sched = f"o LR schedule: {self.p.k_o_sched}"
-                    k_o_at_start = f"o LR at start of ep {epoch}: {self.k_o_lr(epoch)}"
+                    k_o_at_start = f"o LR for ep {epoch}: {self.k_o_lr(epoch-1)}"
                     sigma_sq = f"Sigma squared values at each layer: {self.p.sigma_sq}"
                     alpha = f"Alpha values at each layer: {self.p.alpha}"
                     lam = f"Lambda values at each layer: {self.p.lam}"
@@ -490,3 +567,5 @@ class PredictiveCodingClassifier:
                         metadata_out.write("\n")
 
                         print(f"Trained model metadata at epoch {epoch} {mod_chkpt_name_txt} saved in local dir" + "\n")
+
+            print("TRAINING FINISHED" + "\n")

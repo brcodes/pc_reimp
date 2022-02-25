@@ -157,7 +157,8 @@ def main():
 
     ## Number of epochs to train
     # num_epochs = 0
-    num_epochs = 500
+    num_epochs = 10
+    # num_epochs = 500
     # num_epochs = 1000
 
     ### Set some more model parameters for model creation
@@ -197,7 +198,7 @@ def main():
     r_drop_factor = 1
     r_drop_every = 40
 
-    ## U (0.98522 = 1 / 1.015; Li's LR divisor for her classifying linear static PC model)
+    ## U (0.98522 = 1 / 1.015, Li's LR divisor for her classifying linear static PC model)
     # U_drop_factor = 1
     U_drop_factor = 0.98522
     U_drop_every = 40
@@ -308,8 +309,6 @@ def main():
     # train on training set
     mod.train(X_train, Y_train)
 
-    print("TRAINING FINISHED" + "\n")
-
     ### Add a line to each metadata file saved during training that contains the name of the dataset trained on
 
     mod_name_pre_ep_wildcard = model_name_pre_epoch + "*.txt"
@@ -325,7 +324,7 @@ def main():
         with open(mod_chkpt_in_local_dir, "a") as metadata_out:
             metadata_out.write(training_set_line)
             metadata_out.write("\n")
-            
+
     print(f"Training set name {dataset_name} added to all metadata files named {mod_name_pre_ep_wildcard} in local dir" + "\n")
 
 

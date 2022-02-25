@@ -6,6 +6,7 @@ from matplotlib import pyplot as plt
 import os.path
 import pickle
 import numpy as np
+import data
 
 """
 Grab and print a dataset of your choice to verify its contents
@@ -40,8 +41,8 @@ prepro = "lifull_lin"
 # numxpxls, numypxls = 38, 38
 # numxpxls, numypxls = 48, 48
 # numxpxls, numypxls = 68, 68
-# numxpxls, numypxls = 128, 128
-numxpxls, numypxls = 512, 408
+numxpxls, numypxls = 128, 128
+# numxpxls, numypxls = 512, 408
 # numxpxls, numypxls = 512, 512
 
 ## Tiled or not
@@ -50,8 +51,8 @@ tlornot = "tl"
 
 ## Number of tiles
 # numtiles = 0
-numtiles = 3
-# numtiles = 225
+# numtiles = 3
+numtiles = 225
 
 ## Tile x,y dimensions
 # numtlxpxls, numtlypxls = 0, 0
@@ -61,9 +62,9 @@ numtlxpxls, numtlypxls = 16, 16
 
 ## Tile x,y offset
 # tlxoffset, tlyoffset = 0, 0
-tlxoffset, tlyoffset = 5, 0
+# tlxoffset, tlyoffset = 5, 0
 # tlxoffset, tlyoffset = 6, 0
-# tlxoffset, tlyoffset = 8, 8
+tlxoffset, tlyoffset = 8, 8
 
 
 desired_dataset = "ds.{}_{}_{}_{}_{}_{}_{}_{}_{}_{}_{}.pydb".format(data_source, num_imgs, prepro, numxpxls, numypxls, tlornot, numtiles, numtlxpxls, numtlypxls, tlxoffset, tlyoffset)
@@ -72,9 +73,13 @@ if os.path.exists("./" + desired_dataset):
 
     print("\n" + "Desired dataset " + desired_dataset + " exists in local dir.")
     dataset_in = open(desired_dataset, "rb")
-    X, y = pickle.load(dataset_in)
+    X, Y = pickle.load(dataset_in)
     dataset_in.close()
     print("Desired dataset " + desired_dataset + " imported. Printing components:")
+    print("\n" + f"Desired dataset {desired_dataset} X size is: {X.shape}")
+    print(f"Desired dataset {desired_dataset} Y size is: {Y.shape}")
+    print("\n" + f"Number of training images: {Y.shape[0]}")
+    print(f"Number of training tiles: {X.shape[0]}" + "\n")
 
     #X should be sized (num_imgs, numxpxls, numypxls) if gray
     #X should be sized (num_imgs, numxpxls, numypxls, 3) if RGB or BGR color
@@ -117,7 +122,7 @@ if os.path.exists("./" + desired_dataset):
 
         # Tiled image case
         elif tlornot == "tl":
-            
+
             imgidxlo = 0
             imgidxhi = numtiles
 
@@ -125,71 +130,101 @@ if os.path.exists("./" + desired_dataset):
 
             # Tile parsing and plotting (singles) loop
             for img in range(0, num_imgs):
-                        
+
                 img_in_x = X[imgidxlo:imgidxhi]
-                
+
                 tiles_of_single_img = []
-                
+
                 tl_num = 1
-                
+
                 for tl in img_in_x:
                     
-                    tiles_of_single_img.append(tl)
+                    # Expand tiles for plotting
+                    expanded_tile = data.inflate_vectors(tl[None,:], (16,16))
+                    expanded_tile = np.squeeze(expanded_tile)
                     
+                    tiles_of_single_img.append(expanded_tile)
+
                     # Single tile plotting
-                    # tl = np.array(tl).astype(float)
+                    # tl = np.array(expanded_tile).astype(float)
                     # plt.imshow(tl, cmap="gray")
                     # plt.title("{}".format(desired_dataset) + "\n" + "image {} ".format(img+1) + "tile {}".format(tl_num))
                     # plt.show()
-                    
+
                     tl_num += 1
-                    
+
                 tiles_of_all_images.append(tiles_of_single_img)
 
                 imgidxlo += numtiles
                 imgidxhi += numtiles
-                
+
             # Tile stacking and plotting (stacked collage) loop
             tiles_of_all_images = np.array(tiles_of_all_images, dtype=list)
 
-            for img in range(0, num_imgs):
+            print(f"Shape of array with all tiles parsed by image: {tiles_of_all_images.shape}")
+
+            # ### Take tiled dataset import format (e.g. 1125, 256) and expand flatten tile to square (e.g. 1125, 16, 16)
+            # expanded_tiles_of_all_imgs = []
+            # for img in range(0, num_imgs):
                 
+            #     tiles = tiles_of_all_images[img,:]
+            #     print(f"tiles image {img} is {tiles.shape}")
+                
+            #     for tile in tiles:
+                    
+            #         print(f"tile shape image {img} is {tile.shape}")
+                    
+            #         expanded_tile = data.inflate_vectors(tile[None,:], (16,16))
+                    
+            #         print(f"expanded tile shape image {img} is {expanded_tile.shape}")
+                    
+            #         expanded_tile = np.squeeze(expanded_tile)
+            #         print(f"expanded tile shape image {img} is {expanded_tile.shape}")
+                    
+            #         expanded_tiles_of_all_imgs.append(expanded_tile)
+                    
+            # expanded_tiles_of_all_imgs = np.array(expanded_tiles_of_all_imgs, dtype=list)
+
+            for img in range(0, num_imgs):
+
                 # In Li case, this is (225,16,16) but generally is (numtiles, tlxpxls, tlypxls)
                 tiles_of_single_img = tiles_of_all_images[img]
                 
+                print(f"Shape of array with tiles for image {img}: {tiles_of_single_img.shape}")
+
                 rowidxlo = 0
                 rowidxhi = tilecols
-                
+
                 vstackedrows = np.zeros([numtlypxls,numtlxpxls*tilecols])
-                
+
                 for row in range(0,tilerows):
-                    
+
                     onerow = tiles_of_single_img[rowidxlo:rowidxhi,:,:]
-                    
+
                     # Initiate left-to-right stacking, completing a full row
                     hstackedrow = np.array(onerow[0])[:,:]
-                    
+
                     for col in range(1, tilecols):
                         nonfirsttileinrow = np.array(onerow[col])[:,:]
                         hstackedrow = np.concatenate((hstackedrow, nonfirsttileinrow), axis=1)
-                        
+
                     # With collaged row complete, stack rows for full collage
                     vstackedrows = np.vstack([vstackedrows, hstackedrow])
-                    
+
                     rowidxlo += tilecols
                     rowidxhi += tilecols
-                    
+
                 # Remove collage row of zeros used to initiate collage, convert to float64
                 stackedtilecollage = vstackedrows[numtlypxls:,:].astype(float)
-                
+
                 # Plot
                 plt.imshow(stackedtilecollage, cmap="gray")
-                plt.title("{} img {}".format(desired_dataset, img+1) + "\n" + 
+                plt.title("{} img {}".format(desired_dataset, img+1) + "\n" +
                         "{}-tile collage ({}x{}tls); each {}x{}pxls " \
                         "with x, y offsets {},{}".format(numtiles, tilerows, tilecols, numtlxpxls, numtlypxls, tlxoffset, tlyoffset))
-                
+
                 plt.show()
-                
+
 
     # Color case
     elif data_source == "cifar10":
