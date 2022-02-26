@@ -477,6 +477,22 @@ class PredictiveCodingClassifier:
                 k_U = self.k_U_lr(epoch-1)
                 k_o = self.k_o_lr(epoch-1)
 
+
+                # NOTE: for internal plotting; remove or wrap later
+                tiles_of_all_images = []
+                imgidxlo = 0
+                imgidxhi = self.num_tiles_per_img
+                # RB99 tiling scheme case
+                if self.num_tiles_per_img == 3:
+                    tilecols = 3
+                    tilerows = 1
+
+                # RB97a and Li tiling scheme cases
+                elif self.num_tiles_per_img == 4 or self.num_tiles_per_img == 225:
+                    tilecols = int(np.sqrt(self.num_tiles_per_img))
+                    tilerows = tilecols
+                # NOTE: to above NOTE
+
                 #### GRADIENT DESCENT LOOP
                 for image in range(0, self.num_training_imgs):
 
@@ -484,13 +500,85 @@ class PredictiveCodingClassifier:
                     # "Sgl image" is really a set of n (self.num_tiles_per_img) tiles; Li case: shape (225, 256)
                     single_image = X_shuffled[image]
                     print(f"single_image.shape is {single_image.shape}")
-
-                    plt.imshow(img)
-                    plt.title("{}".format(desired_dataset) + "\n" + "image {}".format(img_num))
-                    plt.show()
-
                     label = Y_shuffled[image]
-                    print(f"single label.shape is {label.shape}")
+                    print(f"single label.shape image {image+1} is {label.shape}")
+
+                    """
+                    INTERNAL PLOTTING TEST FOR SHUFFLING: WRAP OR REMOVE LATER
+                    """
+
+                    """
+                    # NOTE: for internal plotting; remove or wrap later
+                    tiles_of_single_img = []
+                    tl_num = 1
+
+                    for tl in single_image:
+
+                        # Expand tiles for plotting
+                        expanded_tile = data.inflate_vectors(tl[None,:], (16,16))
+                        expanded_tile = np.squeeze(expanded_tile)
+
+                        tiles_of_single_img.append(expanded_tile)
+
+                        # Single tile plotting
+                        # tl = np.array(expanded_tile).astype(float)
+                        # plt.imshow(tl, cmap="gray")
+                        # plt.title("{}".format(desired_dataset) + "\n" + "image {} ".format(img+1) + "tile {}".format(tl_num))
+                        # plt.show()
+
+                        tl_num += 1
+
+                    tiles_of_all_images.append(tiles_of_single_img)
+
+                    imgidxlo += self.num_tiles_per_img
+                    imgidxhi += self.num_tiles_per_img
+
+                    # Tile stacking and plotting (stacked collage) loop
+                    tiles_of_all_images = np.array(tiles_of_all_images, dtype=list)
+
+                    print(f"Shape of array with all tiles parsed by image: {tiles_of_all_images.shape}")
+
+                    # In Li case, this is (225,16,16) but generally is (numtiles, tlxpxls, tlypxls)
+                    tiles_of_single_img = tiles_of_all_images[image]
+
+                    print(f"Shape of array with tiles for image {image}: {tiles_of_single_img.shape}")
+
+                    rowidxlo = 0
+                    rowidxhi = tilecols
+
+                    vstackedrows = np.zeros([16,16*tilecols])
+
+                    for row in range(0,tilerows):
+
+                        onerow = tiles_of_single_img[rowidxlo:rowidxhi,:,:]
+
+                        # Initiate left-to-right stacking, completing a full row
+                        hstackedrow = np.array(onerow[0])[:,:]
+
+                        for col in range(1, tilecols):
+                            nonfirsttileinrow = np.array(onerow[col])[:,:]
+                            hstackedrow = np.concatenate((hstackedrow, nonfirsttileinrow), axis=1)
+
+                        # With collaged row complete, stack rows for full collage
+                        vstackedrows = np.vstack([vstackedrows, hstackedrow])
+
+                        rowidxlo += tilecols
+                        rowidxhi += tilecols
+
+                    # Remove collage row of zeros used to initiate collage, convert to float64
+                    stackedtilecollage = vstackedrows[16:,:].astype(float)
+
+                    # Plot
+                    plt.imshow(stackedtilecollage, cmap="gray")
+                    plt.title(f"mod.train(X) input verif. epoch {epoch}: Li dataset img {image+1}" + "\n" +
+                            "{}-tile collage ({}x{}tls)".format(self.num_tiles_per_img, tilerows, tilecols))
+
+                    plt.show()
+                    tiles_of_all_images = tiles_of_all_images.tolist()
+                    print(f" type of tiles of all images {type(tiles_of_all_images)}")
+                    # NOTE: ABOVE TO OTHER NOTE is for internal plotting; remove or wrap later
+                    """
+
 
                     pass
 

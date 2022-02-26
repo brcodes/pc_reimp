@@ -163,28 +163,6 @@ if os.path.exists("./" + desired_dataset):
 
             print(f"Shape of array with all tiles parsed by image: {tiles_of_all_images.shape}")
 
-            # ### Take tiled dataset import format (e.g. 1125, 256) and expand flatten tile to square (e.g. 1125, 16, 16)
-            # expanded_tiles_of_all_imgs = []
-            # for img in range(0, num_imgs):
-                
-            #     tiles = tiles_of_all_images[img,:]
-            #     print(f"tiles image {img} is {tiles.shape}")
-                
-            #     for tile in tiles:
-                    
-            #         print(f"tile shape image {img} is {tile.shape}")
-                    
-            #         expanded_tile = data.inflate_vectors(tile[None,:], (16,16))
-                    
-            #         print(f"expanded tile shape image {img} is {expanded_tile.shape}")
-                    
-            #         expanded_tile = np.squeeze(expanded_tile)
-            #         print(f"expanded tile shape image {img} is {expanded_tile.shape}")
-                    
-            #         expanded_tiles_of_all_imgs.append(expanded_tile)
-                    
-            # expanded_tiles_of_all_imgs = np.array(expanded_tiles_of_all_imgs, dtype=list)
-
             for img in range(0, num_imgs):
 
                 # In Li case, this is (225,16,16) but generally is (numtiles, tlxpxls, tlypxls)
