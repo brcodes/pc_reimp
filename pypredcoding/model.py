@@ -197,13 +197,18 @@ class PredictiveCodingClassifier:
         '''
         E = 0
         # LSQ cost
+        PE_list = []
         for i in range(0,len(self.r)-1):
             v = (self.r[i] - self.f(self.U[i+1].dot(self.r[i+1]))[0])
-            E = E + ((1 / self.p.sigma_sq[i+1]) * v.T.dot(v))[0,0]
+            vTdotv = v.T.dot(v)
+            E = E + ((1 / self.p.sigma_sq[i+1]) * vTdotv)[0,0]
+            PE = np.sqrt(vTdotv)
+            PE_list.append(PE)
+
         # priors on r[1],...,r[n]; U[1],...,U[n]
         for i in range(1,len(self.r)):
             E = E + (self.h(self.U[i],self.p.lam[i])[0] + self.g(np.squeeze(self.r[i]),self.p.alpha[i])[0])
-        return E
+        return E, PE_list
 
 
 
