@@ -561,14 +561,19 @@ class PredictiveCodingClassifier:
             X = split_X
             # print(f"later X.shape is {X.shape}")
 
+
             ### TRAINING DATA COLLECTION INITS
 
             # Initiate training_wide E collection list (will contain E contributions of each image for epoch)
             self.E_contrib_per_img_all_eps = []
+            # Each E_tot should == sum of each E_contrib across all imgs in a single epoch
+            self.E_tot_per_ep_all_eps = []
             # Initiate training-wide PE collection list (will contain PEs by layer, image and epoch)
             self.PEs_by_lyr_per_img_all_eps = []
             # Initiate training_wide C collection list (will contain C contributions of each image for epoch)
             self.C_contrib_per_img_all_eps = []
+            # Each C_tot should == sum of each C_contrib across all imgs in a single epoch
+            self.C_tot_per_ep_all_eps = []
             # Initiate training-wide correct classifications (0 = miss; 1 = hit) tracker (across all images and epochs)
             self.classif_success_per_img_all_eps = []
             # Initiate training-wide classification Accuracy collection list (across all epochs)
@@ -583,6 +588,30 @@ class PredictiveCodingClassifier:
                 print("rU simultaneous TRAINING about to begin")
 
                 self.num_rUsimul_iters = 30
+
+                #### EPOCH "0" CALCULATIONS (E, PE WITH ALL INITIAL, RANDOMIZED ARRAYS)
+                # Functions as negative (pre-update) control
+
+                for image in range(0,self.num_training_imgs):
+
+                    # rep_cost returns a tuple of E, PE_list (PEs by layer)
+                    Eimg_and_PEsimg = self.rep_cost()
+                    # Loss (E) for random image "0"
+                    Eimg = Eimg_and_PEsimg[0]
+                    # Add E contrib
+                    E_contrib_per_img_sgl_ep.append(Eimg)
+                    # PEs for each layer for random image "0"
+                    PEs_by_lyr_sgl_img = Eimg_and_PEsimg[1]
+                    # Add PEs to beginning of tracker list
+                    PEs_by_lyr_per_img_sgl_ep.append(PEs_by_lyr_sgl_img)
+
+                # Add epoch 0 E to beginning of tracker list
+                self.E_contrib_per_img_all_eps.append(E_contrib_per_img_sgl_ep)
+                # Add epoch 0 PEs to beginning of tracker list
+                self.PEs_by_lyr_per_img_all_eps.append(PEs_by_lyr_per_img_sgl_ep)
+                
+
+                #### EPOCHS 1 - n
 
                 for epoch in range(1, self.p.num_epochs + 1):
 
@@ -786,10 +815,14 @@ class PredictiveCodingClassifier:
                     ### STORE SALIENT TRAINING DATA AS ATTRIBUTES
                     # Store this epoch's E contributions per image
                     self.E_contrib_per_img_all_eps.append(E_contrib_per_img_sgl_ep)
+                    # Store this epoch's total E after each Eimg
+                    self.E_tot_per_ep_all_eps.append(E_tot_sgl_ep)
                     # Store this epoch's PEs (parsed per layer, per image)
                     self.PEs_by_lyr_per_img_all_eps.append(PEs_by_lyr_per_img_sgl_ep)
                     # Store this epoch's C contributions per image
                     self.C_contrib_per_img_all_eps.append(C_contrib_per_img_sgl_ep)
+                    # Store this epoch's total C after each Cimg
+                    self.C_tot_per_ep_all_eps.append(C_tot_sgl_ep)
                     # Store this epoch's correct / incorrect guess markers (i.e. 1 or 0) by image
                     self.classif_success_per_img_all_eps.append(classif_success_per_img_sgl_ep)
                     # Calculate classification accuracy for this epoch
