@@ -146,10 +146,21 @@ general troubleshooting (save scripts here until pushing finished results)
 
 # chkpt_every_n = 50
 # chkpt_every_n = 10
-chkpt_every_n = 500
+# chkpt_every_n = 500
 
-for epoch in range(1,500+1):
-    if epoch % chkpt_every_n == 0:
-        print(epoch)
+# for epoch in range(1,500+1):
+#     if epoch % chkpt_every_n == 0:
+#         print(epoch)
         
+a = 1
+def fxn(a):
+    b = 2
+    return a,b
+
+e,d = fxn(a)
+
+b = [1,2,3]
+
+print(np.sum(b))
+
     

@@ -513,21 +513,30 @@ class PredictiveCodingClassifier:
         elif self.p.class_scheme == "nc":
             class_cost = class_costs_dict["nc"]
 
+        """
+        WHOLE IMAGE TRAINING CASE
+        """
 
-        ### WHOLE IMAGE TRAINING case
+        #### WHOLE IMAGE TRAINING case
         if self.is_tiled is False:
             print("Model training on NON-TILED input")
             print("non-tiled not yet written")
 
             if self.update_scheme == "rU_simultaneous":
                 print("non-tiled rU simultaneous not yet written, quitting...")
+                exit()
 
             elif self.update_scheme == "r_eq_then_U":
                 print("non-tiled r eq then U not yet written, quitting...")
+                exit()
 
             exit()
 
-        ### TILED TRAINING case
+        """
+        TILED IMAGE TRAINING CASE
+        """
+
+        #### TILED TRAINING case
         elif self.is_tiled is True:
             print("Model training on TILED input")
             print(f"Area of a single tile is: {self.sgl_tile_area}" + "\n")
@@ -552,10 +561,28 @@ class PredictiveCodingClassifier:
             X = split_X
             # print(f"later X.shape is {X.shape}")
 
+            ### TRAINING DATA COLLECTION INITS
+
+            # Initiate training_wide E collection list (will contain E contributions of each image for epoch)
+            self.E_contrib_per_img_all_eps = []
+            # Initiate training-wide PE collection list (will contain PEs by layer, image and epoch)
+            self.PEs_by_lyr_per_img_all_eps = []
+            # Initiate training_wide C collection list (will contain C contributions of each image for epoch)
+            self.C_contrib_per_img_all_eps = []
+            # Initiate training-wide correct classifications (0 = miss; 1 = hit) tracker (across all images and epochs)
+            self.classif_success_per_img_all_eps = []
+            # Initiate training-wide classification Accuracy collection list (across all epochs)
+            self.classif_accuracy_all_eps = []
+            # Initiate tracking list of all randomized index sets for training set shuffling (1 idx set for each epoch)
+            self.randomized_training_indices_all_eps = []
+
+
             ### Li case: and updating proceeds through layers, r and U of a layer i are updated simultaneously 30 times
             ### This means each each layer's r/U updates 30 times per image, using top down and bottom up information specific to that image
             if self.update_scheme == "rU_simultaneous":
                 print("rU simultaneous TRAINING about to begin")
+
+                self.num_rUsimul_iters = 30
 
                 for epoch in range(1, self.p.num_epochs + 1):
 
@@ -569,13 +596,13 @@ class PredictiveCodingClassifier:
 
                     ### Initialize epoch-dependent measures
                     # Representation cost reset
-                    E_over_all_imgs = 0
+                    E_tot_sgl_ep = 0
                     # Classification cost reset
-                    C_over_all_imgs = 0
+                    C_tot_sgl_ep = 0
                     # Prediction error reset
-                    PEs_over_all_imgs = []
+                    PEs_by_lyr_all_imgs_sgl_ep = []
                     # Number of correct classifications
-                    self.n_correct_classifs_per_ep = 0
+                    classif_success_per_img_sgl_ep = []
 
                     # Set learning rates at the start of each epoch
                     k_r = self.k_r_lr(epoch-1)
@@ -600,12 +627,18 @@ class PredictiveCodingClassifier:
                     """
 
                     #### GRADIENT DESCENT LOOP
+                    # NOTE: (only batch size 1 currently supported)
+
                     for image in range(0, self.num_training_imgs):
 
-                        ## Set image and label
-                        # "Sgl image" is really a set of n (self.num_tiles_per_img) tiles; Li case: shape (225, 256)
-                        single_image = X_shuffled[image]
-                        print(f"single_image.shape is {single_image.shape}")
+                        ## Parse out tileset and label for one image
+                        # single image tilset is a set of n=self.num_tiles_per_img tiles; Li case: shape (225, 256)
+                        single_image_tileset = X_shuffled[image]
+                        print(f"single_image_tileset.shape is {single_image_tileset.shape}")
+                        # This single image's tileset becomes the model's "0th"-level representation
+                        # I.e. is the original image, in tiled form, with user-tailored rf settings
+                        self.r[0] = single_image_tileset
+                        # Set matching label
                         label = Y_shuffled[image]
                         print(f"single label.shape image {image+1} is {label.shape}")
 
@@ -686,46 +719,85 @@ class PredictiveCodingClassifier:
                         # NOTE: ABOVE TO OTHER NOTE is for internal plotting; remove or wrap later
                         """
 
+                        for iteration in range(0,self.num_rUsimul_iters):
 
-                        for i in range(1, n):
+                            ### r loop (splitting r loop, U loop mimic's Li architecture)
+                            for i in range(1, n):
 
-                            # r update
-                            self.r[i] = self.r[i] + (k_r / self.p.sigma_sq[i]) \
-                            * self.U[i].T.dot(self.f(self.U[i].dot(self.r[i]))[1].dot(self.r[i-1] - self.f(self.U[i].dot(self.r[i]))[0])) \
-                            + (k_r / self.p.sigma_sq[i+1]) * (self.f(self.U[i+1].dot(self.r[i+1]))[0] - self.r[i]) \
-                            - (k_r / 2) * self.g(self.r[i],self.p.alpha[i])[1]
+                                # r update
+                                self.r[i] = self.r[i] + (k_r / self.p.sigma_sq[i]) \
+                                * self.U[i].T.dot(self.f(self.U[i].dot(self.r[i]))[1].dot(self.r[i-1] - self.f(self.U[i].dot(self.r[i]))[0])) \
+                                + (k_r / self.p.sigma_sq[i+1]) * (self.f(self.U[i+1].dot(self.r[i+1]))[0] - self.r[i]) \
+                                - (k_r / 2) * self.g(self.r[i],self.p.alpha[i])[1]
 
-                            # U update
-                            self.U[i] = self.U[i] + (k_U / self.p.sigma_sq[i]) \
-                            * (self.f(self.U[i].dot(self.r[i]))[1].dot(self.r[i-1] - self.f(self.U[i].dot(self.r[i]))[0])).dot(self.r[i].T) \
-                            - (k_U / 2) * self.h(self.U[i],self.p.lam[i])[1]
+                            # final r (Li's "localist") layer update
+                            self.r[n] = self.r[n] + (k_r / self.p.sigma_sq[n]) \
+                            * self.U[n].T.dot(self.f(self.U[n].dot(self.r[n]))[1].dot(self.r[n-1] - self.f(self.U[n].dot(self.r[n]))[0])) \
+                            - (k_r / 2) * self.g(self.r[n],self.p.alpha[n])[1] \
 
-                        self.r[n] = self.r[n] + (k_r / self.p.sigma_sq[n]) \
-                        * self.U[n].T.dot(self.f(self.U[n].dot(self.r[n]))[1].dot(self.r[n-1] - self.f(self.U[n].dot(self.r[n]))[0])) \
-                        - (k_r / 2) * self.g(self.r[n],self.p.alpha[n])[1] \
+                            # Add classification cost component of final representation update (changes based on C1, C2 or NC setting)
+                            # NOTE: EDIT WITH REAL MATH
+                            + ((k_o) * (label[:,None] - softmax(self.r[n])))
 
-                        # Add classification cost component of final representation update (changes based on C1, C2 or NC setting)
-                        + ((k_o) * (label[:,None] - softmax(self.r[n])))
+                            ### U loop
+                            for i in range(1, n):
 
-                        # U[n] update (C1, C2) (identical to U[i], except index numbers)
-                        self.U[n] = self.U[n] + (k_U / self.p.sigma_sq[n]) \
-                        * (self.f(self.U[n].dot(self.r[n]))[1].dot(self.r[n-1] - self.f(self.U[n].dot(self.r[n]))[0])).dot(self.r[n].T) \
-                        - (k_U / 2) * self.h(self.U[n],self.p.lam[n])[1]
+                                # U update
+                                self.U[i] = self.U[i] + (k_U / self.p.sigma_sq[i]) \
+                                * (self.f(self.U[i].dot(self.r[i]))[1].dot(self.r[i-1] - self.f(self.U[i].dot(self.r[i]))[0])).dot(self.r[i].T) \
+                                - (k_U / 2) * self.h(self.U[i],self.p.lam[i])[1]
 
-                        # Training loss function E and PE by layer
-                        Eimg, PE_list_img = self.rep_cost()
+                            # U[n] update (C1, C2) (identical to U[i], except index numbers)
+                            self.U[n] = self.U[n] + (k_U / self.p.sigma_sq[n]) \
+                            * (self.f(self.U[n].dot(self.r[n]))[1].dot(self.r[n-1] - self.f(self.U[n].dot(self.r[n]))[0])).dot(self.r[n].T) \
+                            - (k_U / 2) * self.h(self.U[n],self.p.lam[n])[1]
 
-                        # Add
-                        E = E + Eimg
+                        ### Training loss function E and PE by layer
+                        # rep_cost returns a tuple of E, PE_list (PEs by layer for that image)
+                        Eimg_and_PEsimg = self.rep_cost()
 
-                        # PE for each layer
+                        # Loss (E) for this image
+                        Eimg = Eimg_and_PEsimg[0]
+                        # Track E contribution by image across whole epoch
+                        E_contrib_per_img_sgl_ep.append(Eimg)
+                        # Add single image's representation cost to epoch's E total
+                        E_tot_sgl_ep = E_tot_sgl_ep + Eimg
 
-                        # Classification loss function C (calls relevant fxn: C1, C2, or zero multiplier for NC)
-                        C, guess_correct_or_not = class_cost(label)
-                        E = E + C
+                        # PEs for each layer for this image
+                        PEs_by_lyr_sgl_img = Eimg_and_PEsimg[1]
+                        # Track PEs by layer across whole epoch
+                        PEs_by_lyr_per_img_sgl_ep.append(PEs_by_lyr_sgl_img)
+
+                        # Classification function C (calls relevant fxn: C1, C2, or zero multiplier for NC)
+                        # Calculates Cimg and tracks label guess success (0) or failure (1)
+                        Cimg, guess_correct_or_not = class_cost(label)
+                        # Track C contribution by image across whole epoch
+                        C_contrib_per_img_sgl_ep.append(Cimg)
+                        # Add single image's classif cost to epoch's C total (should go down over time)
+                        C_tot_sgl_ep = C_tot_sgl_ep + Cimg
+                        # Count correct/incorrect classification guesses over epoch for accuracy per epoch
+                        classif_success_per_img_sgl_ep.append(guess_correct_or_not)
+
+                        # Add classification cost to epoch's E total (C is still a part of the loss function)
+                        E_tot_sgl_ep = E_tot_sgl_ep + Cimg
 
 
 
+                    ### STORE SALIENT TRAINING DATA AS ATTRIBUTES
+                    # Store this epoch's E contributions per image
+                    self.E_contrib_per_img_all_eps.append(E_contrib_per_img_sgl_ep)
+                    # Store this epoch's PEs (parsed per layer, per image)
+                    self.PEs_by_lyr_per_img_all_eps.append(PEs_by_lyr_per_img_sgl_ep)
+                    # Store this epoch's C contributions per image
+                    self.C_contrib_per_img_all_eps.append(C_contrib_per_img_sgl_ep)
+                    # Store this epoch's correct / incorrect guess markers (i.e. 1 or 0) by image
+                    self.classif_success_per_img_all_eps.append(classif_success_per_img_sgl_ep)
+                    # Calculate classification accuracy for this epoch
+                    accuracy_sgl_ep = np.sum(self.classif_success_per_img_all_eps[epoch-1]) / self.num_training_imgs
+                    # Store this epoch's accuracy measurement
+                    self.classif_accuracy_all_eps.append(accuracy_sgl_ep)
+                    # Store this epoch's randomized indices to be able to backtrack desired image-specific data from each above list
+                    self.randomized_training_indices_all_eps.append(N_permuted_indices)
 
 
 
@@ -796,6 +868,7 @@ class PredictiveCodingClassifier:
 
                             print(f"Trained model metadata at epoch {epoch} {mod_chkpt_name_txt} saved in local dir" + "\n")
 
+                print("rU_simultaneous epochs-loop finished")
 
             ### Rao and Ballard '99 / Brown, Rogers case: r is allowed to equilibrate before a U matrix receives any information from it
             elif self.update_scheme == "r_eq_then_U":
@@ -803,6 +876,6 @@ class PredictiveCodingClassifier:
 
 
 
-
+                print("r_eq_then_U epochs-loop finished")
 
             print("TRAINING FINISHED" + "\n")
