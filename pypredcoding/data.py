@@ -1,5 +1,5 @@
-from keras.datasets import mnist, cifar10, fashion_mnist
-from keras.utils import np_utils
+# from keras.datasets import mnist, cifar10, fashion_mnist
+# from keras.utils import np_utils
 import numpy as np
 import pickle
 import cv2
@@ -7,6 +7,7 @@ from matplotlib import pyplot as plt
 import random
 from sys import exit
 import os
+import seaborn as sns
 
 """
 Manipulate and preprocess image data to be input into Predictive Coding Classifier
@@ -230,6 +231,7 @@ def load_raw_imgs(data_source, num_imgs, numxpxls, numypxls):
         rb99_name_strings = ["monkey", "swan", "rose", "zebra", "forest"]
         raw_imgs = []
 
+        #NOTE: non-square sizing might be inverted, not tested.
         # If set between 128x128 and 512x408
         if numxpxls > 128 or numypxls > 128:
             for img in range(0, num_imgs):
@@ -252,8 +254,43 @@ def load_raw_imgs(data_source, num_imgs, numxpxls, numypxls):
                     resized_img = cv2.resize(read_img, (numxpxls, numypxls))
                     raw_imgs.append(resized_img)
 
-    else:
-        print("load_raw_imgs(): non-rb99 image loading not yet written")
+    elif data_source == "trace212":
+        # if non_mnist_images/trace212_{numxpxls}x{numypxls}/ is not present, quit
+        desired_path = f"non_mnist_images/trace212_{numxpxls}x{numypxls}/"
+        if not os.path.exists(desired_path):
+            print(f" load raw images(): {desired_path} not found. quitting...")
+            exit()
+        print(f"{desired_path} found. loading...")
+        # load all images in the directory
+        
+        image_names = []
+        raw_imgs = []
+        
+        # List all files in the directory and save their names and images, checking for resolution parity with requested size
+        for file in os.listdir(desired_path):
+            if file.endswith(".png"):
+                # Extract name (everything before .png)
+                name = file.split(".")[0]
+                image_names.append(name)
+                
+                # Read and store the image
+                img_path = os.path.join(desired_path, file)
+                img = cv2.imread(img_path)
+                
+                
+                # Check for parity with requested size
+                # Note [1] is columns (x), [0] is rows [y]
+                if img.shape[1] != numxpxls or img.shape[0] != numypxls:
+                    print(f"load_raw_imgs(): trace212 image size (.pngs) does not match input size requested ({numxpxls}x{numypxls}). quitting...")
+                    exit()
+                    
+                # Store the image
+                raw_imgs.append(img)
+                
+            else:
+                print(f"load_raw_imgs(): {file} is not a .png image. discluded from raw_imgs load...")
+        
+        print(f"load_raw_imgs(): {len(raw_imgs)} .png images loaded from {desired_path}")
 
     return np.array(raw_imgs)
 
@@ -393,7 +430,8 @@ def cut_into_tiles(images, numxpxls, numypxls, numtiles, numtlxpxls, numtlypxls,
             print("cut_into_tiles(): vertical offset only, not yet written")
             exit()
 
-        # If vertical and horizontal offset (RB97a: 4 tiles no overlap and Li: 225 tiles, 8px x,y overlap)
+        # If vertical and horizontal offset (RB97a: 4 tiles no overlap and Li 5 natimgs: 225 tiles, 8px x,y overlap)
+        # Li 212 pseudospectrograms: 16 tiles, 36x24y, 32hoffset 20voffset. fully covers 132x84 image
         else:
             tilecols = int(np.sqrt(numtiles))
             tilerows = tilecols
@@ -431,9 +469,11 @@ def cut_into_tiles(images, numxpxls, numypxls, numtiles, numtlxpxls, numtlypxls,
                         """
                         Optional: plot tiles to check cutting function fidelity
                         """
-                        # plt.imshow(tile, cmap="gray")
-                        # plt.title("{}x{} tile".format(numtlxpxls,numtlypxls) + "\n" + "image {} ".format(img_num) + "tile {}".format(cut_tile_num))
-                        # plt.show()
+                        plt.imshow(tile, cmap="cividis")
+                        plt.title("{}x{} tile".format(numtlxpxls,numtlypxls) + "\n" + "image {} ".format(img_num) + "tile {}".format(cut_tile_num))
+                        # add a colorbar
+                        plt.colorbar()
+                        plt.show()
 
                         # Array-ify and flatten the tile for export to "X" (training input)
                         tile = np.array(tile).reshape(-1)
@@ -459,9 +499,13 @@ def cut_into_tiles(images, numxpxls, numypxls, numtiles, numtlxpxls, numtlypxls,
 
 def preprocess(data_source, num_imgs, prepro, numxpxls, numypxls, tlornot, numtiles, numtlxpxls, numtlypxls, tlxoffset, tlyoffset):
 
+    # Labels (n, n), one hot diagonal from top left to bottom right
+    y = np.eye(num_imgs)
+    
     if data_source == "rb99":
         if num_imgs != 5:
-            print("rb99 has 5 images; num_imgs must == 5")
+            print("rb99 has 5 images; num_imgs must == 5. quitting...")
+            exit()
 
         else:
             raw_imgs = load_raw_imgs(data_source, num_imgs, numxpxls, numypxls)
@@ -504,9 +548,6 @@ def preprocess(data_source, num_imgs, prepro, numxpxls, numypxls, tlornot, numti
                 print("preprocess(): prepro schema other than Li's full suite (lifull_lin, lifull_tanh), grayed only (grayonly), and gray+tanh (graytanh) not yet written")
                 exit()
 
-            # Labels (5, 5), one hot diagonal from top left to bottom right
-            y = np.eye(5)
-
             # If tiling desired, cut into tiles
             if tlornot == "tl":
                 # All non RB99-original dset cases
@@ -518,21 +559,109 @@ def preprocess(data_source, num_imgs, prepro, numxpxls, numypxls, tlornot, numti
                     cut_tiles = cut_into_tiles(dog_imgs, numxpxls, numypxls, numtiles, numtlxpxls, numtlypxls, tlxoffset, tlyoffset)
                     # Verify this last step!!! (2022.02.11)
                     X = apply_gaussian_mask(cut_tiles)
+                    
+    elif data_source == "trace212":
+        if num_imgs != 212:
+            print("trace212 has 212 images; num_imgs must == 212, quitting...")
+            exit()
+            
+        raw_imgs = load_raw_imgs(data_source, num_imgs, numxpxls, numypxls)
+        
+        if prepro == "li_trace212":
+            dog_imgs = apply_DoG(raw_imgs)
+            if tlornot == "tl":
+                X = cut_into_tiles(dog_imgs, numxpxls, numypxls, numtiles, numtlxpxls, numtlypxls, tlxoffset, tlyoffset)
+            else:
+                X = dog_imgs 
+                
+            '''
+            example input
+            '''
+            
+            cmap="cividis"
 
-    elif data_source == "rao99":
-        print("preprocess(): rao99 loading not yet written")
-        exit()
+            nrows = 1
+            ncols = 2
+            subplot_xy = (4.5, 3)
+            figsize = tuple([(ncols, nrows)[i]*subplot_xy[i] for i in range(2)])
 
+            fig, axes = plt.subplots(nrows=nrows, ncols=ncols, figsize=figsize)
+
+            ax1 = axes[0]
+            ax2 = axes[1]
+            
+            print('printing example input')
+
+            sns.heatmap(raw_imgs[0],
+                        cmap=cmap,
+                        cbar=True,
+                        cbar_kws={'shrink': 0.6},
+                        square=True,
+                        xticklabels=False,
+                        yticklabels=False,
+                        vmin=np.floor(np.min([x.min() for x in raw_imgs])),
+                        vmax=np.ceil(np.max([x.max() for x in raw_imgs])),
+                        ax=ax1);
+            ax1.set_title("Original Image");
+
+            sns.heatmap(dog_imgs[0],
+                        cmap=cmap,
+                        cbar=True,
+                        cbar_kws={'shrink': 0.6},
+                        square=True,
+                        xticklabels=False,
+                        yticklabels=False,
+                        vmin=np.floor(np.min([x.min() for x in dog_imgs])),
+                        vmax=np.ceil(np.max([x.max() for x in dog_imgs])),
+                        ax=ax2);
+            ax2.set_title("Edge Detected Image");
+
+            fig.suptitle("/S^t/");
+            fig.tight_layout(rect=[0,0,1,0.9]);
+            fig.savefig('example_input.pdf', dpi=300, bbox_inches='tight')
+            
+            
+            '''
+            all tiles of first image
+            '''
+            print('printing all tiles of first image')
+
+            # Loop for all rf2 patches
+            rf1_patches = X[0]
+            label = y[0]
+
+            print(f'label {0} index', np.argmax(label))
+            for p, patch in enumerate(rf1_patches):
+                print('nparray patch ')
+                reshaped_patch = np.array(patch).reshape(24,36)
+                print(reshaped_patch.shape)
+                # Assuming 'patch' is a NumPy array representing the image data
+                plt.imshow(reshaped_patch, cmap="cividis" )  # Use 'cmap' appropriate to your data
+                plt.colorbar()
+                plt.title(f'S^t_rf1 patch {p}')
+                plt.savefig(f'S^t_rf1_patch_{p}.png')
+                plt.show()
+                
+
+            exit()
+        
+        elif prepro is None:
+            X = raw_imgs
+    
     elif data_source == "mnist":
         print("preprocess(): mnist loading not yet written")
         exit()
-
+        
+    elif data_source == "fmnist":
+        print("preprocess(): fmnist loading not yet written")
+        exit()
+        
     elif data_source == "cifar10":
         print("preprocess(): cifar10 loading not yet written")
         exit()
-    # if data_source == "fmnist":
-    else:
-        print("preprocess(): fmnist loading not yet written")
+        
+    elif data_source == "rao99":
+        print("preprocess(): rao99 loading not yet written")
         exit()
 
     return X, y

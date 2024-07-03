@@ -1,5 +1,6 @@
 import attr,os
 
+
 def file_not_found(instance,attribute,value):
     '''
     Checks if a file exists; used as a custom validator for parameters that
@@ -8,6 +9,7 @@ def file_not_found(instance,attribute,value):
     '''
     if not os.path.exists(value):
         raise ValueError('{} does not exist!'.format(attribute.name))
+
 
 def size_params_to_p_format(num_nonin_lyrs=3, lyr_sizes=(96,128,5), num_imgs=5, numxpxls=128, numypxls=128):
 
@@ -29,6 +31,7 @@ def size_params_to_p_format(num_nonin_lyrs=3, lyr_sizes=(96,128,5), num_imgs=5, 
             exit()
 
         return input_size, hidden_sizes, output_size
+
 
 def LR_params_to_dict(lr_scheme="constant", r_init=0.005, U_init=0.01, o_init=0.0005,
     r_max_eps=500, U_max_eps=500, o_max_eps=500,
@@ -67,18 +70,18 @@ def LR_params_to_dict(lr_scheme="constant", r_init=0.005, U_init=0.01, o_init=0.
 
 
 @attr.s(kw_only=True)
-class ModelParameters(object):
+class SpccParameters(object):
     '''
     Class for holding and checking parameters relevant to model creation.
     '''
     # Sizes of representations and weights
-    input_size = attr.ib(default=16384,validator=attr.validators.instance_of(int))
+    input_size = attr.ib(default=11088,validator=attr.validators.instance_of(int))
     # First element in hidden_sizes is the size of only one single layer 1 module
     # If tiled data input into model, sum of all layer 1 module params becomes hidden_sizes[0] * numtiles (Li case: 32*225: 7200)
     hidden_sizes = attr.ib(default=[32,128],validator=attr.validators.instance_of(list))
-    output_size = attr.ib(default=5,validator=attr.validators.instance_of(int))
-    # Tiling (if num_r1_mods > 1: model will respond as if it receiving tiled input)
-    num_r1_mods = attr.ib(default=225,validator=attr.validators.instance_of(int))
+    output_size = attr.ib(default=212,validator=attr.validators.instance_of(int))
+    # Tiling (if num_r1_mods > 1: model will respond as if it receiving tiled input- num mods = num tiles)
+    num_r1_mods = attr.ib(default=16,validator=attr.validators.instance_of(int))
     # Unit activation function (linear, tanh, relu, etc.)
     act_fxn = attr.ib(default="lin",validator=attr.validators.in_(['lin','tan']))
     # Priors
@@ -90,7 +93,7 @@ class ModelParameters(object):
     class_scheme = attr.ib(default="c1",validator=attr.validators.in_(['nc','c1','c2']))
     # Training time
     batch_size = attr.ib(default=1,validator=attr.validators.instance_of(int))
-    num_epochs = attr.ib(default=10,validator=attr.validators.instance_of(int))
+    num_epochs = attr.ib(default=300,validator=attr.validators.instance_of(int))
     # Learning rate schedulers
     k_r_sched = attr.ib(kw_only=True,default={'constant':{'initial':0.0005}},validator=attr.validators.instance_of(dict))
     k_U_sched = attr.ib(kw_only=True,default={'constant':{'initial':0.005}},validator=attr.validators.instance_of(dict))
@@ -104,3 +107,10 @@ class ModelParameters(object):
     lam = attr.ib(default={1: 0.02, 2: 0.00001, 3: 0.00001, 4: 0.00001, 5: 0.00001, 6: 0.00001, 7: 0.00001},validator=attr.validators.instance_of(dict)) #" related to variance of Gaussian priors "
     # Checkpointing during training; def is checkpoint every 10 epochs
     checkpointing = attr.ib(default=["every_n_ep",10],validator=attr.validators.instance_of(list))
+
+
+@attr.s(kw_only=True)
+class RpccParameters(object):
+    '''
+    Class for holding and checking parameters relevant to model creation.
+    '''

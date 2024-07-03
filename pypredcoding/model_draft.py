@@ -1,12 +1,12 @@
 import numpy as np
 import matplotlib as mpl
 from matplotlib import pyplot as plt
-from learning import *
+from learning import constant_lr, step_decay_lr, polynomial_decay_lr
 from functools import partial
 import math
 import data
 import cv2
-from parameters import ModelParameters
+from parameters import SpccParameters, RpccParameters
 from sys import exit
 import pickle
 import time
@@ -31,6 +31,7 @@ def linear_trans(U_dot_r):
     F = np.eye(len(f))
     return (f, F)
 
+
 def tanh_trans(U_dot_r):
     """
     Though intended to operate on some U.dot(r), will take any numerical
@@ -40,6 +41,7 @@ def tanh_trans(U_dot_r):
     f = np.tanh(U_dot_r)
     F = np.diag(1 - f.flatten()**2)
     return (f, F)
+
 
 ### r, U prior functions
 
@@ -53,6 +55,7 @@ def gauss_prior(r_or_U, alph_or_lam):
     gprime_or_hprime = 2 * alph_or_lam * r_or_U
     return (g_or_h, gprime_or_hprime)
 
+
 def kurt_prior(r_or_U, alph_or_lam):
     """
     Takes an argument pair of either r & alpha, or U & lambda, and returns
@@ -61,10 +64,10 @@ def kurt_prior(r_or_U, alph_or_lam):
 
     g_or_h = alph_or_lam * np.log(1 + np.square(r_or_U)).sum()
     gprime_or_hprime = 2 * alph_or_lam * r_or_U / (1 + np.square(r_or_U))
-    return (g_or_h, gprime_or_hprime)
+    return (g_or_h, gprime_or_hprime) 
 
 
-class PredictiveCodingClassifier:
+class StaticPredictiveCodingClassifier:
     def __init__(self, parameters):
 
         """
@@ -537,7 +540,7 @@ class PredictiveCodingClassifier:
         """
 
         #### TILED TRAINING case
-        elif self.is_tiled is True:
+        if self.is_tiled is True:
             print("Model training on TILED input")
             print(f"Area of a single tile is: {self.sgl_tile_area}" + "\n")
 
@@ -905,9 +908,6 @@ class PredictiveCodingClassifier:
 
             ### Rao and Ballard '99 / Brown, Rogers case: r is allowed to equilibrate before a U matrix receives any information from it
             elif self.update_scheme == "r_eq_then_U":
-
-
-
 
                 print("r_eq_then_U epochs-loop finished")
 

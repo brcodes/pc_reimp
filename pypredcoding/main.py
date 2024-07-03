@@ -1,6 +1,6 @@
 import os
-from parameters import ModelParameters, LR_params_to_dict, size_params_to_p_format
-from model_draft import PredictiveCodingClassifier
+from parameters import SpccParameters, RpccParameters, LR_params_to_dict, size_params_to_p_format
+from model_draft import StaticPredictiveCodingClassifier
 from data import dataset_find_or_create
 import pickle
 from sys import exit
@@ -63,31 +63,37 @@ def main():
     ### Set parameters of datset to import
 
     ## Data source
-    data_source = "rb99"
+    ## Images
+    # data_source = "rb99"
     # data_source = "rao99"
     # data_source = "rb97a"
     # data_source = "mnist"
+    ## Images representing speech
+    data_source = "trace212"
 
     ## Number of images
-    num_imgs = 5
+    # num_imgs = 5
     # num_imgs = 10
     # num_imgs = 100
+    num_imgs = 212
     # num_imgs = 1000
     # num_imgs = 10000
     # num_imgs = 600000
 
     ## Preprocessing scheme
-    prepro = "lifull_lin"
+    # prepro = "lifull_lin"
     # prepro = "lifull_tanh"
     # prepro = "grayonly"
     # prepro = "graytanh"
+    prepro = "li_trace212"
 
     ## Image x,y dimensions
     # numxpxls, numypxls = 28, 28
     # numxpxls, numypxls = 38, 38
     # numxpxls, numypxls = 48, 48
     # numxpxls, numypxls = 68, 68
-    numxpxls, numypxls = 128, 128
+    # numxpxls, numypxls = 128, 128
+    numxpxls, numypxls = 132, 84
     # numxpxls, numypxls = 512, 408
     # numxpxls, numypxls = 512, 512
 
@@ -98,25 +104,31 @@ def main():
     ## Number of tiles
     # numtiles = 0
     # numtiles = 3
-    numtiles = 225
+    numtiles = 16
+    # numtiles = 225
 
     ## Tile x,y dimensions
     # numtlxpxls, numtlypxls = 0, 0
     # numtlxpxls, numtlypxls = 15, 15
-    numtlxpxls, numtlypxls = 16, 16
+    # numtlxpxls, numtlypxls = 16, 16
     # numtlxpxls, numtlypxls = 12, 24
+    numtlxpxls, numtlypxls = 36, 24
 
     ## Tile x,y offset
     # tlxoffset, tlyoffset = 0, 0
     # tlxoffset, tlyoffset = 5, 0
     # tlxoffset, tlyoffset = 6, 0
-    tlxoffset, tlyoffset = 8, 8
+    # tlxoffset, tlyoffset = 8, 8
+    tlxoffset, tlyoffset = 32, 20
 
     ### Check for dataset in local directory: if present, load; if not, create, save for later
 
     X_train, Y_train, dataset_name = dataset_find_or_create(data_source=data_source, num_imgs=num_imgs, prepro=prepro,
         numxpxls=numxpxls, numypxls=numypxls, tlornot=tlornot, numtiles=numtiles,
         numtlxpxls=numtlxpxls, numtlypxls=numtlypxls, tlxoffset=tlxoffset, tlyoffset=tlyoffset)
+    
+        
+    exit()
 
     ####
 
