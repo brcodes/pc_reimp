@@ -348,6 +348,70 @@ def apply_tanh(images):
 
     return np.array(tanh_imgs)
 
+'''
+cut_tiles i beliece is deprecated
+create_tiles is being tested for Li's 212 4x4 setup, and GENERALITY
+cut_into_tiles has been tested for Li's 5 natimgs (15x15) setup and RB's 5 natimage (1x3) setup
+'''
+
+def create_tiles(images, numxpxls, numypxls, numtlxpxls, numtlypxls, tlxoffset, tlyoffset):
+    
+    """
+    Create tiles from the given images.
+
+    This function is being tested for Li's 212 4x4 setup and for generality.
+    It calculates the number of tiles in both x and y directions based on the provided
+    dimensions and offsets, adjusts the offsets if necessary to ensure the tiles fit
+    perfectly within the images, and then slices the images into tiles.
+
+    Parameters:
+    - numxpxls: The number of pixels in the x dimension of the images.
+    - numypxls: The number of pixels in the y dimension of the images.
+    - numtlxpxls: The width of the tiles in pixels.
+    - numtlypxls: The height of the tiles in pixels.
+    - tlxoffset: The offset between tiles in the x dimension.
+    - tlyoffset: The offset between tiles in the y dimension.
+    - images: A list of images to be tiled.
+
+    Returns:
+    A list of tiles extracted from the images.
+    """
+    
+    tiles = []
+    for image in images:
+        # Ensure the image is the correct size
+        assert image.shape[0] == numypxls and image.shape[1] == numxpxls
+
+        # Calculate the number of tiles in x and y directions
+        num_xtiles = (numxpxls - numtlxpxls) // tlxoffset + 1
+        num_ytiles = (numypxls - numtlypxls) // tlyoffset + 1
+
+        # Adjust the offsets if the tiles do not fit perfectly within the image
+        # Check if the total width of tiles is not equal to the image width
+        if num_xtiles * tlxoffset + numtlxpxls != numxpxls:
+            # Adjust tlxoffset to make the total width of tiles equal to the image width
+            tlxoffset = (numxpxls - numtlxpxls) // (num_xtiles - 1)
+            print(f"Adjusted tlxoffset to {tlxoffset} for horizontal alignment.")
+
+        # Check if the total height of tiles is not equal to the image height
+        if num_ytiles * tlyoffset + numtlypxls != numypxls:
+            # Adjust tlyoffset to make the total height of tiles equal to the image height
+            tlyoffset = (numypxls - numtlypxls) // (num_ytiles - 1)
+            print(f"Adjusted tlyoffset to {tlyoffset} for vertical alignment.")
+            
+        # Create the tiles
+        for i in range(num_xtiles):
+            for j in range(num_ytiles):
+                tile = image[j*tlyoffset:j*tlyoffset+numtlypxls, i*tlxoffset:i*tlxoffset+numtlxpxls]
+                tiles.append(tile)
+
+    # Convert to numpy array
+    tiles_arr = np.array(tiles, dtype=list)
+
+    print("size of tiles all images: {}".format(tiles_arr.shape))
+    print("size of tiles all images[0] (first image's first tile): {}".format(tiles_arr[0].shape) + "\n")
+    return tiles_arr
+
 def cut_into_tiles(images, numxpxls, numypxls, numtiles, numtlxpxls, numtlypxls, tlxoffset, tlyoffset):
     ### Cut images into tiles
 
@@ -568,9 +632,11 @@ def preprocess(data_source, num_imgs, prepro, numxpxls, numypxls, tlornot, numti
         raw_imgs = load_raw_imgs(data_source, num_imgs, numxpxls, numypxls)
         
         if prepro == "li_trace212":
-            dog_imgs = apply_DoG(raw_imgs)
+            grayed_imgs = convert_to_gray(raw_imgs)
+            dog_imgs = apply_DoG(grayed_imgs)
+            
             if tlornot == "tl":
-                X = cut_into_tiles(dog_imgs, numxpxls, numypxls, numtiles, numtlxpxls, numtlypxls, tlxoffset, tlyoffset)
+                X = create_tiles(dog_imgs, numxpxls, numypxls, numtlxpxls, numtlypxls, tlxoffset, tlyoffset)
             else:
                 X = dog_imgs 
                 
@@ -592,7 +658,7 @@ def preprocess(data_source, num_imgs, prepro, numxpxls, numypxls, tlornot, numti
             
             print('printing example input')
 
-            sns.heatmap(raw_imgs[0],
+            sns.heatmap(grayed_imgs[0],
                         cmap=cmap,
                         cbar=True,
                         cbar_kws={'shrink': 0.6},
@@ -602,7 +668,7 @@ def preprocess(data_source, num_imgs, prepro, numxpxls, numypxls, tlornot, numti
                         vmin=np.floor(np.min([x.min() for x in raw_imgs])),
                         vmax=np.ceil(np.max([x.max() for x in raw_imgs])),
                         ax=ax1);
-            ax1.set_title("Original Image");
+            ax1.set_title("Grayed(Original) Image");
 
             sns.heatmap(dog_imgs[0],
                         cmap=cmap,
@@ -614,7 +680,7 @@ def preprocess(data_source, num_imgs, prepro, numxpxls, numypxls, tlornot, numti
                         vmin=np.floor(np.min([x.min() for x in dog_imgs])),
                         vmax=np.ceil(np.max([x.max() for x in dog_imgs])),
                         ax=ax2);
-            ax2.set_title("Edge Detected Image");
+            ax2.set_title("Edge Detected(Grayed(Original)) Image");
 
             fig.suptitle("/S^t/");
             fig.tight_layout(rect=[0,0,1,0.9]);
