@@ -267,7 +267,7 @@ def load_raw_imgs(data_source, num_imgs, numxpxls, numypxls):
         raw_imgs = []
         
         # List all files in the directory and save their names and images, checking for resolution parity with requested size
-        for file in os.listdir(desired_path):
+        for file in sorted(os.listdir(desired_path)):
             if file.endswith(".png"):
                 # Extract name (everything before .png)
                 name = file.split(".")[0]
@@ -296,18 +296,17 @@ def load_raw_imgs(data_source, num_imgs, numxpxls, numypxls):
 
 def convert_to_gray(images):
     ### Only supports conversion from RGB (RB99, Rao99, CIFAR-10); MNIST, FMNIST already grayscale
-    # Check RGB status here
-
+    
     if len(images.shape) == 4:
         grayed_imgs = []
         for img in images:
-            gray_img = cv2.cvtColor(img, cv2.COLOR_RGB2GRAY)
+            gray_img = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
             grayed_imgs.append(gray_img)
 
     # If already grayscale
     else:
         print("convert_to_gray(): input images detected to be already grayscale: input matrix shape is (numimgs,xpxls,ypxls" \
-        " [vs RGB input matrix shape of (numimgs, xpxls, ypxls, 3)]")
+        " [vs RGB/BGR input matrix shape of (numimgs, xpxls, ypxls, 3)]. quitting...")
         exit()
 
     return np.array(grayed_imgs)
@@ -575,6 +574,7 @@ def preprocess(data_source, num_imgs, prepro, numxpxls, numypxls, tlornot, numti
             raw_imgs = load_raw_imgs(data_source, num_imgs, numxpxls, numypxls)
 
             if prepro == "lifull_lin":
+                # Note that this RGB conversion is probably a function
                 grayed_imgs = convert_to_gray(raw_imgs)
                 gm_imgs = apply_gaussian_mask(grayed_imgs, numxpxls=numxpxls, numypxls=numypxls)
                 dog_imgs = apply_DoG(gm_imgs)
@@ -633,7 +633,8 @@ def preprocess(data_source, num_imgs, prepro, numxpxls, numypxls, tlornot, numti
         
         if prepro == "li_trace212":
             grayed_imgs = convert_to_gray(raw_imgs)
-            dog_imgs = apply_DoG(grayed_imgs)
+            gm_imgs = apply_gaussian_mask(grayed_imgs, numxpxls=numxpxls, numypxls=numypxls)
+            dog_imgs = apply_DoG(gm_imgs)
             
             if tlornot == "tl":
                 X = create_tiles(dog_imgs, numxpxls, numypxls, numtlxpxls, numtlypxls, tlxoffset, tlyoffset)
@@ -682,9 +683,15 @@ def preprocess(data_source, num_imgs, prepro, numxpxls, numypxls, tlornot, numti
                         ax=ax2);
             ax2.set_title("Edge Detected(Grayed(Original)) Image");
 
-            fig.suptitle("/S^t/");
+            # idx 0
+            fig.suptitle("/S^t/")
+            # idx 30
+            # fig.suptitle("/b^s/")
+            
             fig.tight_layout(rect=[0,0,1,0.9]);
-            fig.savefig('example_input.pdf', dpi=300, bbox_inches='tight')
+            # Pdfs print weird with these, pngs fine. convert png later for paper if needed
+            # fig.savefig('example_input.pdf', dpi=800, bbox_inches='tight')
+            fig.savefig('example_input.png', dpi=600, bbox_inches='tight')
             
             
             '''
