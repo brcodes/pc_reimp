@@ -405,7 +405,7 @@ def create_tiles(images, numxpxls, numypxls, numtlxpxls, numtlypxls, tlxoffset, 
                 tiles.append(tile)
 
     # Convert to numpy array
-    tiles_arr = np.array(tiles, dtype=list)
+    tiles_arr = np.array(tiles)
 
     print("size of tiles all images: {}".format(tiles_arr.shape))
     print("size of tiles all images[0] (first image's first tile): {}".format(tiles_arr[0].shape) + "\n")
@@ -554,7 +554,9 @@ def cut_into_tiles(images, numxpxls, numypxls, numtiles, numtlxpxls, numtlypxls,
                 img_num += 1
 
     # Convert to numpy array
-    tiles_all_imgs = np.array(tiles_all_imgs, dtype=list)
+    # Not sure why dtype = list was here. add back if necessary.
+    # tiles_all_imgs = np.array(tiles_all_imgs, dtype=list)
+    tiles_all_imgs = np.array(tiles_all_imgs)
 
     print("size of tiles all images: {}".format(tiles_all_imgs.shape))
     print("size of tiles all images[0] (first image's first tile): {}".format(tiles_all_imgs[0].shape) + "\n")
@@ -681,7 +683,7 @@ def preprocess(data_source, num_imgs, prepro, numxpxls, numypxls, tlornot, numti
                         vmin=np.floor(np.min([x.min() for x in dog_imgs])),
                         vmax=np.ceil(np.max([x.max() for x in dog_imgs])),
                         ax=ax2);
-            ax2.set_title("Edge Detected(Grayed(Original)) Image");
+            ax2.set_title("Edge Detected(GMasked(Grayed(Original))) Image");
 
             # idx 0
             fig.suptitle("/S^t/")
@@ -700,21 +702,34 @@ def preprocess(data_source, num_imgs, prepro, numxpxls, numypxls, tlornot, numti
             print('printing all tiles of first image')
 
             # Loop for all rf2 patches
-            rf1_patches = X[0]
+            ## First image, S^t
+            rf1_patches = X[:16]
             label = y[0]
+            
+            # # Grab 31st image, b^s. This is what Monica titled her dissert ex image, but the image itself was S^t.
+            # rf1_patches = X[30*16:(30*16)+16]
+            # label = y[30]
 
-            print(f'label {0} index', np.argmax(label))
-            for p, patch in enumerate(rf1_patches):
-                print('nparray patch ')
-                reshaped_patch = np.array(patch).reshape(24,36)
-                print(reshaped_patch.shape)
-                # Assuming 'patch' is a NumPy array representing the image data
-                plt.imshow(reshaped_patch, cmap="cividis" )  # Use 'cmap' appropriate to your data
-                plt.colorbar()
-                plt.title(f'S^t_rf1 patch {p}')
-                plt.savefig(f'S^t_rf1_patch_{p}.png')
-                plt.show()
+            for l, label in enumerate(y):
                 
+                if l == 46:
+                    rf1_patches = X[l*16:(l*16)+16]
+                    print(f'label {l} index', np.argmax(label))
+                    for p, patch in enumerate(rf1_patches):
+                        
+                        print('nparray patch ')
+                        reshaped_patch = np.array(patch).reshape(24,36)
+                        print(reshaped_patch.shape)
+                        # Assuming 'patch' is a NumPy array representing the image data
+                        plt.figure()
+                        plt.imshow(reshaped_patch, cmap="cividis" )  # Use 'cmap' appropriate to your data
+                        plt.colorbar()
+                        # plt.title(f'S^t_rf1 patch {p}')
+                        # plt.savefig(f'S^t_rf1_patch_{p}.png')
+                        plt.title(f'brid_rf1_patch_{p}')
+                        plt.savefig(f'brid_rf1_patch_{p}.png')
+                        plt.show()
+                    
 
             exit()
         
