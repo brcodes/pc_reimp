@@ -21,50 +21,82 @@ A Predictive Coding Classifier according to the mathematical dictates of Rao & B
 
 ### Activation functions
 
-def linear_trans(U_dot_r):
+def linear_trans(self, U_dot_r):
     """
     Though intended to operate on some U.dot(r), will take any numerical
     argument x and return the tuple (f(x), F(x)). Linear transformation.
     """
+    if self.static is True:
+        f = U_dot_r
+        F = np.eye(len(f))
+        return (f, F)
+    
+    else:
+        pass
 
-    f = U_dot_r
-    F = np.eye(len(f))
-    return (f, F)
 
-
-def tanh_trans(U_dot_r):
+def tanh_trans(self, U_dot_r):
     """
     Though intended to operate on some U.dot(r), will take any numerical
     argument x and return the tuple (f(x), F(x)). Tanh transformation.
     """
 
-    f = np.tanh(U_dot_r)
-    F = np.diag(1 - f.flatten()**2)
-    return (f, F)
+    if self.static is True:
+        f = np.tanh(U_dot_r)
+        F = np.diag(1 - f.flatten()**2)
+        return (f, F)
+    
+    else:
+        pass
 
 
 ### r, U prior functions
 
-def gauss_prior(r_or_U, alph_or_lam):
+def gauss_prior(self, r_or_U, alph_or_lam):
     """
     Takes an argument pair of either r & alpha, or U & lambda, and returns
     a tuple of (g(r), g'(r)), or (h(U), h'(U)), respectively. Gaussian prior.
     """
 
-    g_or_h = alph_or_lam * np.square(r_or_U).sum()
-    gprime_or_hprime = 2 * alph_or_lam * r_or_U
-    return (g_or_h, gprime_or_hprime)
+    if self.static is True:
+        g_or_h = alph_or_lam * np.square(r_or_U).sum()
+        gprime_or_hprime = 2 * alph_or_lam * r_or_U
+        return (g_or_h, gprime_or_hprime)
 
+    else:
+        pass
 
-def kurt_prior(r_or_U, alph_or_lam):
+def kurt_prior(self, r_or_U, alph_or_lam):
     """
     Takes an argument pair of either r & alpha, or U & lambda, and returns
     a tuple of (g(r), g'(r)), or (h(U), h'(U)), respectively. Sparse kurtotic prior.
     """
 
-    g_or_h = alph_or_lam * np.log(1 + np.square(r_or_U)).sum()
-    gprime_or_hprime = 2 * alph_or_lam * r_or_U / (1 + np.square(r_or_U))
-    return (g_or_h, gprime_or_hprime) 
+    if self.static is True:
+        g_or_h = alph_or_lam * np.log(1 + np.square(r_or_U)).sum()
+        gprime_or_hprime = 2 * alph_or_lam * r_or_U / (1 + np.square(r_or_U))
+        return (g_or_h, gprime_or_hprime) 
+    
+    else:
+        pass
+
+
+def assign_learning_rates(self, component):
+    # Dynamically construct the keys
+    lr_sched_key = f'lr_{component}_sched'
+    k_sched_key = f'k_{component}_sched'
+    k_lr_key = f'k_{component}_lr'
+
+    # Access the schedule dictionary dynamically
+    lr_sched = list(getattr(self.p, k_sched_key).keys())[0]
+
+    # Assign learning rate functions based on the schedule
+    if lr_sched == 'constant':
+        setattr(self, k_lr_key, partial(constant_lr, initial=getattr(self.p, k_sched_key)['constant']['initial']))
+    elif lr_sched == 'step':
+        setattr(self, k_lr_key, partial(step_decay_lr, initial=getattr(self.p, k_sched_key)['step']['initial'], drop_every=getattr(self.p, k_sched_key)['step']['drop_every'], drop_factor=getattr(self.p, k_sched_key)['step']['drop_factor']))
+    elif lr_sched == 'poly':
+        setattr(self, k_lr_key, partial(polynomial_decay_lr, initial=getattr(self.p, k_sched_key)['poly']['initial'], max_epochs=getattr(self.p, k_sched_key)['poly']['max_epochs'], poly_power=getattr(self.p, k_sched_key)['poly']['poly_power']))
 
 
 class StaticPredictiveCodingClassifier:
@@ -97,30 +129,9 @@ class StaticPredictiveCodingClassifier:
         self.g = self.prior_dict[self.p.r_prior]
         self.h = self.prior_dict[self.p.U_prior]
 
-        # learning rate functions (can't figure out how to dispatch this)
-        lr_r_sched = list(self.p.k_r_sched.keys())[0]
-        if lr_r_sched == 'constant':
-            self.k_r_lr = partial(constant_lr,initial=self.p.k_r_sched['constant']['initial'])
-        elif lr_r_sched == 'step':
-            self.k_r_lr = partial(step_decay_lr,initial=self.p.k_r_sched['step']['initial'],drop_every=self.p.k_r_sched['step']['drop_every'],drop_factor=self.p.k_r_sched['step']['drop_factor'])
-        elif lr_r_sched == 'poly':
-            self.k_r_lr = partial(polynomial_decay_lr,initial=self.p.k_r_sched['poly']['initial'],max_epochs=self.p.k_r_sched['poly']['max_epochs'],poly_power=self.p.k_r_sched['poly']['poly_power'])
-
-        lr_U_sched = list(self.p.k_U_sched.keys())[0]
-        if lr_U_sched == 'constant':
-            self.k_U_lr = partial(constant_lr,initial=self.p.k_U_sched['constant']['initial'])
-        elif lr_U_sched == 'step':
-            self.k_U_lr = partial(step_decay_lr,initial=self.p.k_U_sched['step']['initial'],drop_every=self.p.k_U_sched['step']['drop_every'],drop_factor=self.p.k_U_sched['step']['drop_factor'])
-        elif lr_U_sched == 'poly':
-            self.k_U_lr = partial(polynomial_decay_lr,initial=self.p.k_U_sched['poly']['initial'],max_epochs=self.p.k_U_sched['poly']['max_epochs'],poly_power=self.p.k_U_sched['poly']['poly_power'])
-
-        lr_o_sched = list(self.p.k_o_sched.keys())[0]
-        if lr_o_sched == 'constant':
-            self.k_o_lr = partial(constant_lr,initial=self.p.k_o_sched['constant']['initial'])
-        elif lr_o_sched == 'step':
-            self.k_o_lr = partial(step_decay_lr,initial=self.p.k_o_sched['step']['initial'],drop_every=self.p.k_o_sched['step']['drop_every'],drop_factor=self.p.k_o_sched['step']['drop_factor'])
-        elif lr_o_sched == 'poly':
-            self.k_o_lr = partial(polynomial_decay_lr,initial=self.p.k_o_sched['poly']['initial'],max_epochs=self.p.k_o_sched['poly']['max_epochs'],poly_power=self.p.k_o_sched['poly']['poly_power'])
+        assign_learning_rates(self, 'r')
+        assign_learning_rates(self, 'U')
+        assign_learning_rates(self, 'o')
 
         # Avg cost per epoch during training; just representation terms
         self.avg_E_per_ep = []
