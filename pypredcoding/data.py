@@ -115,6 +115,18 @@ def diff_of_gaussians_filter(image_array, kern_size=(5,5), sigma1=1.3, sigma2=2.
         filtered_array[i,:,:] = g1 - g2
     return filtered_array
 
+'''
+li for ref
+'''
+
+def apply_DoG_filter(self, image, ksize=(5,5), sigma1=1.3, sigma2=2.6):
+        """
+        Apply difference of gaussian (DoG) filter detect edge of the image.
+        """
+        g1 = cv2.GaussianBlur(image, ksize, sigma1)
+        g2 = cv2.GaussianBlur(image, ksize, sigma2)
+        return g1 - g2
+
 
 def standardization_filter(image_array):
     '''
@@ -300,7 +312,7 @@ def convert_to_gray(images):
     if len(images.shape) == 4:
         grayed_imgs = []
         for img in images:
-            gray_img = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+            gray_img = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY).astype(np.float32)
             grayed_imgs.append(gray_img)
 
     # If already grayscale
@@ -312,6 +324,7 @@ def convert_to_gray(images):
     return np.array(grayed_imgs)
 
 def apply_gaussian_mask(images, sigma=1.0, numxpxls=128, numypxls=128):
+    
     ### Apply gaussian mask (Li default parameters)
     mu = 0.0
     x, y = np.meshgrid(np.linspace(-1,1,numxpxls), np.linspace(-1,1,numypxls))
@@ -325,6 +338,27 @@ def apply_gaussian_mask(images, sigma=1.0, numxpxls=128, numypxls=128):
         gm_images.append(mask_img)
 
     return np.array(gm_images)
+
+'''
+Li for reference
+'''
+
+def create_gauss_mask(self, sigma=0.4, width=16, height=16):
+        """ Create gaussian mask. """
+        mu = 0.0
+        x, y = np.meshgrid(np.linspace(-1,1,width), np.linspace(-1,1,height))
+        d = np.sqrt(x**2+y**2)
+        g = np.exp(-( (d-mu)**2 / (2.0*sigma**2) )) / np.sqrt(2.0*np.pi*sigma**2)
+        mask = g / np.max(g)
+        return mask
+
+        '''
+        li for ref
+        '''
+        # Apply gaussian mask
+        if self.use_mask:
+            rf1_patch = rf1_patch * self.mask.reshape([-1])
+
 
 def apply_DoG(images, ksize=(5,5), sigma1=1.3, sigma2=2.6):
     ### Apply Difference of Gaussians filter for image edge detection (Li default parameters)
@@ -373,7 +407,9 @@ def create_tiles(images, numxpxls, numypxls, numtlxpxls, numtlypxls, tlxoffset, 
     - images: A list of images to be tiled.
 
     Returns:
-    A list of tiles extracted from the images.
+    An array of size (N images * n tiles, area of flattened tile) extracted from the images.
+    Eg. 212 trace like inputs (212 images * 16 tiles per image = 3392 tiles, 36x24 = 864 pixels per tile)
+    == 3392, 864
     """
     
     tiles = []
@@ -408,7 +444,14 @@ def create_tiles(images, numxpxls, numypxls, numtlxpxls, numtlypxls, tlxoffset, 
     tiles_arr = np.array(tiles)
 
     print("size of tiles all images: {}".format(tiles_arr.shape))
-    print("size of tiles all images[0] (first image's first tile): {}".format(tiles_arr[0].shape) + "\n")
+    print("size of tiles all images[0] (first image's first tile before reshape): {}".format(tiles_arr[0].shape) + "\n")
+    
+    # reshape all tiles into 1D
+    tiles_arr = tiles_arr.reshape(tiles_arr.shape[0], -1)
+    
+    print("size of tiles all images after 1d reshape: {}".format(tiles_arr.shape))
+    print("size of tiles all images[0] (first image's first tile after reshape): {}".format(tiles_arr[0].shape) + "\n")
+    
     return tiles_arr
 
 def cut_into_tiles(images, numxpxls, numypxls, numtiles, numtlxpxls, numtlypxls, tlxoffset, tlyoffset):
@@ -578,6 +621,7 @@ def preprocess(data_source, num_imgs, prepro, numxpxls, numypxls, tlornot, numti
             if prepro == "lifull_lin":
                 # Note that this RGB conversion is probably a function
                 grayed_imgs = convert_to_gray(raw_imgs)
+                # mask will take the whole image, or whole tile's dimensions
                 gm_imgs = apply_gaussian_mask(grayed_imgs, numxpxls=numxpxls, numypxls=numypxls)
                 dog_imgs = apply_DoG(gm_imgs)
                 # Input
@@ -585,7 +629,8 @@ def preprocess(data_source, num_imgs, prepro, numxpxls, numypxls, tlornot, numti
 
             elif prepro == "lifull_tanh":
                 grayed_imgs = convert_to_gray(raw_imgs)
-                gm_imgs = apply_gaussian_mask(grayed_imgs)
+                # mask will take the whole image, or whole tile's dimensions
+                gm_imgs = apply_gaussian_mask(grayed_imgs, numxpxls=numxpxls, numypxls=numypxls)
                 dog_imgs = apply_DoG(gm_imgs)
                 tanh_imgs = apply_tanh(dog_imgs)
                 # Input
@@ -623,8 +668,9 @@ def preprocess(data_source, num_imgs, prepro, numxpxls, numypxls, tlornot, numti
                 # RB99 original dset: mask after cutting
                 elif prepro == "rb99full_lin" or prepro == "rb99full_tanh":
                     cut_tiles = cut_into_tiles(dog_imgs, numxpxls, numypxls, numtiles, numtlxpxls, numtlypxls, tlxoffset, tlyoffset)
-                    # Verify this last step!!! (2022.02.11)
-                    X = apply_gaussian_mask(cut_tiles)
+                    # Need to change dimensions to tile dimensions
+                    # might need to: Verify this last step in general!!! (2022.02.11)
+                    X = apply_gaussian_mask(cut_tiles, numxpxls=numtlxpxls, numypxls=numtlypxls)
                     
     elif data_source == "trace212":
         if num_imgs != 212:
@@ -633,8 +679,10 @@ def preprocess(data_source, num_imgs, prepro, numxpxls, numypxls, tlornot, numti
             
         raw_imgs = load_raw_imgs(data_source, num_imgs, numxpxls, numypxls)
         
+        
         if prepro == "li_trace212":
             grayed_imgs = convert_to_gray(raw_imgs)
+            # Make sure the mask is the same size as the tiles
             gm_imgs = apply_gaussian_mask(grayed_imgs, numxpxls=numxpxls, numypxls=numypxls)
             dog_imgs = apply_DoG(gm_imgs)
             
@@ -643,95 +691,105 @@ def preprocess(data_source, num_imgs, prepro, numxpxls, numypxls, tlornot, numti
             else:
                 X = dog_imgs 
                 
-            '''
-            example input
-            '''
+            # '''
+            # example input
+            # '''
             
-            cmap="cividis"
+            # cmap="cividis"
 
-            nrows = 1
-            ncols = 2
-            subplot_xy = (4.5, 3)
-            figsize = tuple([(ncols, nrows)[i]*subplot_xy[i] for i in range(2)])
+            # nrows = 1
+            # ncols = 2
+            # subplot_xy = (4.5, 3)
+            # figsize = tuple([(ncols, nrows)[i]*subplot_xy[i] for i in range(2)])
 
-            fig, axes = plt.subplots(nrows=nrows, ncols=ncols, figsize=figsize)
+            # fig, axes = plt.subplots(nrows=nrows, ncols=ncols, figsize=figsize)
 
-            ax1 = axes[0]
-            ax2 = axes[1]
+            # ax1 = axes[0]
+            # ax2 = axes[1]
             
-            print('printing example input')
+            # print('printing example input')
 
-            sns.heatmap(grayed_imgs[0],
-                        cmap=cmap,
-                        cbar=True,
-                        cbar_kws={'shrink': 0.6},
-                        square=True,
-                        xticklabels=False,
-                        yticklabels=False,
-                        vmin=np.floor(np.min([x.min() for x in raw_imgs])),
-                        vmax=np.ceil(np.max([x.max() for x in raw_imgs])),
-                        ax=ax1);
-            ax1.set_title("Grayed(Original) Image");
+            # sns.heatmap(grayed_imgs[0],
+            #             cmap=cmap,
+            #             cbar=True,
+            #             cbar_kws={'shrink': 0.6},
+            #             square=True,
+            #             xticklabels=False,
+            #             yticklabels=False,
+            #             vmin=np.floor(np.min([x.min() for x in raw_imgs])),
+            #             vmax=np.ceil(np.max([x.max() for x in raw_imgs])),
+            #             ax=ax1);
+            # ax1.set_title("Grayed(Original) Image");
+            # # Adding text for min and max values of the first image
+            # grayed_min, grayed_max = np.min(grayed_imgs[0]), np.max(grayed_imgs[0])
+            # ax1.text(0.5, -0.1, f"Min: {grayed_min:.2f}", transform=ax1.transAxes, ha="center")
+            # ax1.text(0.5, -0.15, f"Max: {grayed_max:.2f}", transform=ax1.transAxes, ha="center")
 
-            sns.heatmap(dog_imgs[0],
-                        cmap=cmap,
-                        cbar=True,
-                        cbar_kws={'shrink': 0.6},
-                        square=True,
-                        xticklabels=False,
-                        yticklabels=False,
-                        vmin=np.floor(np.min([x.min() for x in dog_imgs])),
-                        vmax=np.ceil(np.max([x.max() for x in dog_imgs])),
-                        ax=ax2);
-            ax2.set_title("Edge Detected(GMasked(Grayed(Original))) Image");
 
-            # idx 0
-            fig.suptitle("/S^t/")
-            # idx 30
-            # fig.suptitle("/b^s/")
-            
-            fig.tight_layout(rect=[0,0,1,0.9]);
-            # Pdfs print weird with these, pngs fine. convert png later for paper if needed
-            # fig.savefig('example_input.pdf', dpi=800, bbox_inches='tight')
-            fig.savefig('example_input.png', dpi=600, bbox_inches='tight')
-            
-            
-            '''
-            all tiles of first image
-            '''
-            print('printing all tiles of first image')
+            # sns.heatmap(dog_imgs[0],
+            #             cmap=cmap,
+            #             cbar=True,
+            #             cbar_kws={'shrink': 0.6},
+            #             square=True,
+            #             xticklabels=False,
+            #             yticklabels=False,
+            #             vmin=np.floor(np.min([x.min() for x in dog_imgs])),
+            #             vmax=np.ceil(np.max([x.max() for x in dog_imgs])),
+            #             ax=ax2);
+            # ax2.set_title("Edge Detected(GMasked(Grayed(Original))) Image");
+            # # Adding text for min and max values of the second image
+            # dog_min, dog_max = np.min(dog_imgs[0]), np.max(dog_imgs[0])
+            # ax2.text(0.5, -0.1, f"Min: {dog_min:.2f}", transform=ax2.transAxes, ha="center")
+            # ax2.text(0.5, -0.15, f"Max: {dog_max:.2f}", transform=ax2.transAxes, ha="center")
 
-            # Loop for all rf2 patches
-            ## First image, S^t
-            rf1_patches = X[:16]
-            label = y[0]
-            
-            # # Grab 31st image, b^s. This is what Monica titled her dissert ex image, but the image itself was S^t.
-            # rf1_patches = X[30*16:(30*16)+16]
-            # label = y[30]
-
-            for l, label in enumerate(y):
-                
-                if l == 46:
-                    rf1_patches = X[l*16:(l*16)+16]
-                    print(f'label {l} index', np.argmax(label))
-                    for p, patch in enumerate(rf1_patches):
                         
-                        print('nparray patch ')
-                        reshaped_patch = np.array(patch).reshape(24,36)
-                        print(reshaped_patch.shape)
-                        # Assuming 'patch' is a NumPy array representing the image data
-                        plt.figure()
-                        plt.imshow(reshaped_patch, cmap="cividis" )  # Use 'cmap' appropriate to your data
-                        plt.colorbar()
-                        # plt.title(f'S^t_rf1 patch {p}')
-                        # plt.savefig(f'S^t_rf1_patch_{p}.png')
-                        plt.title(f'brid_rf1_patch_{p}')
-                        plt.savefig(f'brid_rf1_patch_{p}.png')
-                        plt.show()
+            # # idx 0
+            # fig.suptitle("/brid/ ours")
+            # # idx 30
+            # # fig.suptitle("/b^s/")
+            
+            # fig.tight_layout(rect=[0,0,1,0.9]);
+            # # Pdfs print weird with these, pngs fine. convert png later for paper if needed
+            # # fig.savefig('example_input.pdf', dpi=800, bbox_inches='tight')
+            # fig.savefig('brid ours example_input.png', dpi=600, bbox_inches='tight')
+
+            
+            # '''
+            # all tiles of first image
+            # '''
+            # print('printing all tiles of first image')
+
+            # # Loop for all rf2 patches
+            # ## First image, S^t
+            # rf1_patches = X[:16]
+            # label = y[0]
+            
+            # # # Grab 31st image, b^s. This is what Monica titled her dissert ex image, but the image itself was S^t.
+            # # rf1_patches = X[30*16:(30*16)+16]
+            # # label = y[30]
+
+            # for l, label in enumerate(y):
+                
+            #     if l == 46:
+            #         rf1_patches = X[l*16:(l*16)+16]
+            #         print(f'label {l} index', np.argmax(label))
+            #         for p, patch in enumerate(rf1_patches):
+                        
+            #             print('nparray patch ')
+            #             reshaped_patch = np.array(patch).reshape(24,36)
+            #             print(reshaped_patch.shape)
+            #             # Assuming 'patch' is a NumPy array representing the image data
+            #             plt.figure()
+            #             plt.imshow(reshaped_patch, cmap="cividis" )  # Use 'cmap' appropriate to your data
+            #             plt.colorbar()
+            #             # plt.title(f'S^t_rf1 patch {p}')
+            #             # plt.savefig(f'S^t_rf1_patch_{p}.png')
+            #             plt.title(f'brid_rf1_patch_{p}')
+            #             plt.savefig(f'brid_rf1_patch_{p}.png')
+            #             plt.show()
                     
 
-            exit()
+            # exit()
         
         elif prepro is None:
             X = raw_imgs

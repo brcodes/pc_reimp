@@ -127,8 +127,6 @@ def main():
         numxpxls=numxpxls, numypxls=numypxls, tlornot=tlornot, numtiles=numtiles,
         numtlxpxls=numtlxpxls, numtlypxls=numtlypxls, tlxoffset=tlxoffset, tlyoffset=tlyoffset)
     
-        
-    exit()
 
     ####
 
@@ -149,7 +147,8 @@ def main():
     num_nonin_lyrs = 3
 
     ## Layer (r) sizes
-    lyr_sizes = (32, 128, 5)
+    # lyr_sizes = (32, 128, 5)
+    lyr_sizes = (32, 128, 212)
 
     ## Num r[1] modules (= numtiles)
     num_r1_mods = numtiles
@@ -178,18 +177,18 @@ def main():
     ### Set some more model parameters for model creation
 
     ## Learning rate scheme
-    # lr_scheme = "constant"
+    lr_scheme = "constant"
     # lr_scheme = "poly"
-    lr_scheme = "step"
+    # lr_scheme = "step"
 
     ## Initial learning rates
     ## r
-    r_init = 0.005
+    r_init = 0.001
 
     ## U
-    U_init = 0.01
+    U_init = 0.001
 
-    ## o (only used during C2 classification)
+    ## o (should only used during C2 classification)
     o_init = 0.00005
 
 
@@ -246,7 +245,7 @@ def main():
 
     ## Parameters object creation
     # NOTE: Add batch size, alpha, etc. to this and above, if they later become important enough to toggle in main.py
-    p = ModelParameters(input_size = input_size, hidden_sizes = hidden_sizes, output_size = output_size,
+    p = SpccParameters(input_size = input_size, hidden_sizes = hidden_sizes, output_size = output_size,
         num_r1_mods = num_r1_mods, act_fxn = act_fxn, r_prior = r_prior, U_prior = U_prior,
         class_scheme = class_scheme, num_epochs = num_epochs,
         k_r_sched = k_r_sched, k_U_sched = k_U_sched, k_o_sched = k_o_sched,
@@ -289,7 +288,7 @@ def main():
             if ans == "y":
                 # Initialize model
 
-                mod = PredictiveCodingClassifier(p)
+                mod = StaticPredictiveCodingClassifier(p)
                 print("Desired model " + desired_model + " object initialized for training (not yet pickled)")
 
             elif ans == "n":
@@ -299,7 +298,7 @@ def main():
         # For first save
         else:
             # Initialize model
-            mod = PredictiveCodingClassifier(p)
+            mod = StaticPredictiveCodingClassifier(p)
             print("Desired model " + desired_model + " not present in local dir: object initialized for training (but not yet saved to local dir)" + "\n")
 
         return mod, desired_model, model_name_pre_epoch

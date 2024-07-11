@@ -26,14 +26,11 @@ def linear_trans(self, U_dot_r):
     Though intended to operate on some U.dot(r), will take any numerical
     argument x and return the tuple (f(x), F(x)). Linear transformation.
     """
-    if self.static is True:
-        f = U_dot_r
-        F = np.eye(len(f))
-        return (f, F)
-    
-    else:
-        pass
 
+    f = U_dot_r
+    F = np.eye(len(f))
+    return (f, F)
+    
 
 def tanh_trans(self, U_dot_r):
     """
@@ -41,13 +38,9 @@ def tanh_trans(self, U_dot_r):
     argument x and return the tuple (f(x), F(x)). Tanh transformation.
     """
 
-    if self.static is True:
-        f = np.tanh(U_dot_r)
-        F = np.diag(1 - f.flatten()**2)
-        return (f, F)
-    
-    else:
-        pass
+    f = np.tanh(U_dot_r)
+    F = np.diag(1 - f.flatten()**2)
+    return (f, F)
 
 
 ### r, U prior functions
@@ -58,13 +51,10 @@ def gauss_prior(self, r_or_U, alph_or_lam):
     a tuple of (g(r), g'(r)), or (h(U), h'(U)), respectively. Gaussian prior.
     """
 
-    if self.static is True:
-        g_or_h = alph_or_lam * np.square(r_or_U).sum()
-        gprime_or_hprime = 2 * alph_or_lam * r_or_U
-        return (g_or_h, gprime_or_hprime)
+    g_or_h = alph_or_lam * np.square(r_or_U).sum()
+    gprime_or_hprime = 2 * alph_or_lam * r_or_U
+    return (g_or_h, gprime_or_hprime)
 
-    else:
-        pass
 
 def kurt_prior(self, r_or_U, alph_or_lam):
     """
@@ -72,14 +62,12 @@ def kurt_prior(self, r_or_U, alph_or_lam):
     a tuple of (g(r), g'(r)), or (h(U), h'(U)), respectively. Sparse kurtotic prior.
     """
 
-    if self.static is True:
-        g_or_h = alph_or_lam * np.log(1 + np.square(r_or_U)).sum()
-        gprime_or_hprime = 2 * alph_or_lam * r_or_U / (1 + np.square(r_or_U))
-        return (g_or_h, gprime_or_hprime) 
-    
-    else:
-        pass
+    g_or_h = alph_or_lam * np.log(1 + np.square(r_or_U)).sum()
+    gprime_or_hprime = 2 * alph_or_lam * r_or_U / (1 + np.square(r_or_U))
+    return (g_or_h, gprime_or_hprime) 
 
+
+## Other helpers
 
 def assign_learning_rates(self, component):
     # Dynamically construct the keys
@@ -97,6 +85,25 @@ def assign_learning_rates(self, component):
         setattr(self, k_lr_key, partial(step_decay_lr, initial=getattr(self.p, k_sched_key)['step']['initial'], drop_every=getattr(self.p, k_sched_key)['step']['drop_every'], drop_factor=getattr(self.p, k_sched_key)['step']['drop_factor']))
     elif lr_sched == 'poly':
         setattr(self, k_lr_key, partial(polynomial_decay_lr, initial=getattr(self.p, k_sched_key)['poly']['initial'], max_epochs=getattr(self.p, k_sched_key)['poly']['max_epochs'], poly_power=getattr(self.p, k_sched_key)['poly']['poly_power']))
+
+
+def softmax(vector, k=1):
+    """
+    Compute the softmax function of a vector.
+    
+    Parameters:
+    - vector: numpy array or list
+        The input vector.
+    - k: float, optional (default=1)
+        The scaling factor for the softmax function.
+    
+    Returns:
+    - softmax_vector: numpy array
+        The softmax of the input vector.
+    """
+    exp_vector = np.exp(k * vector)
+    softmax_vector = exp_vector / np.sum(exp_vector)
+    return softmax_vector
 
 
 class StaticPredictiveCodingClassifier:
@@ -117,6 +124,8 @@ class StaticPredictiveCodingClassifier:
         self.num_hidden_lyrs = len(self.p.hidden_sizes)
         # Number of non-input layers for model architecture init: always num hidden layers + 1 output layer (Li case: 3)
         self.num_nonin_lyrs = self.num_hidden_lyrs + 1
+        # rename it for lower training loop clarity
+        n = self.num_nonin_lyrs
         # Total num includes input "layer" (Li case: 4)
         self.num_tot_lyrs = self.num_nonin_lyrs + 1
 
@@ -165,11 +174,14 @@ class StaticPredictiveCodingClassifier:
 
         return (E, PE_list)
 
+
     def class_cost_nc(self,label):
         """ Calculates the classification portion of the cost function output of a training
         image using classification method NC (always 0 with NC: no label data used to train).
         Also, guesses image: returns 0/1 if max arg of softmax(r[n]) doesn't/does match label one-hot elem. """
 
+        n = self.num_nonin_lyrs
+        
         # Cost
         NC = 0
 
@@ -184,12 +196,14 @@ class StaticPredictiveCodingClassifier:
 
         return NC, guess_correct_or_not
 
+
     def class_cost_c1(self,label):
         """ Calculates the classification portion of the cost function output of a training
         image using classification method C1. Also, guesses image: returns 0/1 if max arg
         of softmax(r[n]) doesn't/does match label one-hot elem. """
 
-        n = self.num_hidden_lyrs
+        n = self.num_nonin_lyrs
+        
         sm_rn = softmax(self.r[n])
 
         # Calc cost
@@ -204,12 +218,13 @@ class StaticPredictiveCodingClassifier:
 
         return C1, guess_correct_or_not
 
+
     def class_cost_c2(self,label):
         """ Calculates the classification portion of the cost function output of a training
         image using classification method C2. Also, guesses image: returns 0/1 if max arg
         of softmax(r[n]) doesn't/does match label one-hot elem. """
-
-        n = self.num_hidden_lyrs
+        
+        n = self.num_nonin_lyrs
 
         # Calc cost
         C2 = -1*label[None,:].dot(np.log(softmax((self.U_o.dot(self.r[n])))))[0,0]
@@ -237,6 +252,8 @@ class StaticPredictiveCodingClassifier:
         print(f"beginning Y.shape is {Y.shape}")
 
         #### ARCHITECTURE INITIALIZATION
+        
+        n = self.num_nonin_lyrs
 
         ## Detect WHOLE IMAGE case: model will be constructed with only 1 r[1] module
         if self.p.num_r1_mods == 1:
@@ -265,11 +282,18 @@ class StaticPredictiveCodingClassifier:
 
         ## Detect TILED image case: model will be constructed with num r[1] modules (num_r1_mods) == (dataset) numtiles [specified in main.py]
         elif self.p.num_r1_mods > 1:
+            
+            # NOTE: should take X as num imgs * num tiles per image, tlx pixels * tly pixels
 
             # Set some general attrs
             self.is_tiled = True
             # X dims for Li case should be: (1125, 256); thus sgl_tile_area 256
+            # This is 225 tiles (15x15 tiles) per image; each having an area of 16x16y pixels
+            
+            # X dim for Li 212 case should be 3392, 864
             self.sgl_tile_area = X.shape[1]
+            
+            
             self.num_tiles_per_img = self.p.num_r1_mods
             self.num_training_imgs = int(X.shape[0] / self.num_tiles_per_img)
 
@@ -536,11 +560,11 @@ class StaticPredictiveCodingClassifier:
             print("Model training on NON-TILED input")
             print("non-tiled not yet written")
 
-            if self.update_scheme == "rU_simultaneous":
+            if self.p.update_scheme == "rU_simultaneous":
                 print("non-tiled rU simultaneous not yet written, quitting...")
                 exit()
 
-            elif self.update_scheme == "r_eq_then_U":
+            elif self.p.update_scheme == "r_eq_then_U":
                 print("non-tiled r eq then U not yet written, quitting...")
                 exit()
 
@@ -593,18 +617,32 @@ class StaticPredictiveCodingClassifier:
             # Initiate training-wide classification Accuracy collection list (across all epochs)
             self.classif_accuracy_all_eps = []
             # Initiate tracking list of all randomized index sets for training set shuffling (1 idx set for each epoch)
+            # Epoch 'zero' is not randomized.
             self.randomized_training_indices_all_eps = []
-
-
+            
             ### Li case: and updating proceeds through layers, r and U of a layer i are updated simultaneously 30 times
             ### This means each each layer's r/U updates 30 times per image, using top down and bottom up information specific to that image
-            if self.update_scheme == "rU_simultaneous":
+            if self.p.update_scheme == "rU_simultaneous":
                 print("rU simultaneous TRAINING about to begin")
 
                 self.num_rUsimul_iters = 30
 
                 #### EPOCH "0" CALCULATIONS (E, PE WITH ALL INITIAL, RANDOMIZED ARRAYS)
                 # Functions as negative (pre-update) control
+                
+                # Initiate epoch-dependent measures
+                # Total error
+                E_tot_sgl_ep = 0
+                # Error by image
+                E_contrib_per_img_sgl_ep = []
+                # Classification error only
+                C_tot_sgl_ep = 0
+                # Classification error by image
+                C_contrib_per_img_sgl_ep = []
+                # Prediction error (part of E, highly correlated)
+                PEs_by_lyr_per_img_sgl_ep = []
+                # Number of correct classifications
+                classif_success_per_img_sgl_ep = []
 
                 for image in range(0,self.num_training_imgs):
 
@@ -612,19 +650,48 @@ class StaticPredictiveCodingClassifier:
                     Eimg_and_PEsimg = self.rep_cost()
                     # Loss (E) for random image "0"
                     Eimg = Eimg_and_PEsimg[0]
+                    # E total for epoch 0
+                    E_tot_sgl_ep = E_tot_sgl_ep + Eimg
                     # Add E contrib
                     E_contrib_per_img_sgl_ep.append(Eimg)
+                    
                     # PEs for each layer for random image "0"
                     PEs_by_lyr_sgl_img = Eimg_and_PEsimg[1]
                     # Add PEs to beginning of tracker list
                     PEs_by_lyr_per_img_sgl_ep.append(PEs_by_lyr_sgl_img)
+                    
+                    # classification costs
+                    Cimg, guess_correct_or_not = class_cost(Y[image])
+                    # Add to total
+                    C_tot_sgl_ep = C_tot_sgl_ep + Cimg
+                    # Add C contrib
+                    C_contrib_per_img_sgl_ep.append(Cimg)
+                    classif_success_per_img_sgl_ep.append(guess_correct_or_not)
 
                 # Add epoch 0 E to beginning of tracker list
                 self.E_contrib_per_img_all_eps.append(E_contrib_per_img_sgl_ep)
+                self.E_tot_per_ep_all_eps.append(E_tot_sgl_ep)
+                
                 # Add epoch 0 PEs to beginning of tracker list
                 self.PEs_by_lyr_per_img_all_eps.append(PEs_by_lyr_per_img_sgl_ep)
                 
-
+                # add epoch 0 C to beginning of tracker list
+                self.C_contrib_per_img_all_eps.append(C_contrib_per_img_sgl_ep)
+                self.C_tot_per_ep_all_eps.append(C_tot_sgl_ep)
+                
+                # add epoch 0 classif success to beginning of tracker list
+                self.classif_success_per_img_all_eps.append(classif_success_per_img_sgl_ep)
+                
+                # acc
+                accuracy_sgl_ep = np.sum(classif_success_per_img_sgl_ep) / self.num_training_imgs
+                self.classif_accuracy_all_eps.append(accuracy_sgl_ep)
+                # Epoch 'zero' is not randomized.
+                self.randomized_training_indices_all_eps.append(np.arange(0,self.num_training_imgs))
+                
+                print(f"Epoch 0 (pre training, unshuffled images) accuracy is {accuracy_sgl_ep}" + "\n")
+                print(f"Epoch 0  E is {E_tot_sgl_ep}" + "\n")
+                print(f"Epoch 0  C is {C_tot_sgl_ep}" + "\n")
+                
                 #### EPOCHS 1 - n
 
                 for epoch in range(1, self.p.num_epochs + 1):
@@ -638,14 +705,20 @@ class StaticPredictiveCodingClassifier:
                     Y_shuffled = Y[N_permuted_indices]
 
                     ### Initialize epoch-dependent measures
-                    # Representation cost reset
+                    
+                    # Total error
                     E_tot_sgl_ep = 0
-                    # Classification cost reset
+                    # Error by image
+                    E_contrib_per_img_sgl_ep = []
+                    # Classification error only
                     C_tot_sgl_ep = 0
-                    # Prediction error reset
-                    PEs_by_lyr_all_imgs_sgl_ep = []
+                    # Classification error by image
+                    C_contrib_per_img_sgl_ep = []
+                    # Prediction error (part of E, highly correlated)
+                    PEs_by_lyr_per_img_sgl_ep = []
                     # Number of correct classifications
                     classif_success_per_img_sgl_ep = []
+                    
 
                     # Set learning rates at the start of each epoch
                     k_r = self.k_r_lr(epoch-1)
@@ -653,20 +726,7 @@ class StaticPredictiveCodingClassifier:
                     k_o = self.k_o_lr(epoch-1)
 
                     """
-                    # NOTE: for internal plotting; remove or wrap later
-                    tiles_of_all_images = []
-                    imgidxlo = 0
-                    imgidxhi = self.num_tiles_per_img
-                    # RB99 tiling scheme case
-                    if self.num_tiles_per_img == 3:
-                        tilecols = 3
-                        tilerows = 1
-
-                    # RB97a and Li tiling scheme cases
-                    elif self.num_tiles_per_img == 4 or self.num_tiles_per_img == 225:
-                        tilecols = int(np.sqrt(self.num_tiles_per_img))
-                        tilerows = tilecols
-                    # NOTE: to above # NOTE
+                    # internal plotting code existed here pre 2024.07.10
                     """
 
                     #### GRADIENT DESCENT LOOP
@@ -685,84 +745,15 @@ class StaticPredictiveCodingClassifier:
                         label = Y_shuffled[image]
                         print(f"single label.shape image {image+1} is {label.shape}")
 
-
-                        """
-                        INTERNAL PLOTTING TEST FOR SHUFFLING: WRAP OR REMOVE LATER
-                        """
-
-                        """
-                        # NOTE: for internal plotting; remove or wrap later
-                        tiles_of_single_img = []
-                        tl_num = 1
-
-                        for tl in single_image:
-
-                            # Expand tiles for plotting
-                            expanded_tile = data.inflate_vectors(tl[None,:], (16,16))
-                            expanded_tile = np.squeeze(expanded_tile)
-
-                            tiles_of_single_img.append(expanded_tile)
-
-                            # Single tile plotting
-                            # tl = np.array(expanded_tile).astype(float)
-                            # plt.imshow(tl, cmap="gray")
-                            # plt.title("{}".format(desired_dataset) + "\n" + "image {} ".format(img+1) + "tile {}".format(tl_num))
-                            # plt.show()
-
-                            tl_num += 1
-
-                        tiles_of_all_images.append(tiles_of_single_img)
-
-                        imgidxlo += self.num_tiles_per_img
-                        imgidxhi += self.num_tiles_per_img
-
-                        # Tile stacking and plotting (stacked collage) loop
-                        tiles_of_all_images = np.array(tiles_of_all_images, dtype=list)
-
-                        print(f"Shape of array with all tiles parsed by image: {tiles_of_all_images.shape}")
-
-                        # In Li case, this is (225,16,16) but generally is (numtiles, tlxpxls, tlypxls)
-                        tiles_of_single_img = tiles_of_all_images[image]
-
-                        print(f"Shape of array with tiles for image {image}: {tiles_of_single_img.shape}")
-
-                        rowidxlo = 0
-                        rowidxhi = tilecols
-
-                        vstackedrows = np.zeros([16,16*tilecols])
-
-                        for row in range(0,tilerows):
-
-                            onerow = tiles_of_single_img[rowidxlo:rowidxhi,:,:]
-
-                            # Initiate left-to-right stacking, completing a full row
-                            hstackedrow = np.array(onerow[0])[:,:]
-
-                            for col in range(1, tilecols):
-                                nonfirsttileinrow = np.array(onerow[col])[:,:]
-                                hstackedrow = np.concatenate((hstackedrow, nonfirsttileinrow), axis=1)
-
-                            # With collaged row complete, stack rows for full collage
-                            vstackedrows = np.vstack([vstackedrows, hstackedrow])
-
-                            rowidxlo += tilecols
-                            rowidxhi += tilecols
-
-                        # Remove collage row of zeros used to initiate collage, convert to float64
-                        stackedtilecollage = vstackedrows[16:,:].astype(float)
-
-                        # Plot
-                        plt.imshow(stackedtilecollage, cmap="gray")
-                        plt.title(f"mod.train(X) input verif. epoch {epoch}: Li dataset img {image+1}" + "\n" +
-                                "{}-tile collage ({}x{}tls)".format(self.num_tiles_per_img, tilerows, tilecols))
-
-                        plt.show()
-                        tiles_of_all_images = tiles_of_all_images.tolist()
-                        print(f" type of tiles of all images {type(tiles_of_all_images)}")
-                        # NOTE: ABOVE TO OTHER NOTE is for internal plotting; remove or wrap later
-                        """
+                        '''
+                        internal plotting test for shuffling 
+                        of tiled images was here,
+                        pre 2024.07.10
+                        '''
 
                         for iteration in range(0,self.num_rUsimul_iters):
+                            
+                            
 
                             ### r loop (splitting r loop, U loop mimic's Li architecture)
                             for i in range(1, n):
@@ -847,9 +838,9 @@ class StaticPredictiveCodingClassifier:
                     self.randomized_training_indices_all_eps.append(N_permuted_indices)
 
 
-
-
-
+                    print(f"Epoch {epoch} (while training, shuffled images) accuracy is {accuracy_sgl_ep}" + "\n")
+                    print(f"Epoch {epoch}  E is {E_tot_sgl_ep}" + "\n")
+                    print(f"Epoch {epoch}  C is {C_tot_sgl_ep}" + "\n")
 
 
                     # Checkpointing logic
@@ -878,17 +869,22 @@ class StaticPredictiveCodingClassifier:
                         sigma_sq = f"Sigma squared values at each layer: {self.p.sigma_sq}"
                         alpha = f"Alpha values at each layer: {self.p.alpha}"
                         lam = f"Lambda values at each layer: {self.p.lam}"
-                        size_of_starting_img = f"Num params in an original whole input image, regardless of whether images will become tiled for training: {self.p.input_size}"
+                        
+                        # NOTE: is this true?
+                        # p.input_size = tile area, I thought.
+                        size_of_starting_img = f"UNTESTED, could just be tile: Num params in an original whole input image, regardless of whether images will become tiled for training: {self.p.input_size}"
+                        
                         time_created = time_created
                         time_at_chkpt = datetime.datetime.now()
                         train_time_elapsed = time_at_chkpt - time_created
                         time_created_str = f"Time at model creation: {time_created}"
                         time_at_chkpt = f"Time at checkpoint: {time_at_chkpt}"
                         train_time_elapsed = f"Training time elapsed at end of epoch {epoch}: {train_time_elapsed}"
+                        accuracy_at_chkpt = f"Accuracy at end of epoch {epoch}: {accuracy_sgl_ep}"
 
                         metadata_lines = [header, is_tiled, update_scheme, batch_size, epoch_counter, k_r_sched,
                                             k_r_at_start, k_U_sched, k_U_at_start, k_o_sched, k_o_at_start, sigma_sq, alpha, lam, size_of_starting_img,
-                                            time_created_str, time_at_chkpt, train_time_elapsed]
+                                            time_created_str, time_at_chkpt, train_time_elapsed, accuracy_at_chkpt]
 
                         # Write metadata
                         mod_chkpt_name_txt = mod_chkpt_name + ".txt"
@@ -918,7 +914,7 @@ class StaticPredictiveCodingClassifier:
                 print("rU_simultaneous epochs-loop finished")
 
             ### Rao and Ballard '99 / Brown, Rogers case: r is allowed to equilibrate before a U matrix receives any information from it
-            elif self.update_scheme == "r_eq_then_U":
+            elif self.p.update_scheme == "r_eq_then_U":
 
                 print("r_eq_then_U epochs-loop finished")
 
