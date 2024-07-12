@@ -168,6 +168,7 @@ class StaticPredictiveCodingClassifier:
         # We want to track E for Layer 1, Layer 2, Layer 3 (Li 212)
         # this loop will only tackle layer 1 and 2 in a 3 layer model.
         for i in range(1,len(self.r)):
+            E_layer = 0
             # Bottom up reconstruction error term, a vector
             bu_err = self.r[i-1] - self.f(self.U[i].dot(self.r[i]))[0]
         
@@ -182,15 +183,17 @@ class StaticPredictiveCodingClassifier:
             tot_err_sq = bu_err_sq + td_err_sq
             
             # Representation cost E for this layer, is comprised of a bu and td component. (it contains this form for all n-1 layers)
-            E_tot = E_tot + ((1 / self.p.sigma_sq[i]) * bu_err_sq) + ((1 / self.p.sigma_sq[i+1]) * td_err_sq)
-            E_tot = E_tot + self.h(self.U[i],self.p.lam[i])[0] + self.g(np.squeeze(self.r[i]),self.p.alpha[i])[0]
+            E_layer = E_layer + ((1 / self.p.sigma_sq[i]) * bu_err_sq) + ((1 / self.p.sigma_sq[i+1]) * td_err_sq)
+            E_layer = E_layer + self.h(self.U[i],self.p.lam[i])[0] + self.g(np.squeeze(self.r[i]),self.p.alpha[i])[0]
             # priors^^^
             '''
             check out sizing of Ui for h later
             '''
-            
             # Store
-            E_list.append(E_tot)
+            E_list.append(E_layer)
+            
+            # Add layer E to tot E
+            E_tot = E_tot + E_layer
             
             # Also calulate bottom up, top down, and total prediction error (ie. L2 norm of the error vector) for each layer
             PE_tot = np.sqrt(tot_err_sq)
@@ -203,6 +206,7 @@ class StaticPredictiveCodingClassifier:
         # ie the top layer, the localist layer
         # Bottom up reconstruction error term, a vector
         
+        E_layer = 0
         n = self.num_nonin_lyrs
         
         # C1 top layer cost term
@@ -217,11 +221,14 @@ class StaticPredictiveCodingClassifier:
         tot_err_sq = bu_err_sq + td_err_sq
         
         # Representation cost E for this layer, is comprised of a bu and td component. (it contains this form for all n-1 layers)
-        E_tot = E_tot + ((1 / self.p.sigma_sq[n]) * bu_err_sq) + ((1 / self.p.sigma_sq[n+1]) * td_err_sq)
-        E_tot = E_tot + self.h(self.U[n],self.p.lam[n])[0] + self.g(np.squeeze(self.r[n]),self.p.alpha[n])[0]
+        E_layer = E_layer + ((1 / self.p.sigma_sq[n]) * bu_err_sq) + ((1 / self.p.sigma_sq[n+1]) * td_err_sq)
+        E_layer = E_layer + self.h(self.U[n],self.p.lam[n])[0] + self.g(np.squeeze(self.r[n]),self.p.alpha[n])[0]
         # priors^^^
         # Store
-        E_list.append(E_tot)
+        E_list.append(E_layer)
+        
+        # Add layer E to tot E
+        E_tot = E_tot + E_layer
         
         # Also calulate bottom up, top down, and total prediction error (ie. L2 norm of the error vector) for each layer
         PE_tot = np.sqrt(tot_err_sq)
