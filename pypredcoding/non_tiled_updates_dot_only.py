@@ -10,11 +10,15 @@ eg 3392, 32 in Li 212 case
 
 '''
 training
+
+note that this has Li's extra spcc F(Ur) term
+
 '''
 
 for iteration in range(0,self.num_rUsimul_iters):
-
+                            
     ### r loop (splitting r loop, U loop mimic's Li architecture)
+    ### (i ... n-1)
     for i in range(1, n):
 
         # r update
@@ -28,24 +32,58 @@ for iteration in range(0,self.num_rUsimul_iters):
     * self.U[n].T.dot(self.f(self.U[n].dot(self.r[n]))[1].dot(self.r[n-1] - self.f(self.U[n].dot(self.r[n]))[0])) \
     - (k_r / 2) * self.g(self.r[n],self.p.alpha[n])[1] \
 
-    # Add classification cost component of final representation update (changes based on C1, C2 or NC setting)
-    # NOTE: EDIT WITH REAL MATH
-    + ((k_o) * (label[:,None] - softmax(self.r[n])))
+    # later: change based on C1, C2 or NC setting
+    # C1 for now
+    # size eg 212,1 label , 212,1 r[n]
+    # only one r learning rate in Li 212.
+    + ((k_r) * (label[:,None] - softmax(self.r[n])))
 
-    ### U loop
-    for i in range(1, n):
+    ### U loop ( i ... n)
+    for i in range(1, n+1):
 
         # U update
         self.U[i] = self.U[i] + (k_U / self.p.sigma_sq[i]) \
         * (self.f(self.U[i].dot(self.r[i]))[1].dot(self.r[i-1] - self.f(self.U[i].dot(self.r[i]))[0])).dot(self.r[i].T) \
         - (k_U / 2) * self.h(self.U[i],self.p.lam[i])[1]
+    
+    
+'''
+training
 
-    # U[n] update (C1, C2) (identical to U[i], except index numbers)
-    self.U[n] = self.U[n] + (k_U / self.p.sigma_sq[n]) \
-    * (self.f(self.U[n].dot(self.r[n]))[1].dot(self.r[n-1] - self.f(self.U[n].dot(self.r[n]))[0])).dot(self.r[n].T) \
-    - (k_U / 2) * self.h(self.U[n],self.p.lam[n])[1]
+no extra spcc F(Ur) term -- ie how the overleaf, KB math has it
+'''
     
-    
+for iteration in range(0,self.num_rUsimul_iters):
+                            
+    ### r loop (splitting r loop, U loop mimic's Li architecture)
+    ### (i ... n-1)
+    for i in range(1, n):
+
+        # r update
+        self.r[i] = self.r[i] + (k_r / self.p.sigma_sq[i]) \
+        * self.U[i].T.dot(self.f(self.r[i-1] - self.f(self.U[i].dot(self.r[i]))[0])[1]) \
+        + (k_r / self.p.sigma_sq[i+1]) * (self.f(self.U[i+1].dot(self.r[i+1]))[0] - self.r[i]) \
+        - (k_r / 2) * self.g(self.r[i],self.p.alpha[i])[1]
+
+    # final r (Li's "localist") layer update
+    self.r[n] = self.r[n] + (k_r / self.p.sigma_sq[n]) \
+    * self.U[n].T.dot(self.f(self.r[n-1] - self.f(self.U[n].dot(self.r[n]))[0])[1]) \
+    - (k_r / 2) * self.g(self.r[n],self.p.alpha[n])[1] \
+
+    # later: change based on C1, C2 or NC setting
+    # C1 for now
+    # size eg 212,1 label , 212,1 r[n]
+    # only one r learning rate in Li 212.
+    + ((k_r) * (label[:,None] - softmax(self.r[n])))
+
+    ### U loop ( i ... n)
+    for i in range(1, n+1):
+
+        # U update
+        self.U[i] = self.U[i] + (k_U / self.p.sigma_sq[i]) \
+        * self.f(self.r[i-1] - self.f(self.U[i].dot(self.r[i]))[0])[1].dot(self.r[i].T) \
+        - (k_U / 2) * self.h(self.U[i],self.p.lam[i])[1]
+                                
 '''
 separate e, pe calcs for plotting
 '''

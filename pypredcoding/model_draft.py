@@ -151,28 +151,86 @@ class StaticPredictiveCodingClassifier:
         # Accuracy per epoch during training
         self.acc_per_ep = []
 
-    def rep_cost(self):
+    def rep_cost(self, label):
         '''
         Uses current r/U states to compute the least squares portion of the error
         (concerned with accurate reconstruction of the input).
+        
+        this is called once per image in the training loop
         '''
-        E = 0
-        # LSQ cost
+        
+        # squared, sigma-weighted reconstruction error, with priors added below
+        E_tot = 0
+        E_list = []
+        # non squared, non weighted reconstruction error
         PE_list = []
-        for i in range(0,len(self.r)-1):
-            v = (self.r[i] - self.f(self.U[i+1].dot(self.r[i+1]))[0])
-            vTdotv = v.T.dot(v)
-            E = E + ((1 / self.p.sigma_sq[i+1]) * vTdotv)[0,0]
 
-            # Also calulate prediction error for each layer
-            PE = np.sqrt(vTdotv)
-            PE_list.append(PE)
-
-        # priors on r[1],...,r[n]; U[1],...,U[n]
+        # We want to track E for Layer 1, Layer 2, Layer 3 (Li 212)
+        # this loop will only tackle layer 1 and 2 in a 3 layer model.
         for i in range(1,len(self.r)):
-            E = E + (self.h(self.U[i],self.p.lam[i])[0] + self.g(np.squeeze(self.r[i]),self.p.alpha[i])[0])
-
-        return (E, PE_list)
+            # Bottom up reconstruction error term, a vector
+            bu_err = self.r[i-1] - self.f(self.U[i].dot(self.r[i]))[0]
+        
+            # Top down reconstruction error term, a vector
+            td_err = self.r[i] - self.f(self.U[i+1].dot(self.r[i+1]))[0]
+            
+            # Bottom up error term squared, a scalar
+            bu_err_sq = bu_err.T.dot(bu_err)
+            # Top down error term squared, also a scalar
+            td_err_sq = td_err.T.dot(td_err)
+            # Total
+            tot_err_sq = bu_err_sq + td_err_sq
+            
+            # Representation cost E for this layer, is comprised of a bu and td component. (it contains this form for all n-1 layers)
+            E_tot = E_tot + ((1 / self.p.sigma_sq[i]) * bu_err_sq) + ((1 / self.p.sigma_sq[i+1]) * td_err_sq)
+            E_tot = E_tot + self.h(self.U[i],self.p.lam[i])[0] + self.g(np.squeeze(self.r[i]),self.p.alpha[i])[0]
+            # priors^^^
+            '''
+            check out sizing of Ui for h later
+            '''
+            
+            # Store
+            E_list.append(E_tot)
+            
+            # Also calulate bottom up, top down, and total prediction error (ie. L2 norm of the error vector) for each layer
+            PE_tot = np.sqrt(tot_err_sq)
+            PE_bu = np.sqrt(bu_err_sq)
+            PE_td = np.sqrt(td_err_sq)
+            # Store
+            PE_list.append((PE_tot, PE_bu, PE_td))
+            
+        # Li 212 Layer 3
+        # ie the top layer, the localist layer
+        # Bottom up reconstruction error term, a vector
+        
+        n = self.num_nonin_lyrs
+        
+        # C1 top layer cost term
+        bu_err = self.r[n-1] - self.f(self.U[n].dot(self.r[n]))[0]
+        td_err = softmax(self.r[n]) - label[:,None] # Difference in order is because not a derivative
+        
+        # Bottom up error term squared, a scalar
+        bu_err_sq = bu_err.T.dot(bu_err)
+        # Top down error term squared, also a scalar
+        td_err_sq = td_err.T.dot(td_err)
+        # Total
+        tot_err_sq = bu_err_sq + td_err_sq
+        
+        # Representation cost E for this layer, is comprised of a bu and td component. (it contains this form for all n-1 layers)
+        E_tot = E_tot + ((1 / self.p.sigma_sq[n]) * bu_err_sq) + ((1 / self.p.sigma_sq[n+1]) * td_err_sq)
+        E_tot = E_tot + self.h(self.U[n],self.p.lam[n])[0] + self.g(np.squeeze(self.r[n]),self.p.alpha[n])[0]
+        # priors^^^
+        # Store
+        E_list.append(E_tot)
+        
+        # Also calulate bottom up, top down, and total prediction error (ie. L2 norm of the error vector) for each layer
+        PE_tot = np.sqrt(tot_err_sq)
+        PE_bu = np.sqrt(bu_err_sq)
+        PE_td = np.sqrt(td_err_sq)
+        # Store
+        PE_list.append((PE_tot, PE_bu, PE_td))
+        
+        return (E_tot, E_list, PE_list)
 
 
     def class_cost_nc(self,label):
@@ -206,11 +264,18 @@ class StaticPredictiveCodingClassifier:
         
         sm_rn = softmax(self.r[n])
 
-        # Calc cost
-        C1 = -(1/2)*(label[None,:] - sm_rn).T.dot(label[None,:] - sm_rn)[0,0]
+        L = label[:,None]
+
+        # Calc cost (squared euclidian distance (L2 norm)) between the one hot label L
+        # and softmax(r_n)
+        # This is KB's old way and does not reflect Jc in sPCC math, 2024.07.11
+        # C1 = -(1/2)*(label[None,:] - sm_rn).T.dot(label[None,:] - sm_rn)[0,0]
+
+        # Jc in the math is binary crossentropy; Jc = L.T log[softmax(r_n)]
+        C1 = L.T.dot(np.log(sm_rn))
 
         # Guess image
-        if np.argmax(sm_rn) == np.argmax(label[:,None]):
+        if np.argmax(sm_rn) == np.argmax(L):
             guess_correct_or_not = 1
             self.n_correct_classifs_per_ep += 1
         else:
@@ -667,6 +732,7 @@ class StaticPredictiveCodingClassifier:
                     # Add C contrib
                     C_contrib_per_img_sgl_ep.append(Cimg)
                     classif_success_per_img_sgl_ep.append(guess_correct_or_not)
+                    
 
                 # Add epoch 0 E to beginning of tracker list
                 self.E_contrib_per_img_all_eps.append(E_contrib_per_img_sgl_ep)
@@ -753,42 +819,38 @@ class StaticPredictiveCodingClassifier:
 
                         for iteration in range(0,self.num_rUsimul_iters):
                             
-                            
-
                             ### r loop (splitting r loop, U loop mimic's Li architecture)
+                            ### (i ... n-1)
                             for i in range(1, n):
 
                                 # r update
                                 self.r[i] = self.r[i] + (k_r / self.p.sigma_sq[i]) \
-                                * self.U[i].T.dot(self.f(self.U[i].dot(self.r[i]))[1].dot(self.r[i-1] - self.f(self.U[i].dot(self.r[i]))[0])) \
+                                * self.U[i].T.dot(self.f(self.r[i-1] - self.f(self.U[i].dot(self.r[i]))[0])[1]) \
                                 + (k_r / self.p.sigma_sq[i+1]) * (self.f(self.U[i+1].dot(self.r[i+1]))[0] - self.r[i]) \
                                 - (k_r / 2) * self.g(self.r[i],self.p.alpha[i])[1]
 
                             # final r (Li's "localist") layer update
                             self.r[n] = self.r[n] + (k_r / self.p.sigma_sq[n]) \
-                            * self.U[n].T.dot(self.f(self.U[n].dot(self.r[n]))[1].dot(self.r[n-1] - self.f(self.U[n].dot(self.r[n]))[0])) \
+                            * self.U[n].T.dot(self.f(self.r[n-1] - self.f(self.U[n].dot(self.r[n]))[0])[1]) \
                             - (k_r / 2) * self.g(self.r[n],self.p.alpha[n])[1] \
 
-                            # Add classification cost component of final representation update (changes based on C1, C2 or NC setting)
-                            # NOTE: EDIT WITH REAL MATH
-                            + ((k_o) * (label[:,None] - softmax(self.r[n])))
+                            # later: change based on C1, C2 or NC setting
+                            # C1 for now
+                            # size eg 212,1 label , 212,1 r[n]
+                            # only one r learning rate in Li 212.
+                            + ((k_r) * (label[:,None] - softmax(self.r[n])))
 
-                            ### U loop
-                            for i in range(1, n):
+                            ### U loop ( i ... n)
+                            for i in range(1, n+1):
 
                                 # U update
                                 self.U[i] = self.U[i] + (k_U / self.p.sigma_sq[i]) \
-                                * (self.f(self.U[i].dot(self.r[i]))[1].dot(self.r[i-1] - self.f(self.U[i].dot(self.r[i]))[0])).dot(self.r[i].T) \
+                                * self.f(self.r[i-1] - self.f(self.U[i].dot(self.r[i]))[0])[1].dot(self.r[i].T) \
                                 - (k_U / 2) * self.h(self.U[i],self.p.lam[i])[1]
-
-                            # U[n] update (C1, C2) (identical to U[i], except index numbers)
-                            self.U[n] = self.U[n] + (k_U / self.p.sigma_sq[n]) \
-                            * (self.f(self.U[n].dot(self.r[n]))[1].dot(self.r[n-1] - self.f(self.U[n].dot(self.r[n]))[0])).dot(self.r[n].T) \
-                            - (k_U / 2) * self.h(self.U[n],self.p.lam[n])[1]
 
                         ### Training loss function E and PE by layer
                         # rep_cost returns a tuple of E, PE_list (PEs by layer for that image)
-                        Eimg_and_PEsimg = self.rep_cost()
+                        Eimg_and_PEsimg = self.rep_cost(label)
 
                         # Loss (E) for this image
                         Eimg = Eimg_and_PEsimg[0]
@@ -811,9 +873,8 @@ class StaticPredictiveCodingClassifier:
                         C_tot_sgl_ep = C_tot_sgl_ep + Cimg
                         # Count correct/incorrect classification guesses over epoch for accuracy per epoch
                         classif_success_per_img_sgl_ep.append(guess_correct_or_not)
-
-                        # Add classification cost to epoch's E total (C is still a part of the loss function)
-                        E_tot_sgl_ep = E_tot_sgl_ep + Cimg
+                        
+                        # Maybe later: track EC (E + C which is the actual loss being minimized)
 
 
 
