@@ -824,17 +824,67 @@ class StaticPredictiveCodingClassifier:
                         pre 2024.07.10
                         '''
 
+                        # for iteration in range(0,self.num_rUsimul_iters):
+                            
+                        #     ### r loop (splitting r loop, U loop mimic's Li architecture)
+                        #     ### (i ... n-1)
+                        #     for i in range(1, n):
+
+                        #         # r update
+                        #         self.r[i] = self.r[i] + (k_r / self.p.sigma_sq[i]) \
+                        #         * self.U[i].T.dot(self.f(self.r[i-1] - self.f(self.U[i].dot(self.r[i]))[0])[1]) \
+                        #         + (k_r / self.p.sigma_sq[i+1]) * (self.f(self.U[i+1].dot(self.r[i+1]))[0] - self.r[i]) \
+                        #         - (k_r / 2) * self.g(self.r[i],self.p.alpha[i])[1]
+
+                        #     # final r (Li's "localist") layer update
+                        #     self.r[n] = self.r[n] + (k_r / self.p.sigma_sq[n]) \
+                        #     * self.U[n].T.dot(self.f(self.r[n-1] - self.f(self.U[n].dot(self.r[n]))[0])[1]) \
+                        #     - (k_r / 2) * self.g(self.r[n],self.p.alpha[n])[1] \
+
+                        #     # later: change based on C1, C2 or NC setting
+                        #     # C1 for now
+                        #     # size eg 212,1 label , 212,1 r[n]
+                        #     # only one r learning rate in Li 212.
+                        #     + ((k_r) * (label[:,None] - softmax(self.r[n])))
+
+                        #     ### U loop ( i ... n)
+                        #     for i in range(1, n+1):
+
+                        #         # U update
+                        #         self.U[i] = self.U[i] + (k_U / self.p.sigma_sq[i]) \
+                        #         * self.f(self.r[i-1] - self.f(self.U[i].dot(self.r[i]))[0])[1].dot(self.r[i].T) \
+                        #         - (k_U / 2) * self.h(self.U[i],self.p.lam[i])[1]
+                        
                         for iteration in range(0,self.num_rUsimul_iters):
                             
                             ### r loop (splitting r loop, U loop mimic's Li architecture)
                             ### (i ... n-1)
                             for i in range(1, n):
+                                
+                                if i == 1:
 
-                                # r update
-                                self.r[i] = self.r[i] + (k_r / self.p.sigma_sq[i]) \
-                                * self.U[i].T.dot(self.f(self.r[i-1] - self.f(self.U[i].dot(self.r[i]))[0])[1]) \
-                                + (k_r / self.p.sigma_sq[i+1]) * (self.f(self.U[i+1].dot(self.r[i+1]))[0] - self.r[i]) \
-                                - (k_r / 2) * self.g(self.r[i],self.p.alpha[i])[1]
+                                    # r update
+                                    self.r[i] = self.r[i] + (k_r / self.p.sigma_sq[i]) \
+                                    * np.matmul(np.transpose(self.U[i], axes=(0,2,1)), (self.r[i-1] - np.matmul(self.U[i], self.r[i][:, :, None]).squeeze())[:, :, None]).squeeze()
+                                    # * self.U[i].T.dot(self.f(self.r[i-1] - self.f(self.U[i].dot(self.r[i]))[0])[1]) \
+                                        
+                                    + (k_r/self.p.sigma_sq[i+1]) * -(self.r[i] - self.U[i+1].dot(self.r[i+1]).reshape(self.r[i].shape))
+                                    # + (k_r / self.p.sigma_sq[i+1]) * (self.f(self.U[i+1].dot(self.r[i+1]))[0] - self.r[i]) \
+                                        
+                                    - (k_r / 2) * self.g(self.r[i],self.p.alpha[i])[1]
+                                    
+                                if i == 2:
+
+                                    # r update
+                                    self.r[i] = self.r[i] + (k_r / self.p.sigma_sq[i]) \
+                                        
+                                    * self.U[i].T.dot((self.r[i-1] - self.U[i].dot(self.r[i]).reshape(self.r[i-1].shape)).flatten()) \
+                                    # * self.U[i].T.dot(self.f(self.r[i-1] - self.f(self.U[i].dot(self.r[i]))[0])[1]) \
+                                        
+                                    + (k_r / self.p.sigma_sq[i+1]) * -(self.r[i] - self.U[i+1].dot(self.r[i+1]))
+                                    # + (k_r / self.p.sigma_sq[i+1]) * (self.f(self.U[i+1].dot(self.r[i+1]))[0] - self.r[i]) \
+                                        
+                                    - (k_r / 2) * self.g(self.r[i],self.p.alpha[i])[1]
 
                             # final r (Li's "localist") layer update
                             self.r[n] = self.r[n] + (k_r / self.p.sigma_sq[n]) \
@@ -854,6 +904,7 @@ class StaticPredictiveCodingClassifier:
                                 self.U[i] = self.U[i] + (k_U / self.p.sigma_sq[i]) \
                                 * self.f(self.r[i-1] - self.f(self.U[i].dot(self.r[i]))[0])[1].dot(self.r[i].T) \
                                 - (k_U / 2) * self.h(self.U[i],self.p.lam[i])[1]
+                        
 
                         ### Training loss function E and PE by layer
                         # rep_cost returns a tuple of E, PE_list (PEs by layer for that image)
