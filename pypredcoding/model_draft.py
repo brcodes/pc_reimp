@@ -885,6 +885,14 @@ class StaticPredictiveCodingClassifier:
                                     # + (k_r / self.p.sigma_sq[i+1]) * (self.f(self.U[i+1].dot(self.r[i+1]))[0] - self.r[i]) \
                                         
                                     - (k_r / 2) * self.g(self.r[i],self.p.alpha[i])[1]
+                                    
+                                else:
+                                    
+                                    # r update
+                                    self.r[i] = self.r[i] + (k_r / self.p.sigma_sq[i]) \
+                                    * self.U[i].T.dot(self.f(self.r[i-1] - self.f(self.U[i].dot(self.r[i]))[0])[1]) \
+                                    + (k_r / self.p.sigma_sq[i+1]) * (self.f(self.U[i+1].dot(self.r[i+1]))[0] - self.r[i]) \
+                                    - (k_r / 2) * self.g(self.r[i],self.p.alpha[i])[1]
 
                             # final r (Li's "localist") layer update
                             self.r[n] = self.r[n] + (k_r / self.p.sigma_sq[n]) \
@@ -899,11 +907,33 @@ class StaticPredictiveCodingClassifier:
 
                             ### U loop ( i ... n)
                             for i in range(1, n+1):
+                                
+                                if i == 1:
 
-                                # U update
-                                self.U[i] = self.U[i] + (k_U / self.p.sigma_sq[i]) \
-                                * self.f(self.r[i-1] - self.f(self.U[i].dot(self.r[i]))[0])[1].dot(self.r[i].T) \
-                                - (k_U / 2) * self.h(self.U[i],self.p.lam[i])[1]
+                                    # U update
+                                    self.U[i] = self.U[i] + (k_U / self.p.sigma_sq[i]) \
+                                    
+                                    * np.matmul((self.r[i-1] - np.matmul(self.U[i], self.r[i][:, :, None]).squeeze())[:, :, None], self.r[i][:, None, :])
+                                    # * self.f(self.r[i-1] - self.f(self.U[i].dot(self.r[i]))[0])[1].dot(self.r[i].T) \
+                                        
+                                    - (k_U / 2) * self.h(self.U[i],self.p.lam[i])[1]
+                                    
+                                if i == 2:
+                                    
+                                    # U update
+                                    self.U[i] = self.U[i] + (k_U / self.p.sigma_sq[i]) \
+                                        
+                                    * np.outer((self.r[i-1] - self.U[i].dot(self.r[i]).reshape(self.r[i-1].shape)).flatten(), self.r[i])
+                                    # * self.f(self.r[i-1] - self.f(self.U[i].dot(self.r[i]))[0])[1].dot(self.r[i].T) \
+                                        
+                                    - (k_U / 2) * self.h(self.U[i],self.p.lam[i])[1]
+                                    
+                                else:
+                                    
+                                    # U update
+                                    self.U[i] = self.U[i] + (k_U / self.p.sigma_sq[i]) \
+                                    * self.f(self.r[i-1] - self.f(self.U[i].dot(self.r[i]))[0])[1].dot(self.r[i].T) \
+                                    - (k_U / 2) * self.h(self.U[i],self.p.lam[i])[1]
                         
 
                         ### Training loss function E and PE by layer
