@@ -125,6 +125,7 @@ math fixed (includes a bottom up term now)
 also stores Etot and Elayer
 '''
 
+
 def rep_cost(self, label):
     '''
     Uses current r/U states to compute the least squares portion of the error

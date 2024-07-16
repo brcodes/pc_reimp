@@ -238,6 +238,179 @@ class StaticPredictiveCodingClassifier:
         PE_list.append((PE_tot, PE_bu, PE_td))
         
         return (E_tot, E_list, PE_list)
+    
+    
+    def rep_cost_stitch(self, label):
+        '''
+        Uses current r/U states to compute the least squares portion of the error
+        (concerned with accurate reconstruction of the input).
+        
+        this is called once per image in the training loop
+        
+        Monica's math/code, adopted to our syntax
+        '''
+        
+        # squared, sigma-weighted reconstruction error, with priors added below
+        E_tot = 0
+        E_list = []
+        # non squared, non weighted reconstruction error
+        PE_list = []
+
+        # We want to track E for Layer 1, Layer 2, Layer 3 (Li 212)
+        # this loop will only tackle layer 1 and 2 in a 3 layer model.
+        for i in range(1,len(self.r)):
+            
+            
+            if i == 1:
+            
+                E_layer = 0
+                # Bottom up reconstruction error term, a vector
+                bu_err = (self.r[i-1] - np.matmul(self.U[i], self.r[i][:, :, None]).squeeze())
+                # bu_err = self.r[i-1] - self.f(self.U[i].dot(self.r[i]))[0]
+            
+                # Top down reconstruction error term, a vector
+                td_err = self.r[i] - self.U[i+1].dot(self.r[i+1]).reshape(self.r[i].shape)
+                # td_err = self.r[i] - self.f(self.U[i+1].dot(self.r[i+1]))[0]
+                
+                # Bottom up error term squared, a scalar
+                bu_err_sq = bu_err.T.dot(bu_err)
+                # Top down error term squared, also a scalar
+                td_err_sq = td_err.T.dot(td_err)
+                # Total
+                tot_err_sq = bu_err_sq + td_err_sq
+                
+                # Representation cost E for this layer, is comprised of a bu and td component. (it contains this form for all n-1 layers)
+                E_layer = E_layer + ((1 / self.p.sigma_sq[i]) * bu_err_sq) + ((1 / self.p.sigma_sq[i+1]) * td_err_sq)
+                E_layer = E_layer + self.h(self.U[i],self.p.lam[i])[0] + self.g(np.squeeze(self.r[i]),self.p.alpha[i])[0]
+                # priors^^^
+                '''
+                check out sizing of Ui for h later
+                '''
+                # Store
+                E_list.append(E_layer)
+                
+                # Add layer E to tot E
+                E_tot = E_tot + E_layer
+                
+                # Also calulate bottom up, top down, and total prediction error (ie. L2 norm of the error vector) for each layer
+                PE_tot = np.sqrt(tot_err_sq)
+                PE_bu = np.sqrt(bu_err_sq)
+                PE_td = np.sqrt(td_err_sq)
+                # Store
+                PE_list.append((PE_tot, PE_bu, PE_td))
+                
+            if i == 2:
+            
+                E_layer = 0
+                # Bottom up reconstruction error term, a vector
+                bu_err = self.r[i-1] - self.U[i].dot(self.r[i]).reshape(self.r[i-1].shape)
+                # bu_err = self.r[i-1] - self.f(self.U[i].dot(self.r[i]))[0]
+            
+                # Top down reconstruction error term, a vector
+                td_err = self.r[i] - self.U[i+1].dot(self.r[i+1])
+                # td_err = self.r[i] - self.f(self.U[i+1].dot(self.r[i+1]))[0]
+                
+                # Bottom up error term squared, a scalar
+                bu_err_sq = bu_err.T.dot(bu_err)
+                # Top down error term squared, also a scalar
+                td_err_sq = td_err.T.dot(td_err)
+                # Total
+                tot_err_sq = bu_err_sq + td_err_sq
+                
+                # Representation cost E for this layer, is comprised of a bu and td component. (it contains this form for all n-1 layers)
+                E_layer = E_layer + ((1 / self.p.sigma_sq[i]) * bu_err_sq) + ((1 / self.p.sigma_sq[i+1]) * td_err_sq)
+                E_layer = E_layer + self.h(self.U[i],self.p.lam[i])[0] + self.g(np.squeeze(self.r[i]),self.p.alpha[i])[0]
+                # priors^^^
+                '''
+                check out sizing of Ui for h later
+                '''
+                # Store
+                E_list.append(E_layer)
+                
+                # Add layer E to tot E
+                E_tot = E_tot + E_layer
+                
+                # Also calulate bottom up, top down, and total prediction error (ie. L2 norm of the error vector) for each layer
+                PE_tot = np.sqrt(tot_err_sq)
+                PE_bu = np.sqrt(bu_err_sq)
+                PE_td = np.sqrt(td_err_sq)
+                # Store
+                PE_list.append((PE_tot, PE_bu, PE_td))
+                
+            else:
+                
+                E_layer = 0
+                # Bottom up reconstruction error term, a vector
+                bu_err = self.r[i-1] - self.f(self.U[i].dot(self.r[i]))[0]
+            
+                # Top down reconstruction error term, a vector
+                td_err = self.r[i] - self.f(self.U[i+1].dot(self.r[i+1]))[0]
+                
+                # Bottom up error term squared, a scalar
+                bu_err_sq = bu_err.T.dot(bu_err)
+                # Top down error term squared, also a scalar
+                td_err_sq = td_err.T.dot(td_err)
+                # Total
+                tot_err_sq = bu_err_sq + td_err_sq
+                
+                # Representation cost E for this layer, is comprised of a bu and td component. (it contains this form for all n-1 layers)
+                E_layer = E_layer + ((1 / self.p.sigma_sq[i]) * bu_err_sq) + ((1 / self.p.sigma_sq[i+1]) * td_err_sq)
+                E_layer = E_layer + self.h(self.U[i],self.p.lam[i])[0] + self.g(np.squeeze(self.r[i]),self.p.alpha[i])[0]
+                # priors^^^
+                '''
+                check out sizing of Ui for h later
+                '''
+                # Store
+                E_list.append(E_layer)
+                
+                # Add layer E to tot E
+                E_tot = E_tot + E_layer
+                
+                # Also calulate bottom up, top down, and total prediction error (ie. L2 norm of the error vector) for each layer
+                PE_tot = np.sqrt(tot_err_sq)
+                PE_bu = np.sqrt(bu_err_sq)
+                PE_td = np.sqrt(td_err_sq)
+                # Store
+                PE_list.append((PE_tot, PE_bu, PE_td))
+                
+            
+        # Li 212 Layer 3
+        # ie the top layer, the localist layer
+        # Bottom up reconstruction error term, a vector
+        
+        E_layer = 0
+        n = self.num_nonin_lyrs
+        
+        # C1 top layer cost term
+        bu_err = self.r[n-1] - self.f(self.U[n].dot(self.r[n]))[0]
+        td_err = softmax(self.r[n]) - label[:,None] # Difference in order is because not a derivative
+        
+        # Bottom up error term squared, a scalar
+        bu_err_sq = bu_err.T.dot(bu_err)
+        # Top down error term squared, also a scalar
+        td_err_sq = td_err.T.dot(td_err)
+        # Total
+        tot_err_sq = bu_err_sq + td_err_sq
+        
+        # Representation cost E for this layer, is comprised of a bu and td component. (it contains this form for all n-1 layers)
+        E_layer = E_layer + ((1 / self.p.sigma_sq[n]) * bu_err_sq) + ((1 / self.p.sigma_sq[n+1]) * td_err_sq)
+        E_layer = E_layer + self.h(self.U[n],self.p.lam[n])[0] + self.g(np.squeeze(self.r[n]),self.p.alpha[n])[0]
+        # priors^^^
+        # Store
+        E_list.append(E_layer)
+        
+        # Add layer E to tot E
+        E_tot = E_tot + E_layer
+        
+        # Also calulate bottom up, top down, and total prediction error (ie. L2 norm of the error vector) for each layer
+        PE_tot = np.sqrt(tot_err_sq)
+        PE_bu = np.sqrt(bu_err_sq)
+        PE_td = np.sqrt(td_err_sq)
+        # Store
+        PE_list.append((PE_tot, PE_bu, PE_td))
+        
+        return (E_tot, E_list, PE_list)
+
 
 
     def class_cost_nc(self,label):
@@ -823,6 +996,11 @@ class StaticPredictiveCodingClassifier:
                         of tiled images was here,
                         pre 2024.07.10
                         '''
+                        
+                        '''
+                        original
+                        unstitched
+                        '''
 
                         # for iteration in range(0,self.num_rUsimul_iters):
                             
@@ -854,6 +1032,15 @@ class StaticPredictiveCodingClassifier:
                         #         self.U[i] = self.U[i] + (k_U / self.p.sigma_sq[i]) \
                         #         * self.f(self.r[i-1] - self.f(self.U[i].dot(self.r[i]))[0])[1].dot(self.r[i].T) \
                         #         - (k_U / 2) * self.h(self.U[i],self.p.lam[i])[1]
+                        
+                        '''
+                        end orig, unstitched
+                        '''
+                        
+                        
+                        '''
+                        stitch Monica's code here into our syntax.
+                        '''
                         
                         for iteration in range(0,self.num_rUsimul_iters):
                             
@@ -913,7 +1100,7 @@ class StaticPredictiveCodingClassifier:
                                     # U update
                                     self.U[i] = self.U[i] + (k_U / self.p.sigma_sq[i]) \
                                     
-                                    * np.matmul((self.r[i-1] - np.matmul(self.U[i], self.r[i][:, :, None]).squeeze())[:, :, None], self.r[i][:, None, :])
+                                    * np.matmul((self.r[i-1] - np.matmul(self.U[i], self.r[i][:, :, None]).squeeze())[:, :, None], self.r[i][:, None, :]) \
                                     # * self.f(self.r[i-1] - self.f(self.U[i].dot(self.r[i]))[0])[1].dot(self.r[i].T) \
                                         
                                     - (k_U / 2) * self.h(self.U[i],self.p.lam[i])[1]
@@ -923,7 +1110,7 @@ class StaticPredictiveCodingClassifier:
                                     # U update
                                     self.U[i] = self.U[i] + (k_U / self.p.sigma_sq[i]) \
                                         
-                                    * np.outer((self.r[i-1] - self.U[i].dot(self.r[i]).reshape(self.r[i-1].shape)).flatten(), self.r[i])
+                                    * np.outer((self.r[i-1] - self.U[i].dot(self.r[i]).reshape(self.r[i-1].shape)).flatten(), self.r[i]) \ 
                                     # * self.f(self.r[i-1] - self.f(self.U[i].dot(self.r[i]))[0])[1].dot(self.r[i].T) \
                                         
                                     - (k_U / 2) * self.h(self.U[i],self.p.lam[i])[1]
@@ -934,6 +1121,10 @@ class StaticPredictiveCodingClassifier:
                                     self.U[i] = self.U[i] + (k_U / self.p.sigma_sq[i]) \
                                     * self.f(self.r[i-1] - self.f(self.U[i].dot(self.r[i]))[0])[1].dot(self.r[i].T) \
                                     - (k_U / 2) * self.h(self.U[i],self.p.lam[i])[1]
+                                    
+                        '''
+                        end stich
+                        '''
                         
 
                         ### Training loss function E and PE by layer
