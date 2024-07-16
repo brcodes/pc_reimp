@@ -851,6 +851,8 @@ class StaticPredictiveCodingClassifier:
             self.E_contrib_per_img_all_eps = []
             # Each E_tot should == sum of each E_contrib across all imgs in a single epoch
             self.E_tot_per_ep_all_eps = []
+            # Training wide E collection list (Es by layer, image and epoch)
+            self.Es_by_lyr_per_img_all_eps = []
             # Initiate training-wide PE collection list (will contain PEs by layer, image and epoch)
             self.PEs_by_lyr_per_img_all_eps = []
             # Initiate training_wide C collection list (will contain C contributions of each image for epoch)
@@ -880,6 +882,8 @@ class StaticPredictiveCodingClassifier:
                 E_tot_sgl_ep = 0
                 # Error by image
                 E_contrib_per_img_sgl_ep = []
+                # Es by layer
+                Es_by_lyr_per_img_sgl_ep = []
                 # Classification error only
                 C_tot_sgl_ep = 0
                 # Classification error by image
@@ -891,17 +895,21 @@ class StaticPredictiveCodingClassifier:
 
                 for image in range(0,self.num_training_imgs):
 
-                    # rep_cost returns a tuple of E, PE_list (PEs by layer)
-                    Eimg_and_PEsimg = self.rep_cost()
+                    # rep_cost returns a tuple of E, E_list (E's by layer), PE_list (PEs by layer)
+                    Eimg_Elistimg_and_PEsimg = self.rep_cost_stitch()
                     # Loss (E) for random image "0"
-                    Eimg = Eimg_and_PEsimg[0]
+                    Eimg = Eimg_Elistimg_and_PEsimg[0]
+                    # Loss by layers
+                    Elist = Eimg_Elistimg_and_PEsimg[1]
                     # E total for epoch 0
                     E_tot_sgl_ep = E_tot_sgl_ep + Eimg
                     # Add E contrib
                     E_contrib_per_img_sgl_ep.append(Eimg)
+                    # Add e by layer
+                    Es_by_lyr_per_img_sgl_ep.append(Elist)
                     
                     # PEs for each layer for random image "0"
-                    PEs_by_lyr_sgl_img = Eimg_and_PEsimg[1]
+                    PEs_by_lyr_sgl_img = Eimg_Elistimg_and_PEsimg[2]
                     # Add PEs to beginning of tracker list
                     PEs_by_lyr_per_img_sgl_ep.append(PEs_by_lyr_sgl_img)
                     
@@ -917,6 +925,7 @@ class StaticPredictiveCodingClassifier:
                 # Add epoch 0 E to beginning of tracker list
                 self.E_contrib_per_img_all_eps.append(E_contrib_per_img_sgl_ep)
                 self.E_tot_per_ep_all_eps.append(E_tot_sgl_ep)
+                self.Es_by_lyr_per_img_all_eps.append(Es_by_lyr_per_img_sgl_ep)
                 
                 # Add epoch 0 PEs to beginning of tracker list
                 self.PEs_by_lyr_per_img_all_eps.append(PEs_by_lyr_per_img_sgl_ep)
@@ -956,6 +965,8 @@ class StaticPredictiveCodingClassifier:
                     E_tot_sgl_ep = 0
                     # Error by image
                     E_contrib_per_img_sgl_ep = []
+                    # error by layer per image
+                    Es_by_lyr_per_img_sgl_ep = []
                     # Classification error only
                     C_tot_sgl_ep = 0
                     # Classification error by image
@@ -1129,17 +1140,19 @@ class StaticPredictiveCodingClassifier:
 
                         ### Training loss function E and PE by layer
                         # rep_cost returns a tuple of E, PE_list (PEs by layer for that image)
-                        Eimg_and_PEsimg = self.rep_cost(label)
+                        Eimg_Elist_and_PEsimg = self.rep_cost_stitch(label)
 
                         # Loss (E) for this image
-                        Eimg = Eimg_and_PEsimg[0]
+                        Eimg = Eimg_Elist_and_PEsimg[0]
+                        Elist = Eimg_Elist_and_PEsimg[1]
                         # Track E contribution by image across whole epoch
                         E_contrib_per_img_sgl_ep.append(Eimg)
+                        Es_by_lyr_per_img_sgl_ep.append(Elist)
                         # Add single image's representation cost to epoch's E total
                         E_tot_sgl_ep = E_tot_sgl_ep + Eimg
 
                         # PEs for each layer for this image
-                        PEs_by_lyr_sgl_img = Eimg_and_PEsimg[1]
+                        PEs_by_lyr_sgl_img = Eimg_Elist_and_PEsimg[2]
                         # Track PEs by layer across whole epoch
                         PEs_by_lyr_per_img_sgl_ep.append(PEs_by_lyr_sgl_img)
 
@@ -1162,6 +1175,8 @@ class StaticPredictiveCodingClassifier:
                     self.E_contrib_per_img_all_eps.append(E_contrib_per_img_sgl_ep)
                     # Store this epoch's total E after each Eimg
                     self.E_tot_per_ep_all_eps.append(E_tot_sgl_ep)
+                    # epochs layer based E
+                    self.Es_by_lyr_per_img_all_eps.append(Es_by_lyr_per_img_sgl_ep)
                     # Store this epoch's PEs (parsed per layer, per image)
                     self.PEs_by_lyr_per_img_all_eps.append(PEs_by_lyr_per_img_sgl_ep)
                     # Store this epoch's C contributions per image
