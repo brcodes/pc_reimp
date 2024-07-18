@@ -21,7 +21,7 @@ A Predictive Coding Classifier according to the mathematical dictates of Rao & B
 
 ### Activation functions
 
-def linear_trans(self, U_dot_r):
+def linear_trans(U_dot_r):
     """
     Though intended to operate on some U.dot(r), will take any numerical
     argument x and return the tuple (f(x), F(x)). Linear transformation.
@@ -32,7 +32,7 @@ def linear_trans(self, U_dot_r):
     return (f, F)
     
 
-def tanh_trans(self, U_dot_r):
+def tanh_trans(U_dot_r):
     """
     Though intended to operate on some U.dot(r), will take any numerical
     argument x and return the tuple (f(x), F(x)). Tanh transformation.
@@ -45,7 +45,7 @@ def tanh_trans(self, U_dot_r):
 
 ### r, U prior functions
 
-def gauss_prior(self, r_or_U, alph_or_lam):
+def gauss_prior(r_or_U=None, alph_or_lam=None):
     """
     Takes an argument pair of either r & alpha, or U & lambda, and returns
     a tuple of (g(r), g'(r)), or (h(U), h'(U)), respectively. Gaussian prior.
@@ -56,7 +56,7 @@ def gauss_prior(self, r_or_U, alph_or_lam):
     return (g_or_h, gprime_or_hprime)
 
 
-def kurt_prior(self, r_or_U, alph_or_lam):
+def kurt_prior(r_or_U= None, alph_or_lam=None):
     """
     Takes an argument pair of either r & alpha, or U & lambda, and returns
     a tuple of (g(r), g'(r)), or (h(U), h'(U)), respectively. Sparse kurtotic prior.
@@ -167,7 +167,7 @@ class StaticPredictiveCodingClassifier:
 
         # We want to track E for Layer 1, Layer 2, Layer 3 (Li 212)
         # this loop will only tackle layer 1 and 2 in a 3 layer model.
-        for i in range(1,len(self.r)):
+        for i in range(1,self.num_nonin_lyrs):
             E_layer = 0
             # Bottom up reconstruction error term, a vector
             bu_err = self.r[i-1] - self.f(self.U[i].dot(self.r[i]))[0]
@@ -239,8 +239,30 @@ class StaticPredictiveCodingClassifier:
         
         return (E_tot, E_list, PE_list)
     
+        # Function to pad a matrix to a target shape
+    def pad_to_shape(matrix, target_shape):
+        padding = [(0, max(0, t - s)) for s, t in zip(matrix.shape, target_shape)]
+        return np.pad(matrix, padding, 'constant')
+
     
     def rep_cost_stitch(self, label):
+        
+        def normalized_magnitude(matrix):
+            """
+            Calculate the normalized magnitude of a matrix.
+            
+            Parameters:
+            - matrix: A numpy array representing the matrix.
+            
+            Returns:
+            - A scalar representing the normalized magnitude of the matrix.
+            """
+            frobenius_norm = np.linalg.norm(matrix, 'fro')  # Calculate Frobenius norm
+            num_elements = matrix.size  # Get the number of elements in the matrix
+            normalized_magnitude = frobenius_norm / num_elements  # Normalize by the size of the matrix
+            return normalized_magnitude
+            
+        
         '''
         Uses current r/U states to compute the least squares portion of the error
         (concerned with accurate reconstruction of the input).
@@ -258,8 +280,7 @@ class StaticPredictiveCodingClassifier:
 
         # We want to track E for Layer 1, Layer 2, Layer 3 (Li 212)
         # this loop will only tackle layer 1 and 2 in a 3 layer model.
-        for i in range(1,len(self.r)):
-            
+        for i in range(1,self.num_nonin_lyrs):
             
             if i == 1:
             
@@ -272,16 +293,18 @@ class StaticPredictiveCodingClassifier:
                 td_err = self.r[i] - self.U[i+1].dot(self.r[i+1]).reshape(self.r[i].shape)
                 # td_err = self.r[i] - self.f(self.U[i+1].dot(self.r[i+1]))[0]
                 
-                # Bottom up error term squared, a scalar
-                bu_err_sq = bu_err.T.dot(bu_err)
-                # Top down error term squared, also a scalar
-                td_err_sq = td_err.T.dot(td_err)
+                # Bottom up error term squared,(ideally) a scalar
+                bu_err_sq = normalized_magnitude(bu_err.T.dot(bu_err))
+                # Top down error term squared
+                td_err_sq = normalized_magnitude(td_err.T.dot(td_err))
                 # Total
                 tot_err_sq = bu_err_sq + td_err_sq
                 
                 # Representation cost E for this layer, is comprised of a bu and td component. (it contains this form for all n-1 layers)
                 E_layer = E_layer + ((1 / self.p.sigma_sq[i]) * bu_err_sq) + ((1 / self.p.sigma_sq[i+1]) * td_err_sq)
-                E_layer = E_layer + self.h(self.U[i],self.p.lam[i])[0] + self.g(np.squeeze(self.r[i]),self.p.alpha[i])[0]
+                
+                E_layer = E_layer + self.h(r_or_U=self.U[i], alph_or_lam=self.p.lam[i])[0] + self.g(r_or_U=self.r[i].squeeze(), alph_or_lam=self.p.alpha[i])[0]
+                
                 # priors^^^
                 '''
                 check out sizing of Ui for h later
@@ -299,7 +322,7 @@ class StaticPredictiveCodingClassifier:
                 # Store
                 PE_list.append((PE_tot, PE_bu, PE_td))
                 
-            if i == 2:
+            if i >= 2:
             
                 E_layer = 0
                 # Bottom up reconstruction error term, a vector
@@ -310,46 +333,10 @@ class StaticPredictiveCodingClassifier:
                 td_err = self.r[i] - self.U[i+1].dot(self.r[i+1])
                 # td_err = self.r[i] - self.f(self.U[i+1].dot(self.r[i+1]))[0]
                 
-                # Bottom up error term squared, a scalar
-                bu_err_sq = bu_err.T.dot(bu_err)
-                # Top down error term squared, also a scalar
-                td_err_sq = td_err.T.dot(td_err)
-                # Total
-                tot_err_sq = bu_err_sq + td_err_sq
-                
-                # Representation cost E for this layer, is comprised of a bu and td component. (it contains this form for all n-1 layers)
-                E_layer = E_layer + ((1 / self.p.sigma_sq[i]) * bu_err_sq) + ((1 / self.p.sigma_sq[i+1]) * td_err_sq)
-                E_layer = E_layer + self.h(self.U[i],self.p.lam[i])[0] + self.g(np.squeeze(self.r[i]),self.p.alpha[i])[0]
-                # priors^^^
-                '''
-                check out sizing of Ui for h later
-                '''
-                # Store
-                E_list.append(E_layer)
-                
-                # Add layer E to tot E
-                E_tot = E_tot + E_layer
-                
-                # Also calulate bottom up, top down, and total prediction error (ie. L2 norm of the error vector) for each layer
-                PE_tot = np.sqrt(tot_err_sq)
-                PE_bu = np.sqrt(bu_err_sq)
-                PE_td = np.sqrt(td_err_sq)
-                # Store
-                PE_list.append((PE_tot, PE_bu, PE_td))
-                
-            else:
-                
-                E_layer = 0
-                # Bottom up reconstruction error term, a vector
-                bu_err = self.r[i-1] - self.f(self.U[i].dot(self.r[i]))[0]
-            
-                # Top down reconstruction error term, a vector
-                td_err = self.r[i] - self.f(self.U[i+1].dot(self.r[i+1]))[0]
-                
-                # Bottom up error term squared, a scalar
-                bu_err_sq = bu_err.T.dot(bu_err)
-                # Top down error term squared, also a scalar
-                td_err_sq = td_err.T.dot(td_err)
+                # Bottom up error term squared,(ideally) a scalar
+                bu_err_sq = normalized_magnitude(bu_err.T.dot(bu_err))
+                # Top down error term squared
+                td_err_sq = normalized_magnitude(td_err.T.dot(td_err))
                 # Total
                 tot_err_sq = bu_err_sq + td_err_sq
                 
@@ -428,7 +415,6 @@ class StaticPredictiveCodingClassifier:
 
         if np.argmax(sm_rn) == np.argmax(label[:,None]):
             guess_correct_or_not = 1
-            self.n_correct_classifs_per_ep += 1
         else:
             guess_correct_or_not = 0
 
@@ -457,7 +443,6 @@ class StaticPredictiveCodingClassifier:
         # Guess image
         if np.argmax(sm_rn) == np.argmax(L):
             guess_correct_or_not = 1
-            self.n_correct_classifs_per_ep += 1
         else:
             guess_correct_or_not = 0
 
@@ -477,7 +462,6 @@ class StaticPredictiveCodingClassifier:
         # Guess image
         if np.argmax(softmax(self.r[n])) == np.argmax(label[:,None]):
             guess_correct_or_not = 1
-            self.n_correct_classifs_per_ep += 1
         else:
             guess_correct_or_not = 0
 
@@ -867,6 +851,9 @@ class StaticPredictiveCodingClassifier:
             # Epoch 'zero' is not randomized.
             self.randomized_training_indices_all_eps = []
             
+            print('size of r[1] is (before rep cost call ep 0)', self.r[1].shape)
+            print('size of r[2] is (before rep cost call ep 0)', self.r[2].shape)
+            
             ### Li case: and updating proceeds through layers, r and U of a layer i are updated simultaneously 30 times
             ### This means each each layer's r/U updates 30 times per image, using top down and bottom up information specific to that image
             if self.p.update_scheme == "rU_simultaneous":
@@ -896,7 +883,7 @@ class StaticPredictiveCodingClassifier:
                 for image in range(0,self.num_training_imgs):
 
                     # rep_cost returns a tuple of E, E_list (E's by layer), PE_list (PEs by layer)
-                    Eimg_Elistimg_and_PEsimg = self.rep_cost_stitch()
+                    Eimg_Elistimg_and_PEsimg = self.rep_cost_stitch(Y[image])
                     # Loss (E) for random image "0"
                     Eimg = Eimg_Elistimg_and_PEsimg[0]
                     # Loss by layers
@@ -1057,80 +1044,109 @@ class StaticPredictiveCodingClassifier:
                             
                             ### r loop (splitting r loop, U loop mimic's Li architecture)
                             ### (i ... n-1)
+                            
+                            print('iteration', iteration)
+                            
                             for i in range(1, n):
+                                
+                                print('i is in r loop', i)
+                                # print(f'size of r[{i}] start of r update loop', self.r[i].shape)
+                                # print(f'size of r[{i-1}] start of r update loop', self.r[i-1].shape)
+                                # print(f'size of U[{i}] start of r update loop', self.U[i].shape)
+                                # print(f'size of U[{i+1}] start of r update loop', self.U[i+1].shape)
                                 
                                 if i == 1:
 
                                     # r update
                                     self.r[i] = self.r[i] + (k_r / self.p.sigma_sq[i]) \
                                     * np.matmul(np.transpose(self.U[i], axes=(0,2,1)), (self.r[i-1] - np.matmul(self.U[i], self.r[i][:, :, None]).squeeze())[:, :, None]).squeeze()
-                                    # * self.U[i].T.dot(self.f(self.r[i-1] - self.f(self.U[i].dot(self.r[i]))[0])[1]) \
-                                        
                                     + (k_r/self.p.sigma_sq[i+1]) * -(self.r[i] - self.U[i+1].dot(self.r[i+1]).reshape(self.r[i].shape))
-                                    # + (k_r / self.p.sigma_sq[i+1]) * (self.f(self.U[i+1].dot(self.r[i+1]))[0] - self.r[i]) \
-                                        
                                     - (k_r / 2) * self.g(self.r[i],self.p.alpha[i])[1]
                                     
-                                if i == 2:
-
+                                    # print(f'size of r[{i}] end of r update loop', self.r[i].shape)
+                                    
+                                elif i == 2:
+                                    
+                                    print(f'size of r[{i+1}] start of r update loop', self.r[i+1].shape)
+                                    print(f'size of r[{i}] RIGHT before r update', self.r[i].shape)
+                                    print(f'size of self.U[{i}].dot(self.r[{i}]) RIGHT before r update', self.U[i].dot(self.r[i]).shape)
+                                    print(f'size of self.U[{i}].dot(self.r[{i}]).reshape(16,32) RIGHT before r update', self.U[i].dot(self.r[i]).reshape((16,32)).shape)
+                                    print(f'size of self.U[{i}].T.dot((self.r[{i-1}] - (self.U[{i}].dot(self.r[{i}])).reshape((16,32))).reshape(512)) -- should be 128, ', (self.U[i].T.dot((self.r[i-1] - (self.U[i].dot(self.r[i])).reshape((16,32))).reshape(512))).shape)
+                                    
+                                    print(f'TOP DOWN stuff self.r[{i}]', self.r[i].shape)
+                                    print(f'TOP DOWN stuff self.U[{i+1}].dot(self.r[{i+1}])', self.U[i+1].dot(self.r[i+1]).shape)
                                     # r update
                                     self.r[i] = self.r[i] + (k_r / self.p.sigma_sq[i]) \
-                                        
-                                    * self.U[i].T.dot((self.r[i-1] - self.U[i].dot(self.r[i]).reshape(self.r[i-1].shape)).flatten()) \
-                                    # * self.U[i].T.dot(self.f(self.r[i-1] - self.f(self.U[i].dot(self.r[i]))[0])[1]) \
-                                        
-                                    + (k_r / self.p.sigma_sq[i+1]) * -(self.r[i] - self.U[i+1].dot(self.r[i+1]))
-                                    # + (k_r / self.p.sigma_sq[i+1]) * (self.f(self.U[i+1].dot(self.r[i+1]))[0] - self.r[i]) \
-                                        
+                                    * self.U[i].T.dot((self.r[i-1] - (self.U[i].dot(self.r[i])).reshape((16,32))).reshape(512)) \
+                                    + (k_r / self.p.sigma_sq[i+1]) * -(self.r[i] - (self.U[i+1].dot(self.r[i+1])).squeeze()) \
                                     - (k_r / 2) * self.g(self.r[i],self.p.alpha[i])[1]
                                     
-                                else:
+                                    # print(f'size of r[{i-1}] end of r update loop', self.r[i-1].shape)
+                                    print(f'size of r[{i}] end of r update loop', self.r[i].shape)
+                                    # print(f'size of r[{i+1}] end of r update loop', self.r[i+1].shape)
+                                    # print(f'size of U[{i}] end of r update loop', self.U[i].shape)
+                                    # print(f'size of U[{i+1}] end of r update loop', self.U[i+1].shape)
                                     
+                                else:
+
                                     # r update
                                     self.r[i] = self.r[i] + (k_r / self.p.sigma_sq[i]) \
                                     * self.U[i].T.dot(self.f(self.r[i-1] - self.f(self.U[i].dot(self.r[i]))[0])[1]) \
                                     + (k_r / self.p.sigma_sq[i+1]) * (self.f(self.U[i+1].dot(self.r[i+1]))[0] - self.r[i]) \
                                     - (k_r / 2) * self.g(self.r[i],self.p.alpha[i])[1]
 
+                            print(f'size of r[{n}] beginning of r n update loop', self.r[n].shape)
+                            print(f'size of r[{n-1}] beginning of r n update loop', self.r[n-1].shape)
+                            print(f'size of U[{n}] beginning of r n update loop', self.U[n].shape)
+                            
                             # final r (Li's "localist") layer update
+                            self.r[n] = self.r[n].squeeze()
                             self.r[n] = self.r[n] + (k_r / self.p.sigma_sq[n]) \
-                            * self.U[n].T.dot(self.f(self.r[n-1] - self.f(self.U[n].dot(self.r[n]))[0])[1]) \
+                            * self.U[n].T.dot(self.r[n-1] - self.U[n].dot(self.r[n])) \
                             - (k_r / 2) * self.g(self.r[n],self.p.alpha[n])[1] \
+                            # * self.U[n].T.dot((self.r[n-1] - (self.U[n].dot(self.r[n])).reshape((16,32))).reshape(512)) \
+                            # * self.U[n].T.dot(self.f(self.r[n-1] - self.f(self.U[n].dot(self.r[n].squeeze()))[0])[1]) \
 
                             # later: change based on C1, C2 or NC setting
                             # C1 for now
                             # size eg 212,1 label , 212,1 r[n]
                             # only one r learning rate in Li 212.
-                            + ((k_r) * (label[:,None] - softmax(self.r[n])))
+                            + ((k_r) * (label - softmax(self.r[n])))
+                            
+                            print(f'size of r[{n}] end of r n update loop', self.r[n].shape)
+                            print(f'size of r[{n-1}] end of r n update loop', self.r[n-1].shape)
+                            print(f'size of U[{n}] end of r n update loop', self.U[n].shape)
 
                             ### U loop ( i ... n)
                             for i in range(1, n+1):
+                                print('U is in loop', i)
                                 
                                 if i == 1:
 
                                     # U update
                                     self.U[i] = self.U[i] + (k_U / self.p.sigma_sq[i]) \
-                                    
                                     * np.matmul((self.r[i-1] - np.matmul(self.U[i], self.r[i][:, :, None]).squeeze())[:, :, None], self.r[i][:, None, :]) \
                                     # * self.f(self.r[i-1] - self.f(self.U[i].dot(self.r[i]))[0])[1].dot(self.r[i].T) \
-                                        
                                     - (k_U / 2) * self.h(self.U[i],self.p.lam[i])[1]
                                     
-                                if i == 2:
+                                elif i == 2:
+                                    
+                                    # print('size of U2', self.U[i].shape)
+                                    # print('size of r2', self.r[i].shape)
+                                    # print('size of U2 dot r2', self.U[i].dot(self.r[i]).shape)
                                     
                                     # U update
                                     self.U[i] = self.U[i] + (k_U / self.p.sigma_sq[i]) \
-                                        
-                                    * np.outer((self.r[i-1] - self.U[i].dot(self.r[i]).reshape(self.r[i-1].shape)).flatten(), self.r[i]) \ 
+                                    * np.tile((np.matmul((self.r[i-1] - np.matmul(self.U[i], self.r[i][:, None]).squeeze().reshape((16,32))), self.r[i].reshape((32,4)))).flatten(), 2)\
+                                    # * np.outer((self.r[i-1] - (self.U[i].dot(self.r[i])).reshape(self.r[i-1].shape)).flatten(), self.r[i]) \
                                     # * self.f(self.r[i-1] - self.f(self.U[i].dot(self.r[i]))[0])[1].dot(self.r[i].T) \
-                                        
                                     - (k_U / 2) * self.h(self.U[i],self.p.lam[i])[1]
                                     
                                 else:
                                     
                                     # U update
                                     self.U[i] = self.U[i] + (k_U / self.p.sigma_sq[i]) \
-                                    * self.f(self.r[i-1] - self.f(self.U[i].dot(self.r[i]))[0])[1].dot(self.r[i].T) \
+                                    * np.outer(self.r[i-1] - self.U[i].dot(self.r[i]), self.r[i].T) \
                                     - (k_U / 2) * self.h(self.U[i],self.p.lam[i])[1]
                                     
                         '''
