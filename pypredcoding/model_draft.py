@@ -282,6 +282,7 @@ class StaticPredictiveCodingClassifier:
         # this loop will only tackle layer 1 and 2 in a 3 layer model.
         for i in range(1,self.num_nonin_lyrs):
             
+            
             if i == 1:
             
                 E_layer = 0
@@ -300,10 +301,35 @@ class StaticPredictiveCodingClassifier:
                 # Total
                 tot_err_sq = bu_err_sq + td_err_sq
                 
+                # if isinstance(tot_err_sq, (int, float)):  # Check if tot_err_sq is a scalar (int or float)
+                #     print(f'i = {i}, tot_err_sq is a scalar with value {tot_err_sq}')
+                # elif isinstance(tot_err_sq, (list, np.ndarray)):  # Check if tot_err_sq is a list or numpy array (matrix)
+                #     print(f'i = {i}, tot_err_sq is a matrix with shape {np.shape(tot_err_sq)} and values:\n{tot_err_sq}')
+                # else:
+                #     print(f'i = {i}, tot_err_sq is of type {type(tot_err_sq)} with value {tot_err_sq}')
+                
                 # Representation cost E for this layer, is comprised of a bu and td component. (it contains this form for all n-1 layers)
                 E_layer = E_layer + ((1 / self.p.sigma_sq[i]) * bu_err_sq) + ((1 / self.p.sigma_sq[i+1]) * td_err_sq)
                 
+                # if isinstance(E_layer, (int, float)):
+                #     print(f'i = {i}, E_layer after sigma application is a scalar with value {E_layer}')
+                # elif isinstance(E_layer, (list, np.ndarray)):
+                #     print(f'i = {i}, E_layer after sigma application is a matrix with shape {np.shape(E_layer)} and values:\n{E_layer}')
+                # else:
+                #     print(f'i = {i}, E_layer after sigma application is of type {type(E_layer)} with value {E_layer}')
+                
+                
+                
                 E_layer = E_layer + self.h(r_or_U=self.U[i], alph_or_lam=self.p.lam[i])[0] + self.g(r_or_U=self.r[i].squeeze(), alph_or_lam=self.p.alpha[i])[0]
+                
+                # if isinstance(E_layer, (int, float)):
+                #     print(f'i = {i}, E_layer after prior application is a scalar with value {E_layer}')
+                # elif isinstance(E_layer, (list, np.ndarray)):
+                #     print(f'i = {i}, E_layer after prior application is a matrix with shape {np.shape(E_layer)} and values:\n{E_layer}')
+                # else:
+                #     print(f'i = {i}, E_layer after prior application is of type {type(E_layer)} with value {E_layer}')
+                
+                
                 
                 # priors^^^
                 '''
@@ -322,15 +348,23 @@ class StaticPredictiveCodingClassifier:
                 # Store
                 PE_list.append((PE_tot, PE_bu, PE_td))
                 
+                # print(f'td err sq i == {i} is {td_err_sq}')
+                
+                
             if i >= 2:
             
                 E_layer = 0
                 # Bottom up reconstruction error term, a vector
                 bu_err = self.r[i-1] - self.U[i].dot(self.r[i]).reshape(self.r[i-1].shape)
                 # bu_err = self.r[i-1] - self.f(self.U[i].dot(self.r[i]))[0]
-            
-                # Top down reconstruction error term, a vector
-                td_err = self.r[i] - self.U[i+1].dot(self.r[i+1])
+   
+                if len(self.r[i+1].shape) == 1:
+                    td_err = self.r[i] - self.U[i+1].dot(self.r[i+1][:, None])
+                
+                else:
+                    # Top down reconstruction error term, a vector
+                    td_err = self.r[i] - self.U[i+1].dot(self.r[i+1])
+                    
                 # td_err = self.r[i] - self.f(self.U[i+1].dot(self.r[i+1]))[0]
                 
                 # Bottom up error term squared,(ideally) a scalar
@@ -340,9 +374,34 @@ class StaticPredictiveCodingClassifier:
                 # Total
                 tot_err_sq = bu_err_sq + td_err_sq
                 
+                # if isinstance(tot_err_sq, (int, float)):  # Check if tot_err_sq is a scalar (int or float)
+                #     print(f'i = {i}, tot_err_sq is a scalar with value {tot_err_sq}')
+                # elif isinstance(tot_err_sq, (list, np.ndarray)):  # Check if tot_err_sq is a list or numpy array (matrix)
+                #     print(f'i = {i}, tot_err_sq is a matrix with shape {np.shape(tot_err_sq)} and values:\n{tot_err_sq}')
+                # else:
+                #     print(f'i = {i}, tot_err_sq is of type {type(tot_err_sq)} with value {tot_err_sq}')
+                
                 # Representation cost E for this layer, is comprised of a bu and td component. (it contains this form for all n-1 layers)
                 E_layer = E_layer + ((1 / self.p.sigma_sq[i]) * bu_err_sq) + ((1 / self.p.sigma_sq[i+1]) * td_err_sq)
+                
+                # if isinstance(E_layer, (int, float)):
+                #     print(f'i = {i}, E_layer after sigma application is a scalar with value {E_layer}')
+                # elif isinstance(E_layer, (list, np.ndarray)):
+                #     print(f'i = {i}, E_layer after sigma application is a matrix with shape {np.shape(E_layer)} and values:\n{E_layer}')
+                # else:
+                #     print(f'i = {i}, E_layer after sigma application is of type {type(E_layer)} with value {E_layer}')
+                
+                
                 E_layer = E_layer + self.h(self.U[i],self.p.lam[i])[0] + self.g(np.squeeze(self.r[i]),self.p.alpha[i])[0]
+                
+                # if isinstance(E_layer, (int, float)):
+                #     print(f'i = {i}, E_layer after prior application is a scalar with value {E_layer}')
+                # elif isinstance(E_layer, (list, np.ndarray)):
+                #     print(f'i = {i}, E_layer after prior application is a matrix with shape {np.shape(E_layer)} and values:\n{E_layer}')
+                # else:
+                #     print(f'i = {i}, E_layer after prior application is of type {type(E_layer)} with value {E_layer}')
+                
+                # print(f'td err sq i == {i} is {td_err_sq}')
                 # priors^^^
                 '''
                 check out sizing of Ui for h later
@@ -369,25 +428,67 @@ class StaticPredictiveCodingClassifier:
         n = self.num_nonin_lyrs
         
         # C1 top layer cost term
-        bu_err = self.r[n-1] - self.f(self.U[n].dot(self.r[n]))[0]
-        td_err = softmax(self.r[n]) - label[:,None] # Difference in order is because not a derivative
+        
+        bu_err = self.r[n-1] - self.U[n].dot(self.r[n]).reshape(self.r[n-1].shape)
+        # bu_err = self.r[n-1] - self.U[n].dot(self.r[n])
+        
+        if len(self.r[n].shape) == 1:
+            td_err = softmax(self.r[n]) - label
+            
+        else:
+            td_err = softmax(self.r[n]) - label[:,None] # Difference in order is because not a derivative
+        
+        # print(f'type of bu_err i == {n} is {type(bu_err)}')
+        # print(f'type of td_err i == {n} is {type(td_err)}')
+        # print(f'size of td_err i == {n} is {td_err.shape}')
+        # print(f'size of bu_err i == {n} is {bu_err.shape}')
+        
+        # print(f' td err is {td_err}')
+        
+        
         
         # Bottom up error term squared, a scalar
         bu_err_sq = bu_err.T.dot(bu_err)
         # Top down error term squared, also a scalar
+        
+        
         td_err_sq = td_err.T.dot(td_err)
+        
+        if len(td_err_sq.shape) == 2:
+            td_err_sq = td_err_sq[0,0]
+        elif len(td_err_sq.shape) == 1:
+            td_err_sq = td_err_sq[0]
+        
         # Total
         tot_err_sq = bu_err_sq + td_err_sq
         
+        # print(f'bu err sq i == {n} is {bu_err_sq}')
+        # print(f'td err sq i == {n} is {td_err_sq}')
+        
+        # print(f'size of bu_err_sq i == {n} is {bu_err_sq.shape}')
+        # print(f'size of td_err_sq i == {n} is {td_err_sq.shape}')
+        
+        # sys.exit()
+        
+        # print(f'type of bu_err_sq i == {n} is {type(bu_err_sq)}')
+        # print(f'type of td_err_sq i == {n} is {type(td_err_sq)}')
+        # print(f'type of tot_err_sq i == {n} is {type(tot_err_sq)}')
+        
         # Representation cost E for this layer, is comprised of a bu and td component. (it contains this form for all n-1 layers)
         E_layer = E_layer + ((1 / self.p.sigma_sq[n]) * bu_err_sq) + ((1 / self.p.sigma_sq[n+1]) * td_err_sq)
+        
+        # print(f'type of E_layer after sigmas i == {n} is {type(E_layer)}')
         E_layer = E_layer + self.h(self.U[n],self.p.lam[n])[0] + self.g(np.squeeze(self.r[n]),self.p.alpha[n])[0]
+        # print(f'type of E_layer after priors i == {n} is {type(E_layer)}')
+        
         # priors^^^
         # Store
         E_list.append(E_layer)
         
         # Add layer E to tot E
         E_tot = E_tot + E_layer
+        
+        # print(f' type of Etot i == {n} is {type(E_tot)}')
         
         # Also calulate bottom up, top down, and total prediction error (ie. L2 norm of the error vector) for each layer
         PE_tot = np.sqrt(tot_err_sq)
@@ -439,6 +540,11 @@ class StaticPredictiveCodingClassifier:
 
         # Jc in the math is binary crossentropy; Jc = L.T log[softmax(r_n)]
         C1 = L.T.dot(np.log(sm_rn))
+        
+        if len(C1.shape) == 2:
+            C1 = -C1[0,0]
+        elif len(C1.shape) == 1:
+            C1 = -C1[0]
 
         # Guess image
         if np.argmax(sm_rn) == np.argmax(L):
@@ -486,6 +592,10 @@ class StaticPredictiveCodingClassifier:
 
         ## Detect WHOLE IMAGE case: model will be constructed with only 1 r[1] module
         if self.p.num_r1_mods == 1:
+
+            '''
+            not yet built
+            '''
 
             # Set some general attrs
             self.is_tiled = False
@@ -881,6 +991,9 @@ class StaticPredictiveCodingClassifier:
                 classif_success_per_img_sgl_ep = []
 
                 for image in range(0,self.num_training_imgs):
+                    
+                    single_image_tileset = X[image]
+                    self.r[0] = single_image_tileset
 
                     # rep_cost returns a tuple of E, E_list (E's by layer), PE_list (PEs by layer)
                     Eimg_Elistimg_and_PEsimg = self.rep_cost_stitch(Y[image])
@@ -897,6 +1010,12 @@ class StaticPredictiveCodingClassifier:
                     
                     # PEs for each layer for random image "0"
                     PEs_by_lyr_sgl_img = Eimg_Elistimg_and_PEsimg[2]
+                    
+                    # print(f' type of Eimg is {type(Eimg)}')
+                    # print(f' type of Elist is {type(Elist)}')
+                    # print(f' type of PEs_by_lyr_sgl_img is {type(PEs_by_lyr_sgl_img)}')
+                    
+                    
                     # Add PEs to beginning of tracker list
                     PEs_by_lyr_per_img_sgl_ep.append(PEs_by_lyr_sgl_img)
                     
@@ -908,6 +1027,11 @@ class StaticPredictiveCodingClassifier:
                     C_contrib_per_img_sgl_ep.append(Cimg)
                     classif_success_per_img_sgl_ep.append(guess_correct_or_not)
                     
+                    # Reset r[1], r[2], r[3(n)] to their initial values for the next image
+                    self.r[1] = np.random.randn(self.p.num_r1_mods, self.p.hidden_sizes[0])
+                    self.r[2] = np.random.randn(self.p.hidden_sizes[1])
+                    # "Localist" layer (relates size of Y (num classes) to final hidden layer)
+                    self.r[3] = np.random.randn(self.p.output_size, 1)
 
                 # Add epoch 0 E to beginning of tracker list
                 self.E_contrib_per_img_all_eps.append(E_contrib_per_img_sgl_ep)
@@ -934,6 +1058,12 @@ class StaticPredictiveCodingClassifier:
                 print(f"Epoch 0  E is {E_tot_sgl_ep}" + "\n")
                 print(f"Epoch 0  C is {C_tot_sgl_ep}" + "\n")
                 
+                print(f"X.shape is {X.shape}")
+                single_image_tileset = X[0]
+                print(f"single_image_tileset.shape is {single_image_tileset.shape}")
+                label = Y[0]
+                print(f"single label.shape image {1} is {label.shape}")
+                
                 #### EPOCHS 1 - n
 
                 for epoch in range(1, self.p.num_epochs + 1):
@@ -943,7 +1073,6 @@ class StaticPredictiveCodingClassifier:
                     # Shuffle indices of X, Y together, each epoch
                     N_permuted_indices = np.random.permutation(self.num_training_imgs)
                     X_shuffled = X[N_permuted_indices]
-                    print(f"X_shuffled.shape is {X_shuffled.shape}")
                     Y_shuffled = Y[N_permuted_indices]
 
                     ### Initialize epoch-dependent measures
@@ -970,24 +1099,25 @@ class StaticPredictiveCodingClassifier:
                     k_o = self.k_o_lr(epoch-1)
 
                     """
-                    # internal plotting code existed here pre 2024.07.10
+                    # internal tile plotting code existed here pre 2024.07.10
                     """
 
                     #### GRADIENT DESCENT LOOP
                     # NOTE: (only batch size 1 currently supported)
 
                     for image in range(0, self.num_training_imgs):
+                        
+                        # print(f'epoch {epoch} image {image}')
 
                         ## Parse out tileset and label for one image
                         # single image tilset is a set of n=self.num_tiles_per_img tiles; Li case: shape (225, 256)
                         single_image_tileset = X_shuffled[image]
-                        print(f"single_image_tileset.shape is {single_image_tileset.shape}")
                         # This single image's tileset becomes the model's "0th"-level representation
                         # I.e. is the original image, in tiled form, with user-tailored rf settings
                         self.r[0] = single_image_tileset
+                        
                         # Set matching label
                         label = Y_shuffled[image]
-                        print(f"single label.shape image {image+1} is {label.shape}")
 
                         '''
                         internal plotting test for shuffling 
@@ -1045,16 +1175,9 @@ class StaticPredictiveCodingClassifier:
                             ### r loop (splitting r loop, U loop mimic's Li architecture)
                             ### (i ... n-1)
                             
-                            print('iteration', iteration)
                             
                             for i in range(1, n):
-                                
-                                print('i is in r loop', i)
-                                # print(f'size of r[{i}] start of r update loop', self.r[i].shape)
-                                # print(f'size of r[{i-1}] start of r update loop', self.r[i-1].shape)
-                                # print(f'size of U[{i}] start of r update loop', self.U[i].shape)
-                                # print(f'size of U[{i+1}] start of r update loop', self.U[i+1].shape)
-                                
+                            
                                 if i == 1:
 
                                     # r update
@@ -1063,29 +1186,13 @@ class StaticPredictiveCodingClassifier:
                                     + (k_r/self.p.sigma_sq[i+1]) * -(self.r[i] - self.U[i+1].dot(self.r[i+1]).reshape(self.r[i].shape))
                                     - (k_r / 2) * self.g(self.r[i],self.p.alpha[i])[1]
                                     
-                                    # print(f'size of r[{i}] end of r update loop', self.r[i].shape)
-                                    
                                 elif i == 2:
                                     
-                                    print(f'size of r[{i+1}] start of r update loop', self.r[i+1].shape)
-                                    print(f'size of r[{i}] RIGHT before r update', self.r[i].shape)
-                                    print(f'size of self.U[{i}].dot(self.r[{i}]) RIGHT before r update', self.U[i].dot(self.r[i]).shape)
-                                    print(f'size of self.U[{i}].dot(self.r[{i}]).reshape(16,32) RIGHT before r update', self.U[i].dot(self.r[i]).reshape((16,32)).shape)
-                                    print(f'size of self.U[{i}].T.dot((self.r[{i-1}] - (self.U[{i}].dot(self.r[{i}])).reshape((16,32))).reshape(512)) -- should be 128, ', (self.U[i].T.dot((self.r[i-1] - (self.U[i].dot(self.r[i])).reshape((16,32))).reshape(512))).shape)
-                                    
-                                    print(f'TOP DOWN stuff self.r[{i}]', self.r[i].shape)
-                                    print(f'TOP DOWN stuff self.U[{i+1}].dot(self.r[{i+1}])', self.U[i+1].dot(self.r[i+1]).shape)
                                     # r update
                                     self.r[i] = self.r[i] + (k_r / self.p.sigma_sq[i]) \
                                     * self.U[i].T.dot((self.r[i-1] - (self.U[i].dot(self.r[i])).reshape((16,32))).reshape(512)) \
                                     + (k_r / self.p.sigma_sq[i+1]) * -(self.r[i] - (self.U[i+1].dot(self.r[i+1])).squeeze()) \
                                     - (k_r / 2) * self.g(self.r[i],self.p.alpha[i])[1]
-                                    
-                                    # print(f'size of r[{i-1}] end of r update loop', self.r[i-1].shape)
-                                    print(f'size of r[{i}] end of r update loop', self.r[i].shape)
-                                    # print(f'size of r[{i+1}] end of r update loop', self.r[i+1].shape)
-                                    # print(f'size of U[{i}] end of r update loop', self.U[i].shape)
-                                    # print(f'size of U[{i+1}] end of r update loop', self.U[i+1].shape)
                                     
                                 else:
 
@@ -1094,32 +1201,30 @@ class StaticPredictiveCodingClassifier:
                                     * self.U[i].T.dot(self.f(self.r[i-1] - self.f(self.U[i].dot(self.r[i]))[0])[1]) \
                                     + (k_r / self.p.sigma_sq[i+1]) * (self.f(self.U[i+1].dot(self.r[i+1]))[0] - self.r[i]) \
                                     - (k_r / 2) * self.g(self.r[i],self.p.alpha[i])[1]
-
-                            print(f'size of r[{n}] beginning of r n update loop', self.r[n].shape)
-                            print(f'size of r[{n-1}] beginning of r n update loop', self.r[n-1].shape)
-                            print(f'size of U[{n}] beginning of r n update loop', self.U[n].shape)
                             
                             # final r (Li's "localist") layer update
                             self.r[n] = self.r[n].squeeze()
                             self.r[n] = self.r[n] + (k_r / self.p.sigma_sq[n]) \
                             * self.U[n].T.dot(self.r[n-1] - self.U[n].dot(self.r[n])) \
                             - (k_r / 2) * self.g(self.r[n],self.p.alpha[n])[1] \
-                            # * self.U[n].T.dot((self.r[n-1] - (self.U[n].dot(self.r[n])).reshape((16,32))).reshape(512)) \
-                            # * self.U[n].T.dot(self.f(self.r[n-1] - self.f(self.U[n].dot(self.r[n].squeeze()))[0])[1]) \
 
                             # later: change based on C1, C2 or NC setting
                             # C1 for now
-                            # size eg 212,1 label , 212,1 r[n]
+                            # size eg 212, label , 212, r[n]
                             # only one r learning rate in Li 212.
                             + ((k_r) * (label - softmax(self.r[n])))
                             
-                            print(f'size of r[{n}] end of r n update loop', self.r[n].shape)
-                            print(f'size of r[{n-1}] end of r n update loop', self.r[n-1].shape)
-                            print(f'size of U[{n}] end of r n update loop', self.U[n].shape)
+                            
+                            # td_err_online = (k_r) * (label - softmax(self.r[n]))
+                            # td_err_sq = td_err_online.T.dot(td_err_online)
+                            # if len(td_err_sq.shape) == 2:
+                            #     td_err_sq = td_err_sq[0,0]
+                            # elif len(td_err_sq.shape) == 1:
+                            #     td_err_sq = td_err_sq[0]
+                            # print(f'online  "C" in rn update (td component L2 norm) is {td_err_sq}')
 
                             ### U loop ( i ... n)
                             for i in range(1, n+1):
-                                print('U is in loop', i)
                                 
                                 if i == 1:
 
@@ -1130,10 +1235,6 @@ class StaticPredictiveCodingClassifier:
                                     - (k_U / 2) * self.h(self.U[i],self.p.lam[i])[1]
                                     
                                 elif i == 2:
-                                    
-                                    # print('size of U2', self.U[i].shape)
-                                    # print('size of r2', self.r[i].shape)
-                                    # print('size of U2 dot r2', self.U[i].dot(self.r[i]).shape)
                                     
                                     # U update
                                     self.U[i] = self.U[i] + (k_U / self.p.sigma_sq[i]) \
@@ -1184,7 +1285,12 @@ class StaticPredictiveCodingClassifier:
                         
                         # Maybe later: track EC (E + C which is the actual loss being minimized)
 
-
+                        # Reset r[1], r[2], r[3(n)] to their initial values for the next image
+                        self.r[1] = np.random.randn(self.p.num_r1_mods, self.p.hidden_sizes[0])
+                        self.r[2] = np.random.randn(self.p.hidden_sizes[1])
+                        # "Localist" layer (relates size of Y (num classes) to final hidden layer)
+                        self.r[3] = np.random.randn(self.p.output_size, 1)
+                        
 
                     ### STORE SALIENT TRAINING DATA AS ATTRIBUTES
                     # Store this epoch's E contributions per image
