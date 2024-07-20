@@ -168,11 +168,11 @@ def main():
 
     ## Number of epochs to train
     # num_epochs = 0
-    # num_epochs = 1
+    num_epochs = 1
     # num_epochs = 3
     # num_epochs = 10
     # num_epochs = 250
-    num_epochs = 500
+    # num_epochs = 500
     # num_epochs = 1000
 
     ### Set some more model parameters for model creation
