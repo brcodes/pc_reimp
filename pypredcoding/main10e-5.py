@@ -283,7 +283,7 @@ def main():
 
         if os.path.exists("./" + desired_model):
             print("Desired model " + desired_model + " already present in local dir: would you like to overwrite it? (y/n)")
-            ans = input()
+            ans = "y"
             # For overwrite
             if ans == "y":
                 # Initialize model

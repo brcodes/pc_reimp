@@ -2,12 +2,9 @@
 # from keras.utils import np_utils
 import numpy as np
 import pickle
-import cv2
-from matplotlib import pyplot as plt
 import random
 from sys import exit
 import os
-import seaborn as sns
 
 """
 Manipulate and preprocess image data to be input into Predictive Coding Classifier
@@ -827,7 +824,7 @@ def dataset_find_or_create(data_source="rb99", num_imgs=5, prepro="lifull",
 
         print("Desired dataset " + desired_dataset + " already present in local dir: import it? (y/n)")
 
-        ans = input()
+        ans = 'y'
 
         # For import
         if ans == "y":

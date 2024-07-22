@@ -1,6 +1,4 @@
 import numpy as np
-import matplotlib as mpl
-from matplotlib import pyplot as plt
 from learning import constant_lr, step_decay_lr, polynomial_decay_lr
 from functools import partial
 import math
