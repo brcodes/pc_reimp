@@ -218,7 +218,7 @@ def rep_cost(self, label):
 
 
 '''
-inits
+inits, tiled model.
 '''
 
 self.num_tiles_per_img = self.p.num_r1_mods

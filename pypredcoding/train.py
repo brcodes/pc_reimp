@@ -1,6 +1,6 @@
 import os
 from parameters import SpccParameters, RpccParameters, LR_params_to_dict, size_params_to_p_format
-from model_draft import StaticPredictiveCodingClassifier
+from model import StaticPredictiveCodingClassifier
 from data import dataset_find_or_create
 import pickle
 from sys import exit
