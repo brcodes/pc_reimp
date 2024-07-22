@@ -49,11 +49,16 @@ class PredictiveCodingClassifier:
                                 images, or 'all' for those of all images.
         '''
         
-        
         pass
 
 
 class StaticPCC(PredictiveCodingClassifier):
+    def __init__(self):
+        super().__init__()
+
+    # Override methods as necessary for static PCC
+    
+class TiledStaticPCC(StaticPCC):
     def __init__(self):
         super().__init__()
 
@@ -64,12 +69,6 @@ class RecurrentPCC(PredictiveCodingClassifier):
         super().__init__()
 
     # Override methods as necessary for recurrent PCC
-    
-class TiledStaticPCC(StaticPCC):
-    def __init__(self):
-        super().__init__()
-
-    # Override methods as necessary for static PCC
 
 class TiledRecurrentPCC(RecurrentPCC):
     def __init__(self):
