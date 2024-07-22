@@ -2,7 +2,6 @@ import os
 from parameters import SpccParameters, RpccParameters, LR_params_to_dict, size_params_to_p_format
 from model_draft import StaticPredictiveCodingClassifier
 from data import dataset_find_or_create
-import pickle
 from sys import exit
 import glob
 
@@ -169,10 +168,10 @@ def main():
     ## Number of epochs to train
     # num_epochs = 0
     # num_epochs = 1
-    # num_epochs = 3
+    num_epochs = 3
     # num_epochs = 10
     # num_epochs = 250
-    num_epochs = 500
+    # num_epochs = 500
     # num_epochs = 1000
 
     ### Set some more model parameters for model creation
@@ -227,7 +226,7 @@ def main():
     ## E.g. 500 total epochs / frac 10 = 10 checkpoints, one every 50 epochs
     # checkpointing = ["fraction", 10]
     ## Every_n_ep: e.g. chkpt every 10 epochs
-    checkpointing = ["every_n_ep",10]
+    # checkpointing = ["every_n_ep",10]
     ## If "off": will only store model and metadata at epoch 0 (untrained) and epoch final (fully trained)
     checkpointing = ["off"]
 

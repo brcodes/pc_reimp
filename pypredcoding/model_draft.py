@@ -310,16 +310,7 @@ class StaticPredictiveCodingClassifier:
                 
                 # Representation cost E for this layer, is comprised of a bu and td component. (it contains this form for all n-1 layers)
                 E_layer = E_layer + ((1 / self.p.sigma_sq[i]) * bu_err_sq) + ((1 / self.p.sigma_sq[i+1]) * td_err_sq)
-                
-                # if isinstance(E_layer, (int, float)):
-                #     print(f'i = {i}, E_layer after sigma application is a scalar with value {E_layer}')
-                # elif isinstance(E_layer, (list, np.ndarray)):
-                #     print(f'i = {i}, E_layer after sigma application is a matrix with shape {np.shape(E_layer)} and values:\n{E_layer}')
-                # else:
-                #     print(f'i = {i}, E_layer after sigma application is of type {type(E_layer)} with value {E_layer}')
-                
-                
-                
+            
                 E_layer = E_layer + self.h(r_or_U=self.U[i], alph_or_lam=self.p.lam[i])[0] + self.g(r_or_U=self.r[i].squeeze(), alph_or_lam=self.p.alpha[i])[0]
                 
                 # if isinstance(E_layer, (int, float)):
@@ -969,7 +960,7 @@ class StaticPredictiveCodingClassifier:
             if self.p.update_scheme == "rU_simultaneous":
                 print("rU simultaneous TRAINING about to begin")
 
-                self.num_rUsimul_iters = 30
+                self.num_rUsimul_iters = 100
 
                 #### EPOCH "0" CALCULATIONS (E, PE WITH ALL INITIAL, RANDOMIZED ARRAYS)
                 # Functions as negative (pre-update) control
@@ -1027,11 +1018,13 @@ class StaticPredictiveCodingClassifier:
                     C_contrib_per_img_sgl_ep.append(Cimg)
                     classif_success_per_img_sgl_ep.append(guess_correct_or_not)
                     
-                    # Reset r[1], r[2], r[3(n)] to their initial values for the next image
-                    self.r[1] = np.random.randn(self.p.num_r1_mods, self.p.hidden_sizes[0])
-                    self.r[2] = np.random.randn(self.p.hidden_sizes[1])
+                    # Reset r[1], r[2], r[3(n)] to zero for the next image
+                    self.r[1] = np.zeros((self.p.num_r1_mods, self.p.hidden_sizes[0]))
+                    self.r[2] = np.zeros(self.p.hidden_sizes[1])
                     # "Localist" layer (relates size of Y (num classes) to final hidden layer)
-                    self.r[3] = np.random.randn(self.p.output_size, 1)
+                    self.r[3] = np.zeros((self.p.output_size, 1))
+                    
+                    
 
                 # Add epoch 0 E to beginning of tracker list
                 self.E_contrib_per_img_all_eps.append(E_contrib_per_img_sgl_ep)
@@ -1285,11 +1278,11 @@ class StaticPredictiveCodingClassifier:
                         
                         # Maybe later: track EC (E + C which is the actual loss being minimized)
 
-                        # Reset r[1], r[2], r[3(n)] to their initial values for the next image
-                        self.r[1] = np.random.randn(self.p.num_r1_mods, self.p.hidden_sizes[0])
-                        self.r[2] = np.random.randn(self.p.hidden_sizes[1])
+                        # Reset r[1], r[2], r[3(n)] to zero for the next image
+                        self.r[1] = np.zeros((self.p.num_r1_mods, self.p.hidden_sizes[0]))
+                        self.r[2] = np.zeros(self.p.hidden_sizes[1])
                         # "Localist" layer (relates size of Y (num classes) to final hidden layer)
-                        self.r[3] = np.random.randn(self.p.output_size, 1)
+                        self.r[3] = np.zeros((self.p.output_size, 1))
                         
 
                     ### STORE SALIENT TRAINING DATA AS ATTRIBUTES
