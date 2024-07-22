@@ -3,7 +3,6 @@ from learning import constant_lr, step_decay_lr, polynomial_decay_lr
 from functools import partial
 import math
 import data
-import cv2
 from parameters import SpccParameters, RpccParameters
 from sys import exit
 import pickle
