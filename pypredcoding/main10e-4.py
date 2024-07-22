@@ -168,9 +168,9 @@ def main():
     ## Number of epochs to train
     # num_epochs = 0
     # num_epochs = 1
-    num_epochs = 3
+    # num_epochs = 3
     # num_epochs = 10
-    # num_epochs = 250
+    num_epochs = 250
     # num_epochs = 500
     # num_epochs = 1000
 
@@ -183,10 +183,10 @@ def main():
 
     ## Initial learning rates
     ## r
-    r_init = 0.000001
+    r_init = 0.0001
 
     ## U
-    U_init = 0.000001
+    U_init = 0.0001
 
     ## o (should only used during C2 classification)
     o_init = 0.00005
