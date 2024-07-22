@@ -12,11 +12,11 @@ class PredictiveCodingClassifier:
             X (np.array): Input images, shape=(num_imgs, numxpxls * numypxls) [non-tiled] or 
                           (num_imgs * numtlsperimg, numtlxpxls * numtlypxls) [tiled].
             Y (np.array): Labels, shape=(num_imgs, num_classes).
-            save_checkpoint (None or dict): Controls checkpoint saving behavior. None to save only the final model. 
+            save_checkpoint (None or dict, optional): Controls checkpoint saving behavior. None to save only the final model. 
                                             Dict can have keys 'save_every' with int value N to save every N epochs, 
                                              or 'fraction' with float value 1/N to save every 1/N * Tot epochs.
-            load_checkpoint (None or int): If None, do not load a checkpoint. If int, load the specified model checkpoint.
-            plot (bool): If True, plot loss and accuracy.
+            load_checkpoint (None or int, optional): If None, do not load a checkpoint. If int, load the specified model checkpoint.
+            plot (bool, optional): If True, plot loss and accuracy.
 
         Notes:
             - Epoch 0 (initialized, untrained) model is always saved.
@@ -25,31 +25,53 @@ class PredictiveCodingClassifier:
         '''
         pass
 
-    def evaluate(self, X, Y):
+    def evaluate(self, X, Y, plot=None):
         '''
-        takes input images X,
-        takes labels Y,
-        evaluates the model classification accuracy, pe
-        
-        opt: plot pe
+        Evaluates the model's classification accuracy using input images and labels.
+
+        Parameters:
+            X (np.array): Input images to be evaluated by the model.
+            Y (np.array): True labels for the input images.
+            plot (None or Str, optional): Assigns prediction error (pe) plotting behavior. None to plot nothing. 
+                                Str can be '1' to plot model response to first image, f'rand{N}' to plot responses to N random 
+                                images, or 'all' for those of all images.
         '''
         pass
     
-    def predict(self, X):
+    def predict(self, X, plot=None):
         '''
-        takes input images X,
-        predicts the image (plot topmost representation and pe)
+        Predicts the class of input images and optionally plots the topmost representation
+
+        Parameters:
+            X (np.array): Input images for prediction.
+            plot (None or Str, optional): Assigns topmost representation and prediction error (pe) plotting behavior. None to plot nothing. 
+                                Str can be '1' to plot model response to first image, f'rand{N}' to plot responses to N random 
+                                images, or 'all' for those of all images.
         '''
+        
+        
         pass
 
 
-class TiledStaticPCC(PredictiveCodingClassifier):
+class StaticPCC(PredictiveCodingClassifier):
+    def __init__(self):
+        super().__init__()
+
+    # Override methods as necessary for static PCC
+    
+class RecurrentPCC(PredictiveCodingClassifier):
+    def __init__(self):
+        super().__init__()
+
+    # Override methods as necessary for recurrent PCC
+    
+class TiledStaticPCC(StaticPCC):
     def __init__(self):
         super().__init__()
 
     # Override methods as necessary for static PCC
 
-class TiledRecurrentPCC(PredictiveCodingClassifier):
+class TiledRecurrentPCC(RecurrentPCC):
     def __init__(self):
         super().__init__()
 
