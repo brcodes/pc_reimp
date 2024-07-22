@@ -792,8 +792,15 @@ class StaticPredictiveCodingClassifier:
         model_name += f"{self.p.num_r1_mods}_{self.p.act_fxn}_{self.p.r_prior}_{self.p.U_prior}_{self.p.class_scheme}_"
         model_name_pre_epoch = model_name
         model_name_untrained = model_name_pre_epoch + "0"
-        model_pkl_name = model_name_untrained + ".pydb"
-        model_metadata_name = model_name_untrained + ".txt"
+        
+        # For naming only, inits only
+        # Set learning rates at the start of each epoch
+        k_r = self.k_r_lr(0)
+        k_U = self.k_U_lr(0)
+        k_o = self.k_o_lr(0)
+        
+        model_pkl_name = model_name_untrained + f"_kr{k_r}kU{k_U}" + ".pydb"
+        model_metadata_name = model_name_untrained + f"_kr{k_r}kU{k_U}" + ".txt"
 
         print(f"Untrained model name is {model_pkl_name}")
 
@@ -1318,7 +1325,7 @@ class StaticPredictiveCodingClassifier:
 
                         # Pickle model
                         mod_chkpt_name = model_name_pre_epoch + str(epoch)
-                        mod_chkpt_name_pkl = mod_chkpt_name + ".pydb"
+                        mod_chkpt_name_pkl = mod_chkpt_name + f"_kr{k_r}kU{k_U}" + ".pydb"
 
                         with open(mod_chkpt_name_pkl, "wb") as model_out:
                             pickle.dump(self, model_out)
@@ -1357,7 +1364,7 @@ class StaticPredictiveCodingClassifier:
                                             time_created_str, time_at_chkpt, train_time_elapsed, accuracy_at_chkpt]
 
                         # Write metadata
-                        mod_chkpt_name_txt = mod_chkpt_name + ".txt"
+                        mod_chkpt_name_txt = mod_chkpt_name + f"_kr{k_r}kU{k_U}" + ".txt"
                         with open(mod_chkpt_name_txt, "w") as metadata_out:
                             for line in metadata_lines:
                                 metadata_out.write(line)
