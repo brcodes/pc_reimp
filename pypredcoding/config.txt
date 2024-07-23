@@ -1,0 +1,44 @@
+# Config file for PCC (r/s) experiments
+# Parsed downstream by literal_eval (ast)
+
+# Metadata
+name="'Experiment_2024.07.24'"
+
+# PCC class creation
+# Can be static or recurrent
+model_type="'static'"
+# Can be tiled or not
+tiled="True"
+# Total layers ('0', ie input does not count)
+num_layers="3"
+# If 2D array, all tiles associated with a sigle image and a tile's area
+# If Int, size of flattened single image
+input_size="[16,864]"
+hidden_lyr_sizes="[32,128]"
+# If classif_method None or 'c2', can be any size; 'c1' must have size == number of classes
+output_lyr_size ="212"
+# C1 or C2, see Rogers/Brown work for clarification; can be None, 'c1', 'c2'
+classif_method="'c1'"
+# Tanh or linear
+activ_func="'linear'"
+# Gaussian random or sparse kurtotic (kurtotic approximatable as zeros- Li method)
+priors="'kurtotic'"
+# Li method, r/U updated together for 30 iters per image: {'rU_niters':30}
+# Rogers/Brown proposal #1: r updated for 100 iters per image before U update {'r_niters_U':100}
+# Rogers/Brown proposal #2. r updated until change in vector < some stop criterion per image, then U {'r_eq_U':0.05}
+update_method="{'rU_niters':30}"
+
+# Training hyperparameters
+# Stochastic gradient descent is 1, all above is batch gd.
+batch_size="1"
+# how many exposures to all of the data (shuffled)
+epoch_n="300"
+# learning rates
+
+# Evaluation 
+
+# Dataset creation or loading
+
+
+
+

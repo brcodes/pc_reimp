@@ -1,5 +1,9 @@
 from parameters import constant_lr, step_decay_lr, polynomial_decay_lr
 
+def save_results(results, output_file):
+    with open(output_file, 'wb') as f:
+        f.write(str(results))
+
 class PredictiveCodingClassifier:
     def __init__(self):
         pass
@@ -33,7 +37,7 @@ class PredictiveCodingClassifier:
             X (np.array): Input images to be evaluated by the model.
             Y (np.array): True labels for the input images.
             plot (None or Str, optional): Assigns prediction error (pe) plotting behavior. None to plot nothing. 
-                                Str can be '1' to plot model response to first image, f'rand{N}' to plot responses to N random 
+                                Str can be 'first' to plot model response to first image, f'rand{N}' to plot responses to N random 
                                 images, or 'all' for those of all images.
         '''
         pass
@@ -45,7 +49,7 @@ class PredictiveCodingClassifier:
         Parameters:
             X (np.array): Input images for prediction.
             plot (None or Str, optional): Assigns topmost representation and prediction error (pe) plotting behavior. None to plot nothing. 
-                                Str can be '1' to plot model response to first image, f'rand{N}' to plot responses to N random 
+                                Str can be 'first' to plot model response to first image, f'rand{N}' to plot responses to N random 
                                 images, or 'all' for those of all images.
         '''
         
