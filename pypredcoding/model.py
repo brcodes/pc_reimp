@@ -19,7 +19,8 @@ class PredictiveCodingClassifier:
             save_checkpoint (None or dict, optional): Controls checkpoint saving behavior. None to save only the final model. 
                                             Dict can have keys 'save_every' with int value N to save every N epochs, 
                                              or 'fraction' with float value 1/N to save every 1/N * Tot epochs.
-            load_checkpoint (None or int, optional): If None, do not load a checkpoint. If int, load the specified model checkpoint.
+            load_checkpoint (None or int, optional): If None, do not load a checkpoint. If Int != -1 load the specified model checkpoint.
+                                                    If Int == -1, load the latest model checkpoint.
             plot (bool, optional): If True, plot loss and accuracy.
 
         Notes:
