@@ -2,6 +2,7 @@ from ast import literal_eval
 from model import StaticPCC, TiledStaticPCC, RecurrentPCC, TiledRecurrentPCC
 from data import load_data
 from os.path import join
+from os import listdir
 from pickle import load
 
 def load_params(file_path):
@@ -22,7 +23,7 @@ def model_name_from_params(params):
     '''
     format 
     mod.TYPE_TILED_NUMLYRS_LR1SIZE...-LRNSIZE_NUMIMGS_ACTIVFUNC_PRIORS_CLASSIFMETHOD...
-    ..._UPDATEMETHOD_CONFIGNAME_EP(_CHKifcheckpoint).pydb
+    ..._UPDATEMETHOD_CONFIGNAME_EP.pydb
     '''
     
     '''
@@ -46,11 +47,8 @@ def model_name_from_params(params):
     name = 'mod.' + params['model_type'] + '_' + ('tl' if params['tiled'] else 'ntl') + '_' \
                     + str(params['num_layers']) + layer_sizes + '_' + num_imgs + '_' + params['activ_func'] + '_' \
                     + params['priors'] + '_' + params['classif_method'] + '_' + \
-                    + update_method + '-' + um_int_str + '_' + params['name'] + str(params['epoch_n']) + '_'
+                    + update_method + '-' + um_int_str + '_' + params['name'] + '_' + str(params['epoch_n']) + '.pydb'
                     
-    if params['load_checkpoint'] is not None:
-        name += str(params['load_checkpoint'])
-        
     return name
 
 def load_model(model_path):
@@ -60,6 +58,69 @@ def load_model(model_path):
     with open(model_path, 'rb') as file:
         model = load(file)
     return model
+
+def load_checkpoint(model_name, params):
+    '''
+    load a checkpoint from the model name
+    '''
+    
+    # loading will be the same up until : max epoch or chosen epoch step
+    checkpoint_dir = join('models', 'checkpoints')
+    model_name_no_epoch_no_pydb = model_name.rsplit('_', 1)[0]
+    
+    chk_dir_names = listdir(checkpoint_dir)
+    matching_fns = [f for f in chk_dir_names if f.startswith(model_name_no_epoch_no_pydb)]
+    if not matching_fns:
+        raise ValueError('No matching checkpoint found')
+    
+    if params['load_checkpoint'] == -1:
+        
+        # case where we load the latest checkpoint
+        max_epoch = -1
+        chk_file_path = None
+        file_name_valid = False
+        
+        for filename in matching_fns:
+            try:
+                # take off .pydb
+                filename_no_pydb = filename.rsplit('.', 1)[0]
+                # isolate epoch number
+                epoch = int(filename_no_pydb.rsplit('_', 1)[1])
+                # filename was right
+                file_name_valid = True
+                
+                if epoch > max_epoch:
+                    max_epoch = epoch
+                    chk_file_path = join(checkpoint_dir, filename)
+            except ValueError:
+                continue
+            
+    elif params['load_checkpoint'] != -1:
+        
+        desired_epoch = params['load_checkpoint']
+        chk_file_path = None
+        file_name_valid = False
+        
+        for filename in matching_fns:
+            try:
+                # take off .pydb
+                filename_no_pydb = filename.rsplit('.', 1)[0]
+                # isolate epoch number
+                epoch = int(filename_no_pydb.rsplit('_', 1)[1])
+                # filename was right
+                file_name_valid = True
+                
+                if epoch == desired_epoch:
+                    chk_file_path = join(checkpoint_dir, filename)
+            except ValueError:
+                continue
+            
+    if not file_name_valid:
+        raise ValueError('No valid checkpoint filenames found')
+    
+    checkpoint = load_model(chk_file_path)
+    
+    return checkpoint
             
 def instantiate_model(type, tiled):
     if type == 'static' and tiled == False:
@@ -84,50 +145,29 @@ def run_experiment(config_file_path):
 
     model_name = model_name_from_params(params)
     
-    if params['load_checkpoint'] is not None:
-        if params['load_checkpoint'] == -1:
-            '''
-            case where we load the latest checkpoint
-            '''
-            chk_file_path=join('models', model_name)
-            model = load_model(chk_file_path)
-            
-    '''
-    format 
-    mod.TYPE_TILED_NUMLYRS_LR1SIZE...-LRNSIZE_NUMIMGS_ACTIVFUNC_PRIORS_CLASSIFMETHOD...
-    ..._UPDATEMETHOD_CONFIGNAME_EP(_CHKifcheckpoint).pydb
-    '''
-    
-    # if isinstance(params['load_checkpoint'], int):
-    #     if params['load_checkpoint'] == -1:
-    #         chk_file_path=join('models', model_name)
-    #         model = load_model(chk_file_path)
-    #     elif params['load_checkpoint'] != -1:
-    #         chk_file_path=join('models', model_name)
-    #         model = load_model(chk_file_path)
-    #     else:
-    #         raise ValueError('Invalid load_checkpoint value')
-    # elif isinstance(params['load_checkpoint'], None):
-    #     model = instantiate_model(params['model_type'], params['tiled'])
-
     if params['train']:
-        X_train, Y_train = load_data(params['dataset_train'])
-        # Train will shuffle data automatically
-        model.train(X_train, Y_train, save_checkpoint=params['save_checkpoint'], plot=params['plot_train'])
         
-        '''
-        later remove load_checkpoint from train- this is an outside function
-        '''
-    
-    if params['evaluate']:
-        # Evaluate will not
-        X_eval, Y_eval = load_data(params['dataset_eval'])
-        model.evaluate(X_eval, Y_eval, plot=params['plot_eval'])
+        if params['load_checkpoint'] is not None:
+            model = load_checkpoint(model_name, params)
+
+        else:
+            X_train, Y_train = load_data(params['dataset_train'])
+            # Train will shuffle data automatically
+            model.train(X_train, Y_train, save_checkpoint=params['save_checkpoint'], plot=params['plot_train'])
+            
+            '''
+            later remove load_checkpoint from train- this is an outside function
+            '''
         
-    if params['predict']:
-        # Predict will not
-        X_pred = load_data(params['dataset_pred'])
-        model.predict(X_pred, plot=params['plot_pred'])
+        if params['evaluate']:
+            # Evaluate will not
+            X_eval, Y_eval = load_data(params['dataset_eval'])
+            model.evaluate(X_eval, Y_eval, plot=params['plot_eval'])
+            
+        if params['predict']:
+            # Predict will not
+            X_pred = load_data(params['dataset_pred'])
+            model.predict(X_pred, plot=params['plot_pred'])
 
     return None
 
