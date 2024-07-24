@@ -14,7 +14,7 @@ predict="False"
 notes="'A String of any type for note-taking. e.g. Training 2024.07.24 checkpoint ep 70 to epoch 300 on 2024.07.26 '"
 
 ## PCC MODEL
-# << will automatically make this model if not found in models/ >>
+# << will automatically make this model if not found in models/ and train="True" above; else ValueError >>
 # Can be static or recurrent
 model_type="'static'"
 # Can be tiled or not

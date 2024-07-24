@@ -1,7 +1,7 @@
 from ast import literal_eval
 from model import StaticPCC, TiledStaticPCC, RecurrentPCC, TiledRecurrentPCC
 from data import load_data
-from os.path import join
+from os.path import join, exists
 from os import listdir
 from pickle import load
 
@@ -55,6 +55,9 @@ def load_model(model_path):
     '''
     Load a model from a filename using pickle.
     '''
+    if not exists(model_path):
+        raise ValueError(f"The model path {model_path} does not exist.")
+    
     with open(model_path, 'rb') as file:
         model = load(file)
     return model
@@ -122,18 +125,24 @@ def load_checkpoint(model_name, params):
     
     return checkpoint
             
-def instantiate_model(type, tiled):
-    if type == 'static' and tiled == False:
-        return StaticPCC
-    elif type == 'static' and tiled == True:
-        return TiledStaticPCC
-    elif type == 'recurrent' and tiled == False:
-        return RecurrentPCC
-    elif type == 'recurrent' and tiled == True:
-        return TiledRecurrentPCC
+def instantiate_model(params):
+    
+    # Just the subclass
+    if params['type'] == 'static' and params['tiled'] == False:
+        model_init = StaticPCC
+    elif params['type'] == 'static' and params['tiled'] == True:
+        model_init = TiledStaticPCC
+    elif params['type'] == 'recurrent' and params['tiled'] == False:
+        model_init = RecurrentPCC
+    elif params['type'] == 'recurrent' and params['tiled'] == True:
+        model_init = TiledRecurrentPCC
     else:
         raise ValueError('Invalid model type')
     
+    # Now attributes are params
+    model = set_model_attributes(model_init, params)
+    return model
+
 def set_model_attributes(model, params):
     '''
     Set model attributes from the params dictionary.
@@ -147,27 +156,39 @@ def run_experiment(config_file_path):
     
     if params['train']:
         
+        # Model
         if params['load_checkpoint'] is not None:
             model = load_checkpoint(model_name, params)
-
         else:
-            X_train, Y_train = load_data(params['dataset_train'])
-            # Train will shuffle data automatically
-            model.train(X_train, Y_train, save_checkpoint=params['save_checkpoint'], plot=params['plot_train'])
-            
-            '''
-            later remove load_checkpoint from train- this is an outside function
-            '''
+            model = instantiate_model(params['model_type'], params['tiled'])
+    
+        # Data
+        X_train, Y_train = load_data(params['dataset_train'])
         
-        if params['evaluate']:
-            # Evaluate will not
-            X_eval, Y_eval = load_data(params['dataset_eval'])
-            model.evaluate(X_eval, Y_eval, plot=params['plot_eval'])
-            
-        if params['predict']:
-            # Predict will not
-            X_pred = load_data(params['dataset_pred'])
-            model.predict(X_pred, plot=params['plot_pred'])
+        # Train: will shuffle data automatically
+        model.train(X_train, Y_train, save_checkpoint=params['save_checkpoint'], plot=params['plot_train'])
+        
+        '''
+        later remove load_checkpoint from train- this is an outside function
+        '''
+        
+    if params['evaluate']:
+        
+        mod_file_path = join('models', model_name)
+        model = load_model(mod_file_path)
+        
+        # Evaluate will not
+        X_eval, Y_eval = load_data(params['dataset_eval'])
+        model.evaluate(X_eval, Y_eval, plot=params['plot_eval'])
+        
+    if params['predict']:
+        
+        mod_file_path = join('models', model_name)
+        model = load_model(mod_file_path)
+        
+        # Predict will not
+        X_pred = load_data(params['dataset_pred'])
+        model.predict(X_pred, plot=params['plot_pred'])
 
     return None
 
