@@ -8,7 +8,7 @@ class PredictiveCodingClassifier:
     def __init__(self):
         pass
 
-    def train(self, X, Y, save_checkpoint=None, load_checkpoint=None, plot=False):
+    def train(self, X, Y, save_checkpoint=None, plot=False):
         '''
         Trains the model using input images and labels, with options for checkpointing and plotting.
 
@@ -19,15 +19,16 @@ class PredictiveCodingClassifier:
             save_checkpoint (None or dict, optional): Controls checkpoint saving behavior. None to save only the final model. 
                                             Dict can have keys 'save_every' with int value N to save every N epochs, 
                                              or 'fraction' with float value 1/N to save every 1/N * Tot epochs.
-            load_checkpoint (None or int, optional): If None, do not load a checkpoint. If Int != -1 load the specified model checkpoint.
-                                                    If Int == -1, load the latest model checkpoint.
             plot (bool, optional): If True, plot loss and accuracy.
 
         Notes:
-            - Epoch 0 (initialized, untrained) model is always saved.
-            - Final model is always saved.
+            - Epoch 0 (initialized, untrained) model is always saved. (models/checkpoints/)
+            - Final model is always saved. (models/)
             - Saving any model also saves a log.
         '''
+        
+        
+        
         pass
 
     def evaluate(self, X, Y, plot=None):
@@ -60,12 +61,25 @@ class PredictiveCodingClassifier:
 class StaticPCC(PredictiveCodingClassifier):
     def __init__(self):
         super().__init__()
+        
+    
 
     # Override methods as necessary for static PCC
     
 class TiledStaticPCC(StaticPCC):
     def __init__(self):
         super().__init__()
+        
+    import numpy as np
+
+    # Assuming U1 is your 3D matrix of shape (84, 132, 32)
+    # and r1 is your 1D vector of shape (32,)
+
+    # You can use np.tensordot to perform the dot product along the last axis
+    result = np.tensordot(U1, r1, axes=([-1], [0]))
+
+    # Now, result is a 2D matrix of shape (84, 132)
+
 
     # Override methods as necessary for static PCC
     
