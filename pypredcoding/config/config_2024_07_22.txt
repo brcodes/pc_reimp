@@ -51,6 +51,8 @@ epoch_n="300"
 # learning rates
 
 # save checkpoints? None, save every ('save_every') Int or every 'fraction' (Float, 1/N) of total epochs
+# The only thing that differentiates a 'checkpoint' from a 'model' is abstractly the latter is considered fully trained, while the former is not
+# Under this paradigm, models are saved in models/ and checkpoints are saved in models/checkpoints/
 save_checkpoint="{'save_every':50}"
 # if checkpoints present, load? None, or Int != -1 for checkpoint epoch desired. Int == -1 for latest checkpoint.
 load_checkpoint="-1"

@@ -141,6 +141,7 @@ def instantiate_model(params):
     
     # Now attributes are params
     model = set_model_attributes(model_init, params)
+    model.validate_attributes()
     return model
 
 def set_model_attributes(model, params):
