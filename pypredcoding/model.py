@@ -1,8 +1,9 @@
 from parameters import constant_lr, step_decay_lr, polynomial_decay_lr
 import numpy as np
+from functools import partial
 
 # r, U or V prior functions
-def gauss_prior(r_or_U=None, alph_or_lam=None):
+def gaussian_prior_costs(r_or_U=None, alph_or_lam=None):
     """
     Takes an argument pair of either r & alpha, or U & lambda, and returns
     a tuple of (g(r), g'(r)), or (h(U), h'(U)), respectively. Gaussian prior.
@@ -11,7 +12,7 @@ def gauss_prior(r_or_U=None, alph_or_lam=None):
     gprime_or_hprime = 2 * alph_or_lam * r_or_U
     return (g_or_h, gprime_or_hprime)
 
-def kurt_prior(r_or_U= None, alph_or_lam=None):
+def kurtotic_prior_costs(r_or_U= None, alph_or_lam=None):
     """
     Takes an argument pair of either r & alpha, or U & lambda, and returns
     a tuple of (g(r), g'(r)), or (h(U), h'(U)), respectively. Sparse kurtotic prior.
@@ -21,7 +22,7 @@ def kurt_prior(r_or_U= None, alph_or_lam=None):
     return (g_or_h, gprime_or_hprime) 
 
 # Activation functions
-def linear_trans(U_dot_r):
+def linear_transform(U_dot_r):
     """
     Though intended to operate on some U.dot(r), will take any numerical
     argument x and return the tuple (f(x), F(x)). Linear transformation.
@@ -30,7 +31,7 @@ def linear_trans(U_dot_r):
     F = np.eye(len(f))
     return (f, F)
     
-def tanh_trans(U_dot_r):
+def tanh_transform(U_dot_r):
     """
     Though intended to operate on some U.dot(r), will take any numerical
     argument x and return the tuple (f(x), F(x)). Tanh transformation.
@@ -61,20 +62,27 @@ def save_results(results, output_file):
         f.write(str(results))
         
 class PredictiveCodingClassifier:
+    '''
+    I think not unique to any subclass, so I'll put it here.
+    '''
+    # Choices for transformation functions, priors
+    act_fxn_dict = {'linear':linear_transform,
+                        'tanh':tanh_transform}
+    prior_cost_dict = {'gaussian':gaussian_prior_costs, 
+                        'kurtotic':kurtotic_prior_costs}
+    prior_dist_dict = {'gaussian': partial(np.random.normal, loc=0, scale=1),
+                        'kurtotic': partial(np.random.laplace, loc=0.0, scale=0.5)}
+
     def __init__(self):
         
-        '''
-        I think not unique to any subclass, so I'll put it here.
-        '''
-        # Choices for transformation functions, priors
-        act_fxn_dict = {'linear':linear_trans,'tanh':tanh_trans}
-        prior_dict = {'gaussian':gauss_prior, 'kurtotic':kurt_prior}
-
         # Transforms and priors
-        self.f = act_fxn_dict[self.activ_func]
-        self.g = prior_dict[self.priors]
-        self.h = prior_dict[self.priors]
-        
+        self.f = self.act_fxn_dict[self.activ_func]
+        self.g = self.prior_cost_dict[self.priors]
+        self.h = self.prior_cost_dict[self.priors]
+            
+    def prior_dist(self):
+        return self.prior_dist_dict[self.priors]
+            
     def train(self, X, Y, save_checkpoint=None, plot=False):
         '''
         Trains the model using input images and labels, with options for checkpointing and plotting.
@@ -93,8 +101,6 @@ class PredictiveCodingClassifier:
             - Final model is always saved. (models/)
             - Saving any model also saves a log.
         '''
-        
-        
         
         pass
 
@@ -158,12 +164,17 @@ class TiledStaticPCC(StaticPCC):
         and more biologically realistic, as we see entire '2D' fields on surfaces
         if flat works, though, great. it'll be faster, and speaks to the power of the PC model.
         """
-        
+        # Defaults are non-flat
         self.flat_input = False
         
-        self.input_size = (1, 1, 1)
+        # For 212 pseudospectrograms, 1 input is 4,4,24,36
+        # That's a grid of 4x4 tiles, each tile is 24x36 pixels
+        self.input_size = (1, 1, 1, 1)
         
-        self.num_tiles = self.input_size[0]
+        if self.flat_input:
+            self.num_tiles = self.input_size[0]
+        else:
+            self.num_tiles = self.input_size[0] * self.input_size[1]
         
         self.hidden_lyr_sizes = []
         
@@ -174,23 +185,32 @@ class TiledStaticPCC(StaticPCC):
         # Layer 0 will be the input
         self.r[0] = np.zeros(self.input_size)
         
+        '''
+        functools partial for the U and r prior functions
+        '''
+        
         # Layer 1 until n will be the same
         for lyr in range(1,self.num_layers+1):
-            
-            if self.priors == 'kurtotic':
-                self.r[lyr] = np.random.laplace(loc=0.0, scale=0.5, size=(self.hidden_lyr_sizes[lyr-1]))
-                if lyr == self.num_layers:
-                    self.r[lyr] = np.random.laplace(loc=0.0, scale=0.5, size=(self.output_lyr_size))
-                    
-            elif self.priors == 'gaussian':
-                self.r[lyr] = np.random.standard_normal(size=(self.hidden_lyr_sizes[lyr-1]))
-                if lyr == self.num_layers:
-                    self.r[lyr] = np.random.standard_normal(size=(self.output_lyr_size))
-                    
+            self.r[lyr] = self.prior_dist(size=(self.hidden_lyr_sizes[lyr-1]))
+            if lyr == self.num_layers:
+                self.r[lyr] = self.prior_dist(size=(self.output_lyr_size))
+                
         # Initiate Us 
-        for lyr in range(1,self.num_layers+1):        
-            self.U[lyr] = np.random.laplace(loc=0.0, scale=0.5, size=((self.hidden_lyr_sizes[lyr-1])))
-
+        # Layer 1 will be different
+        for lyr in range(1,self.num_layers+1):
+            if lyr == 1:
+                # Could be 3D or 5D
+                U1_size = tuple(list(self.input_size) + list(self.r[lyr].shape))
+                self.U[lyr] = self.prior_dist(size=U1_size)
+            else:
+                # Ui>1 is going to be 2D, and the size is the same as (the r of the previous layer, r of current layer)
+                Ui_gt_1_size = (self.r[lyr-1].shape, self.r[lyr].shape)
+                self.U[lyr] = self.prior_dist(size=Ui_gt_1_size)
+        
+        # Uo is an output weight matrix that learns to relate r_n to the label        
+        if self.classif_method == 'c2':
+            Uo_size = (self.num_classes, self.output_lyr_size)
+            self.Uo = self.prior_dist(size=Uo_size)
         
     def validate_attributes(self):
         if self.flat_input is False and len(self.input_size) != 3:
