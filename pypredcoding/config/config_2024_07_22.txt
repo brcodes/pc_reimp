@@ -68,7 +68,7 @@ dataset_eval=ds.trace212_212_li_trace212_132_84_tl_16_36_24_32_20.pydb
 plot_eval="'first'"
 
 ## PREDICTION DATASET
-dataset_eval=ds.trace212_212_li_trace212_132_84_tl_16_36_24_32_20.pydb
+dataset_pred=ds.trace212_212_li_trace212_132_84_tl_16_36_24_32_20.pydb
 
 ## PREDICTION HYPERPARAMETERS
 # Plot PE, topmost representation of first image only

@@ -79,6 +79,59 @@ class PredictiveCodingClassifier:
         self.f = self.act_fxn_dict[self.activ_func]
         self.g = self.prior_cost_dict[self.priors]
         self.h = self.prior_cost_dict[self.priors]
+        
+        # None inits are to be received from assignment
+        # Rough types are given
+        # Size
+        self.num_layers = None
+        self.input_size = (None)
+        self.hidden_layer_sizes = [None]
+        self.output_layer_size = None
+        
+        # Training
+        self.dataset_train = 'None'
+        self.update_method = {None:None}
+        self.batch_size = None
+        self.epoch_n = None
+        self.save_checkpoint = None
+        self.load_checkpoint = None
+        self.plot_train = None
+        
+        # Evaluation
+        self.dataset_eval = 'None'
+        self.plot_eval = 'None'
+        
+        # Prediction
+        self.dataset_pred = 'None'
+        self.plot_pred = 'None'
+        
+        # Model components, V's specific to recurrent subclass
+        self.r = {}
+        self.U = {}
+        # Learning rates
+        self.kr = {}
+        self.kU = {}
+        
+        # Initiate rs
+        # Layer 1 until n will be the same
+        # r0 is the input, assigned in subclass
+        for lyr in range(1,self.num_layers+1):
+            self.r[lyr] = self.prior_dist(size=(self.hidden_lyr_sizes[lyr-1]))
+            if lyr == self.num_layers:
+                self.r[lyr] = self.prior_dist(size=(self.output_lyr_size))
+                
+        # Initiate Us
+        # Layer 2 until n will be the same
+        # U1 relates r0 to r1, assigned in subclass
+        for lyr in range(2,self.num_layers+1):
+            # Ui>1 is going to be 2D, and the size is the same as (the r of the previous layer, r of current layer)
+            Ui_gt_1_size = (self.r[lyr-1].shape, self.r[lyr].shape)
+            self.U[lyr] = self.prior_dist(size=Ui_gt_1_size)
+        
+        # Uo is an output weight matrix that learns to relate r_n to the label        
+        if self.classif_method == 'c2':
+            Uo_size = (self.num_classes, self.output_lyr_size)
+            self.U['o'] = self.prior_dist(size=Uo_size)
             
     def prior_dist(self):
         return self.prior_dist_dict[self.priors]
@@ -158,77 +211,43 @@ class TiledStaticPCC(StaticPCC):
         """
         tSPCC can take:
         2D input (num_tiles, flat_tile_area): flattened
-        3D input (num_tiles, numtlypxls, numtlxpxls): unflattened
+        4D input (num_tile_rows, num_tile_columns, numtlypxls, numtlxpxls): unflattened
         
         unflattened preserves spatial information, especially important in image processing
         and more biologically realistic, as we see entire '2D' fields on surfaces
         if flat works, though, great. it'll be faster, and speaks to the power of the PC model.
         """
-        # Defaults are non-flat
-        self.flat_input = False
-        
-        # For 212 pseudospectrograms, 1 input is 4,4,24,36
+        # For non-flat 212 pseudospectrograms, 1 input is 4,4,24,36
         # That's a grid of 4x4 tiles, each tile is 24x36 pixels
-        self.input_size = (1, 1, 1, 1)
         
+        # None inits are to be received from assignment
+        if len(self.input_size) == 2:
+            self.flat_input = True
+        elif len(self.input_size) == 4:
+            self.flat_input = False
+        else:
+            raise ValueError("Input size must be 2D or 4D.")
+        
+        # Tiles
         if self.flat_input:
             self.num_tiles = self.input_size[0]
         else:
             self.num_tiles = self.input_size[0] * self.input_size[1]
         
-        self.hidden_lyr_sizes = []
-        
-        self.all_r = {}
-        self.all_U = {}
-        
-        # Initiate rs
-        # Layer 0 will be the input
+        # Initiate r0
+        # Layer 0 will be the input, filled during training, testing, etc.
         self.r[0] = np.zeros(self.input_size)
-        
-        '''
-        functools partial for the U and r prior functions
-        '''
-        
-        # Layer 1 until n will be the same
-        for lyr in range(1,self.num_layers+1):
-            self.r[lyr] = self.prior_dist(size=(self.hidden_lyr_sizes[lyr-1]))
-            if lyr == self.num_layers:
-                self.r[lyr] = self.prior_dist(size=(self.output_lyr_size))
                 
-        # Initiate Us 
-        # Layer 1 will be different
-        for lyr in range(1,self.num_layers+1):
-            if lyr == 1:
-                # Could be 3D or 5D
-                U1_size = tuple(list(self.input_size) + list(self.r[lyr].shape))
-                self.U[lyr] = self.prior_dist(size=U1_size)
-            else:
-                # Ui>1 is going to be 2D, and the size is the same as (the r of the previous layer, r of current layer)
-                Ui_gt_1_size = (self.r[lyr-1].shape, self.r[lyr].shape)
-                self.U[lyr] = self.prior_dist(size=Ui_gt_1_size)
-        
-        # Uo is an output weight matrix that learns to relate r_n to the label        
-        if self.classif_method == 'c2':
-            Uo_size = (self.num_classes, self.output_lyr_size)
-            self.Uo = self.prior_dist(size=Uo_size)
+        # Initiate U1
+        # Layer 1 will expand based on the shape of r0
+        # Could be 3D or 5D
+        U1_size = tuple(list(self.input_size) + list(self.r[1].shape))
+        self.U[1] = self.prior_dist(size=U1_size)
         
     def validate_attributes(self):
-        if self.flat_input is False and len(self.input_size) != 3:
-            raise ValueError("Unflattened input must be 3D.")
-        elif self.flat_input is True and len(self.input_size) != 2:
-            raise ValueError("Flattened input must be 2D.")
+
+        pass
         # Add more validation checks as needed
-        
-    import numpy as np
-
-    # Assuming U1 is your 3D matrix of shape (84, 132, 32)
-    # and r1 is your 1D vector of shape (32,)
-
-    # You can use np.tensordot to perform the dot product along the last axis
-    result = np.tensordot(U1, r1, axes=([-1], [0]))
-
-    # Now, result is a 2D matrix of shape (84, 132)
-
 
     # Override methods as necessary for static PCC
     
