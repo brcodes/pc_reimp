@@ -1,84 +1,42 @@
 from parameters import constant_lr, step_decay_lr, polynomial_decay_lr
 import numpy as np
 from functools import partial
-
-# r, U or V prior functions
-def gaussian_prior_costs(r_or_U=None, alph_or_lam=None):
-    """
-    Takes an argument pair of either r & alpha, or U & lambda, and returns
-    a tuple of (g(r), g'(r)), or (h(U), h'(U)), respectively. Gaussian prior.
-    """
-    g_or_h = alph_or_lam * np.square(r_or_U).sum()
-    gprime_or_hprime = 2 * alph_or_lam * r_or_U
-    return (g_or_h, gprime_or_hprime)
-
-def kurtotic_prior_costs(r_or_U= None, alph_or_lam=None):
-    """
-    Takes an argument pair of either r & alpha, or U & lambda, and returns
-    a tuple of (g(r), g'(r)), or (h(U), h'(U)), respectively. Sparse kurtotic prior.
-    """
-    g_or_h = alph_or_lam * np.log(1 + np.square(r_or_U)).sum()
-    gprime_or_hprime = 2 * alph_or_lam * r_or_U / (1 + np.square(r_or_U))
-    return (g_or_h, gprime_or_hprime) 
-
-# Activation functions
-def linear_transform(U_dot_r):
-    """
-    Though intended to operate on some U.dot(r), will take any numerical
-    argument x and return the tuple (f(x), F(x)). Linear transformation.
-    """
-    f = U_dot_r
-    F = np.eye(len(f))
-    return (f, F)
-    
-def tanh_transform(U_dot_r):
-    """
-    Though intended to operate on some U.dot(r), will take any numerical
-    argument x and return the tuple (f(x), F(x)). Tanh transformation.
-    """
-    f = np.tanh(U_dot_r)
-    F = np.diag(1 - f.flatten()**2)
-    return (f, F)
-
-# Helpers
-def softmax(vector, k=1):
-    """
-    Compute the softmax function of a vector.
-    Parameters:
-    - vector: numpy array or list
-        The input vector.
-    - k: float, optional (default=1)
-        The scaling factor for the softmax function.
-    Returns:
-    - softmax_vector: numpy array
-        The softmax of the input vector.
-    """
-    exp_vector = np.exp(k * vector)
-    softmax_vector = exp_vector / np.sum(exp_vector)
-    return softmax_vector
-
-def save_results(results, output_file):
-    with open(output_file, 'wb') as f:
-        f.write(str(results))
         
 class PredictiveCodingClassifier:
-    '''
-    I think not unique to any subclass, so I'll put it here.
-    '''
-    # Choices for transformation functions, priors
-    act_fxn_dict = {'linear':linear_transform,
-                        'tanh':tanh_transform}
-    prior_cost_dict = {'gaussian':gaussian_prior_costs, 
-                        'kurtotic':kurtotic_prior_costs}
-    prior_dist_dict = {'gaussian': partial(np.random.normal, loc=0, scale=1),
-                        'kurtotic': partial(np.random.laplace, loc=0.0, scale=0.5)}
 
     def __init__(self):
+        
+        '''
+        I think not unique to any subclass, so I'll put it here.
+        '''
+        # Choices for transformation functions, priors
+        self.act_fxn_dict = {'linear': self.linear_transform,
+                                'tanh': self.tanh_transform}
+        self.prior_cost_dict = {'gaussian': self.gaussian_prior_costs, 
+                                'kurtotic': self.kurtotic_prior_costs}
+        self.prior_dist_dict = {'gaussian': partial(np.random.normal, loc=0, scale=1),
+                                'kurtotic': partial(np.random.laplace, loc=0.0, scale=0.5)}
+        self.update_method_dict = {'rU_niters': self.update_method_rUniters,
+                                    'r_niters_U': self.update_method_r_niters_U,
+                                    'r_eq_U': self.update_method_r_eq_U}
+        
+        self.component_updates = [self.r_updates, self.U_updates]
         
         # Transforms and priors
         self.f = self.act_fxn_dict[self.activ_func]
         self.g = self.prior_cost_dict[self.priors]
         self.h = self.prior_cost_dict[self.priors]
+        
+        '''
+        dict fill later
+        '''
+        '''
+        change rpcc learning rates to kr ku kv, etc.
+        npt alpha beta gamma
+        '''
+        # Prior parameters
+        self.alph = {}
+        self.lam = {}
         
         # None inits are to be received from assignment
         # Rough types are given
@@ -112,6 +70,11 @@ class PredictiveCodingClassifier:
         self.kr = {}
         self.kU = {}
         
+        # Layer variances (just a divisor for learning rates, functionally)
+        # All ssqs should be 1, could experiment with other (dynamic?) values later
+        self.ssq = {}
+        
+        
         # Initiate rs
         # Layer 1 until n will be the same
         # r0 is the input, assigned in subclass
@@ -132,9 +95,144 @@ class PredictiveCodingClassifier:
         if self.classif_method == 'c2':
             Uo_size = (self.num_classes, self.output_lyr_size)
             self.U['o'] = self.prior_dist(size=Uo_size)
-            
+    
+        
+    # r, U or V prior functions
+    def gaussian_prior_costs(self, r_or_U=None, alph_or_lam=None):
+        """
+        Takes an argument pair of either r & alpha, or U & lambda, and returns
+        a tuple of (g(r), g'(r)), or (h(U), h'(U)), respectively. Gaussian prior.
+        """
+        g_or_h = alph_or_lam * np.square(r_or_U).sum()
+        gprime_or_hprime = 2 * alph_or_lam * r_or_U
+        return (g_or_h, gprime_or_hprime)
+
+    def kurtotic_prior_costs(self, r_or_U=None, alph_or_lam=None):
+        """
+        Takes an argument pair of either r & alpha, or U & lambda, and returns
+        a tuple of (g(r), g'(r)), or (h(U), h'(U)), respectively. Sparse kurtotic prior.
+        """
+        g_or_h = alph_or_lam * np.log(1 + np.square(r_or_U)).sum()
+        gprime_or_hprime = 2 * alph_or_lam * r_or_U / (1 + np.square(r_or_U))
+        return (g_or_h, gprime_or_hprime)
+
+    # Activation functions
+    def linear_transform(self, U_dot_r):
+        """
+        Though intended to operate on some U.dot(r), will take any numerical
+        argument x and return the tuple (f(x), F(x)). Linear transformation.
+        """
+        f = U_dot_r
+        F = np.eye(len(f))
+        return (f, F)
+    
+    def tanh_transform(self, U_dot_r):
+        """
+        Though intended to operate on some U.dot(r), will take any numerical
+        argument x and return the tuple (f(x), F(x)). Tanh transformation.
+        """
+        f = np.tanh(U_dot_r)
+        F = np.diag(1 - f.flatten()**2)
+        return (f, F)
+
     def prior_dist(self):
         return self.prior_dist_dict[self.priors]
+    
+    def softmax(self, vector, k=1):
+        """
+        Compute the softmax function of a vector.
+        Parameters:
+        - vector: numpy array or list
+            The input vector.
+        - k: float, optional (default=1)
+            The scaling factor for the softmax function.
+        Returns:
+        - softmax_vector: numpy array
+            The softmax of the input vector.
+        """
+        exp_vector = np.exp(k * vector)
+        softmax_vector = exp_vector / np.sum(exp_vector)
+        return softmax_vector
+    
+    def rn_topdown_cost_c1(self):
+        pass
+    
+    def rn_topdown_cost_c2(self, label):
+        k_o = self.kr['o']
+        ssq_o = self.ssq['o']
+        
+        c2 = (self.kr['o']/ self.ssq['o']) * (label - self.softmax(self.U['o'].dot(self.r[self.num_layers])))
+        
+        return c2
+    
+    def rn_topdown_cost_None(self):
+        return 0
+        
+    def r_updates(self):
+        '''
+        test
+        '''
+        for lyr in range(1,self.num_layers):
+            self.r[lyr] += self.f(self.U[lyr].dot(self.r[lyr-1]))
+        #n
+        self.r[self.num_layers] += self.f(self.U[self.num_layers].dot(self.r[self.num_layers-1]))
+        
+        pass
+    
+    def U_updates(self):
+        pass
+    
+    '''
+    make a V_updates for the recurrent subclass
+    '''
+    
+    def update_method_rUniters(self):
+        '''
+        Li def: 30
+        '''
+        
+        niters = self.update_method[next(iter(self.update_method))]
+        
+        for i in range(niters):
+            self.r_updates(self.r)
+            self.U_updates(self.U)
+        
+    def update_method_r_niters_U(self):
+        '''
+        Rogers/Brown def: 100
+        '''
+        pass
+
+    def update_method_r_eq_U(self):
+        '''
+        Rogers/Brown def: 0.05
+        '''
+        pass
+    
+    def udpate_components(self):
+        # Update_method's key is the name
+        
+        '''
+        call this with 
+        number = self.update_method[next(iter(self.update_method))]
+        self.update_components(number)
+        
+        e.g. self.update_method = {'rU_niters':30}
+        update_key = next(iter(self.update_method)) # 'rU_niters'
+        update_number = self.update_method[update_key] # 30
+        
+        '''
+        
+        
+        
+        
+        
+        
+        return self.update_method_dict[next(iter(self.update_method))]
+    
+    def save_results(self, results, output_file):
+        with open(output_file, 'wb') as f:
+            f.write(str(results))
             
     def train(self, X, Y, save_checkpoint=None, plot=False):
         '''
@@ -155,6 +253,11 @@ class PredictiveCodingClassifier:
             - Saving any model also saves a log.
         '''
         
+        for e in epochs:
+            for i in images:
+                self.r[0] = input
+                self.update_components('rU_niters',30)
+                
         pass
 
     def evaluate(self, X, Y, plot=None):
