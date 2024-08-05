@@ -19,6 +19,9 @@ class PredictiveCodingClassifier:
         self.update_method_dict = {'rU_niters': self.update_method_rUniters,
                                     'r_niters_U': self.update_method_r_niters_U,
                                     'r_eq_U': self.update_method_r_eq_U}
+        self.rn_topdown_cost_dict = {'c1': self.rn_topdown_cost_c1,
+                                    'c2': self.rn_topdown_cost_c2,
+                                    'None': self.rn_topdown_cost_None}
         
         self.component_updates = [self.r_updates, self.U_updates]
         
@@ -154,30 +157,58 @@ class PredictiveCodingClassifier:
         softmax_vector = exp_vector / np.sum(exp_vector)
         return softmax_vector
     
-    def rn_topdown_cost_c1(self):
-        pass
+    def rn_topdown_cost_c1(self, label):
+        '''
+        see if ssqo or 2 in denom
+        '''
+        o = 'o'
+        # Format: k_o / ssq_o * (label - softmax(r_n))
+        c1 = (self.kr[o]/ self.ssq[o]) * (label - self.softmax(self.self.r[self.num_layers]))
+        return c1
     
     def rn_topdown_cost_c2(self, label):
-        k_o = self.kr['o']
-        ssq_o = self.ssq['o']
-        
-        c2 = (self.kr['o']/ self.ssq['o']) * (label - self.softmax(self.U['o'].dot(self.r[self.num_layers])))
-        
+        # Format: k_o / ssq_o * (label - softmax(Uo.dot(r_n)))
+        o = 'o'
+        c2 = (self.kr[o]/ self.ssq[o]) * (label - self.softmax(self.U[o].dot(self.r[self.num_layers])))
         return c2
     
     def rn_topdown_cost_None(self):
         return 0
         
-    def r_updates(self):
+    def r_updates(self, label):
         '''
         test
-        '''
-        for lyr in range(1,self.num_layers):
-            self.r[lyr] += self.f(self.U[lyr].dot(self.r[lyr-1]))
-        #n
-        self.r[self.num_layers] += self.f(self.U[self.num_layers].dot(self.r[self.num_layers-1]))
         
-        pass
+        verify kn / 2 paradigm
+        '''
+        n = self.num_layers
+        kr_n = self.kr[n]
+        ssq_n = self.ssq[n]
+        U_n = self.U[n]
+        r_n = self.r[n]
+        
+        for i in range(1,n):
+            
+            kr_i = self.kr[i]
+            ssq_i = self.ssq[i]
+            r_i = self.r[i]
+            U_i = self.U[i]
+            
+            #i
+            # ri += ki/ssqi UiT F(ri-1 - f(Ui ri)) (bottom up component)
+            # + ki+1/ssqi+1 (f(Ui+1 ri+1) - ri) (top down component)
+            # - ki/2 g'(ri) (prior component)
+            self.r[i] += (kr_i / ssq_i) * (U_i.T.dot(self.f(self.r[i-1] - self.f(U_i.dot(r_i))[0])[1])) + \
+                                                + (self.kr[i+1] * self.ssq[i+1]) * (self.f(self.U[i+1].dot(self.r[i+1]))[0] - r_i) \
+                                                - (kr_i / 2) * self.g(r_i, self.alph[i])[1]
+        
+        #n
+        # rn += kn/ssqn UnT F(rn-1 - f(Un rn)) (bottom up component)
+        # + C1/C2/None (top down component)
+        # - kn/2 g'(rn) (prior component)
+        self.r[n] += (kr_n / ssq_n) * (U_n.T.dot(self.f(self.r[n-1] - self.f(U_n.dot(r_n))[0])[1])) + \
+                                                + self.rn_topdown_cost_dict[self.classif_method](label) \
+                                                - (kr_n / 2) * self.g(r_n, self.alph[n])[1]
     
     def U_updates(self):
         pass
@@ -186,49 +217,52 @@ class PredictiveCodingClassifier:
     make a V_updates for the recurrent subclass
     '''
     
-    def update_method_rUniters(self):
+    def update_method_rUniters(self, niters, label):
         '''
         Li def: 30
         '''
         
-        niters = self.update_method[next(iter(self.update_method))]
-        
         for i in range(niters):
-            self.r_updates(self.r)
-            self.U_updates(self.U)
+            self.r_updates(label)
+            self.U_updates(label)
         
-    def update_method_r_niters_U(self):
+    def update_method_r_niters_U(self, niters, label):
         '''
         Rogers/Brown def: 100
         '''
-        pass
+        
+        for i in range(niters):
+            self.r_updates(label)
+        self.U_updates(label)
 
-    def update_method_r_eq_U(self):
+    def update_method_r_eq_U(self, stop_criterion, label):
         '''
         Rogers/Brown def: 0.05
         '''
-        pass
-    
-    def udpate_components(self):
-        # Update_method's key is the name
         
         '''
-        call this with 
-        number = self.update_method[next(iter(self.update_method))]
-        self.update_components(number)
-        
-        e.g. self.update_method = {'rU_niters':30}
-        update_key = next(iter(self.update_method)) # 'rU_niters'
-        update_number = self.update_method[update_key] # 30
-        
+        i diffs, or just one?
         '''
+        '''
+        r is a dictionary e.g.
         
+        r[1] 32
+        r[2] 128
+        r[3] 212'''
         
+        initial_norms = [np.linalg.norm(self.r[i]) for i in range(1, self.num_layers + 1)]
+        diffs = [float('inf')] * self.num_layers  # Initialize diffs to a large number
         
+        while any(diff > stop_criterion for diff in diffs):
+            prev_r = {i: self.r[i].copy() for i in range(1, self.num_layers + 1)}  # Copy all vectors to avoid reference issues
+            self.r_updates(label)
+            
+            for i in range(1, self.num_layers + 1):
+                post_r = self.r[i]
+                diff_norm = np.linalg.norm(post_r - prev_r[i])
+                diffs[i-1] = (diff_norm / initial_norms[i-1]) * 100  # Calculate the percentage change
         
-        
-        
-        return self.update_method_dict[next(iter(self.update_method))]
+        self.U_updates(label)
     
     def save_results(self, results, output_file):
         with open(output_file, 'wb') as f:
@@ -252,11 +286,19 @@ class PredictiveCodingClassifier:
             - Final model is always saved. (models/)
             - Saving any model also saves a log.
         '''
+        # Parse update method
+        # e.g. self.update_method = {'rU_niters' (update method name): 30 (update method number)}
+        # See config for more.
+        update_method_name = next(iter(self.update_method))
+        update_method_number = self.update_method[update_method_name]
         
         for e in epochs:
             for i in images:
                 self.r[0] = input
-                self.update_components('rU_niters',30)
+                label = Y[i]
+                
+                # Update components
+                self.update_method_dict[update_method_name](update_method_number, label)
                 
         pass
 
