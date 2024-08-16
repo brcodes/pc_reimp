@@ -22,6 +22,7 @@ class PredictiveCodingClassifier:
         self.rn_topdown_cost_dict = {'c1': self.rn_topdown_cost_c1,
                                     'c2': self.rn_topdown_cost_c2,
                                     'None': self.rn_topdown_cost_None}
+        self.Uo_dict
         
         self.component_updates = [self.r_updates, self.U_updates]
         
@@ -159,11 +160,13 @@ class PredictiveCodingClassifier:
     
     def rn_topdown_cost_c1(self, label):
         '''
+        redo for recurrent =will all be the same except rn_bar'''
+        '''
         see if ssqo or 2 in denom
         '''
         o = 'o'
         # Format: k_o / ssq_o * (label - softmax(r_n))
-        c1 = (self.kr[o]/ self.ssq[o]) * (label - self.softmax(self.self.r[self.num_layers]))
+        c1 = (self.kr[o]/ self.ssq[o]) * (label - self.softmax(self.r[self.num_layers]))
         return c1
     
     def rn_topdown_cost_c2(self, label):
@@ -176,6 +179,12 @@ class PredictiveCodingClassifier:
         return 0
         
     def r_updates(self, label):
+        '''
+        will only work with static, like Us,
+        so when you set component_updates in recurrent, replace with entirely new updates'''
+        '''
+        replace with tensordot
+        '''
         '''
         test
         
@@ -210,11 +219,54 @@ class PredictiveCodingClassifier:
                                                 + self.rn_topdown_cost_dict[self.classif_method](label) \
                                                 - (kr_n / 2) * self.g(r_n, self.alph[n])[1]
     
-    def U_updates(self):
-        pass
+    def Uo_update_c2(self, label):
+        # Format: Uo += kU_o / ssq_o * (label - softmax(Uo.dot(r_n)))
+        '''
+        check k/2 vs k/ssqo
+        ALL THINGS
+        '''
+        o = 'o'
+        r_nT = self.r[self.num_layers].T
+        c2 = (self.kU[o]/ self.ssq[o]) * (label.dot(r_nT) - self.softmax(self.U[o].dot(self.r[self.num_layers])))
+        return c2
+   
+    def Uo_update_None(self, label):
+        '''
+        do nothing if not c2
+        '''
+        return None
+    
+    def U_updates(self, label):
+        
+        n = self.num_layers
+        kU_n = self.kU[n]
+        ssq_n = self.ssq[n]
+        U_n = self.U[n]
+        r_n = self.r[n]
+        
+        for i in range(1,n):
+            
+            kU_i = self.kU[i]
+            ssq_i = self.ssq[i]
+            r_i = self.r[i]
+            U_i = self.U[i]
+            
+            #i
+            self.U[i] += 0
+        
+        #n
+        self.U[n] += 0
+        
+        # if C2, this does something via dict, else, it does nothing
+        self.Uo_update_dict[self.classif_method](label)
+        
+        
+        
     
     '''
     make a V_updates for the recurrent subclass
+    it will take label but do nothing with it
+    
     '''
     
     def update_method_rUniters(self, niters, label):
