@@ -221,19 +221,35 @@ class PredictiveCodingClassifier:
         '''
         Li def: 30
         '''
+        component_updates = self.component_updates
+        r_updates = component_updates[0]
+        # Can be U, or U,V
+        weight_updates = component_updates[1:]
+        num_weight_updates = len(weight_updates)
+        range_num_weight_updates = range(num_weight_updates)
         
         for i in range(niters):
-            self.r_updates(label)
-            self.U_updates(label)
+            r_updates(label)
+            for w in range_num_weight_updates:
+                # For as many weight sets are there are to update, update them.
+                weight_updates[w](label)
         
     def update_method_r_niters_U(self, niters, label):
         '''
         Rogers/Brown def: 100
         '''
+        component_updates = self.component_updates
+        r_updates = component_updates[0]
+        # Can be U, or U,V
+        weight_updates = component_updates[1:]
+        num_weight_updates = len(weight_updates)
+        range_num_weight_updates = range(num_weight_updates)
         
-        for i in range(niters):
-            self.r_updates(label)
-        self.U_updates(label)
+        for _ in range(niters):
+            r_updates(label)
+        for w in range_num_weight_updates:
+            # For as many weight sets are there are to update, update them.
+            weight_updates[w](label)
 
     def update_method_r_eq_U(self, stop_criterion, label):
         '''
@@ -250,19 +266,29 @@ class PredictiveCodingClassifier:
         r[2] 128
         r[3] 212'''
         
-        initial_norms = [np.linalg.norm(self.r[i]) for i in range(1, self.num_layers + 1)]
-        diffs = [float('inf')] * self.num_layers  # Initialize diffs to a large number
+        component_updates = self.component_updates
+        r_updates = component_updates[0]
+        # Can be U, or U,V
+        weight_updates = component_updates[1:]
+        num_weight_updates = len(weight_updates)
+        range_num_weight_updates = range(num_weight_updates)
+        
+        num_layers = self.num_layers
+        initial_norms = [np.linalg.norm(self.r[i]) for i in range(1, num_layers + 1)]
+        diffs = [float('inf')] * num_layers  # Initialize diffs to a large number
         
         while any(diff > stop_criterion for diff in diffs):
-            prev_r = {i: self.r[i].copy() for i in range(1, self.num_layers + 1)}  # Copy all vectors to avoid reference issues
-            self.r_updates(label)
+            prev_r = {i: self.r[i].copy() for i in range(1, num_layers + 1)}  # Copy all vectors to avoid reference issues
+            r_updates(label)
             
-            for i in range(1, self.num_layers + 1):
+            for i in range(1, num_layers + 1):
                 post_r = self.r[i]
                 diff_norm = np.linalg.norm(post_r - prev_r[i])
                 diffs[i-1] = (diff_norm / initial_norms[i-1]) * 100  # Calculate the percentage change
         
-        self.U_updates(label)
+        for w in range_num_weight_updates:
+            # For as many weight sets are there are to update, update them.
+            weight_updates[w](label) 
     
     def save_results(self, results, output_file):
         with open(output_file, 'wb') as f:
