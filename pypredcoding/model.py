@@ -22,9 +22,11 @@ class PredictiveCodingClassifier:
         self.rn_topdown_cost_dict = {'c1': self.rn_topdown_cost_c1,
                                     'c2': self.rn_topdown_cost_c2,
                                     'None': self.rn_topdown_cost_None}
-        self.Uo_dict
+    
         
         self.component_updates = [self.r_updates, self.U_updates]
+        if self.classif_method == 'c2':
+            self.component_updates.append(self.Uo_update)
         
         # Transforms and priors
         self.f = self.act_fxn_dict[self.activ_func]
@@ -78,7 +80,6 @@ class PredictiveCodingClassifier:
         # All ssqs should be 1, could experiment with other (dynamic?) values later
         self.ssq = {}
         
-        
         # Initiate rs
         # Layer 1 until n will be the same
         # r0 is the input, assigned in subclass
@@ -95,7 +96,7 @@ class PredictiveCodingClassifier:
             Ui_gt_1_size = (self.r[lyr-1].shape, self.r[lyr].shape)
             self.U[lyr] = self.prior_dist(size=Ui_gt_1_size)
         
-        # Uo is an output weight matrix that learns to relate r_n to the label        
+        # Uo is an output weight matrix that learns to relate r_n to the label, size of (num_classes, topmost_r)
         if self.classif_method == 'c2':
             Uo_size = (self.num_classes, self.output_lyr_size)
             self.U['o'] = self.prior_dist(size=Uo_size)
@@ -190,61 +191,130 @@ class PredictiveCodingClassifier:
         
         verify kn / 2 paradigm
         '''
-        n = self.num_layers
-        kr_n = self.kr[n]
-        ssq_n = self.ssq[n]
-        U_n = self.U[n]
-        r_n = self.r[n]
         
-        for i in range(1,n):
+        '''
+        if n = 1,
+        r1 is rn
+        
+        if n = 2
+        r1 must be udpated, then rn
+        
+        if n >= 3
+        r1 must be updated, then r2, to rn
+        
+        replace all layer 1 U_n.T's with the permutation, and tensor dot
+        '''
+        n = self.num_layers
+        
+        if n == 1:
             
+            kr_n = self.kr[n]
+            ssq_n = self.ssq[n]
+            U_n = self.U[n]
+            r_n = self.r[n]
+            #n
+            # rn += kn/ssqn UnT F(rn-1 - f(Un rn)) (bottom up component)
+            # + C1/C2/None (top down component)
+            # - kn/2 g'(rn) (prior component)
+            self.r[n] += (kr_n / ssq_n) * (U_n.T.dot(self.f(self.r[n-1] - self.f(U_n.dot(r_n))[0])[1])) + \
+                                                    + self.rn_topdown_cost_dict[self.classif_method](label) \
+                                                    - (kr_n / 2) * self.g(r_n, self.alph[n])[1]
+        
+        elif n == 2:
+            
+            '''
+            tensor dot and permutation
+            '''
+            #i
+            i = 1
             kr_i = self.kr[i]
             ssq_i = self.ssq[i]
             r_i = self.r[i]
             U_i = self.U[i]
-            
-            #i
+            #i=1
             # ri += ki/ssqi UiT F(ri-1 - f(Ui ri)) (bottom up component)
             # + ki+1/ssqi+1 (f(Ui+1 ri+1) - ri) (top down component)
             # - ki/2 g'(ri) (prior component)
             self.r[i] += (kr_i / ssq_i) * (U_i.T.dot(self.f(self.r[i-1] - self.f(U_i.dot(r_i))[0])[1])) + \
-                                                + (self.kr[i+1] * self.ssq[i+1]) * (self.f(self.U[i+1].dot(self.r[i+1]))[0] - r_i) \
+                                                + (kr_n * ssq_n) * (self.f(U_n.dot(r_n))[0] - r_i) \
                                                 - (kr_i / 2) * self.g(r_i, self.alph[i])[1]
+            
+            '''no permute and tensordot'''                             
+            #n
+            kr_n = self.kr[n]
+            ssq_n = self.ssq[n]
+            U_n = self.U[n]
+            r_n = self.r[n]
+            #n=2
+            # rn += kn/ssqn UnT F(rn-1 - f(Un rn)) (bottom up component)
+            # + C1/C2/None (top down component)
+            # - kn/2 g'(rn) (prior component)
+            self.r[n] += (kr_n / ssq_n) * (U_n.T.dot(self.f(r_i - self.f(U_n.dot(r_n))[0])[1])) + \
+                                                    + self.rn_topdown_cost_dict[self.classif_method](label) \
+                                                    - (kr_n / 2) * self.g(r_n, self.alph[n])[1]
+                                                
+        elif n >= 3:
+            
+            
+            '''
+            premute and tensor dot
+            '''
+            
+            #i
+            i = 1
+            kr_i = self.kr[i]
+            ssq_i = self.ssq[i]
+            r_i = self.r[i]
+            U_i = self.U[i]
+            self.r[i] += (kr_i / ssq_i) * (U_i.T.dot(self.f(self.r[i-1] - self.f(U_i.dot(r_i))[0])[1])) + \
+                                                    + (self.kr[i+1] * self.ssq[i+1]) * (self.f(self.U[i+1].dot(self.r[i+1]))[0] - r_i) \
+                                                    - (kr_i / 2) * self.g(r_i, self.alph[i])[1]
+            
+            ''' no permute and tensordot'''
+            for i in range(2,n):
+                
+                kr_i = self.kr[i]
+                ssq_i = self.ssq[i]
+                r_i = self.r[i]
+                U_i = self.U[i]
+                
+                #i
+                # ri += ki/ssqi UiT F(ri-1 - f(Ui ri)) (bottom up component)
+                # + ki+1/ssqi+1 (f(Ui+1 ri+1) - ri) (top down component)
+                # - ki/2 g'(ri) (prior component)
+                self.r[i] += (kr_i / ssq_i) * (U_i.T.dot(self.f(self.r[i-1] - self.f(U_i.dot(r_i))[0])[1])) + \
+                                                    + (self.kr[i+1] * self.ssq[i+1]) * (self.f(self.U[i+1].dot(self.r[i+1]))[0] - r_i) \
+                                                    - (kr_i / 2) * self.g(r_i, self.alph[i])[1]
         
-        #n
-        # rn += kn/ssqn UnT F(rn-1 - f(Un rn)) (bottom up component)
-        # + C1/C2/None (top down component)
-        # - kn/2 g'(rn) (prior component)
-        self.r[n] += (kr_n / ssq_n) * (U_n.T.dot(self.f(self.r[n-1] - self.f(U_n.dot(r_n))[0])[1])) + \
-                                                + self.rn_topdown_cost_dict[self.classif_method](label) \
-                                                - (kr_n / 2) * self.g(r_n, self.alph[n])[1]
+            #n
+            kr_n = self.kr[n]
+            ssq_n = self.ssq[n]
+            U_n = self.U[n]
+            r_n = self.r[n]
+            #n
+            # rn += kn/ssqn UnT F(rn-1 - f(Un rn)) (bottom up component)
+            # + C1/C2/None (top down component)
+            # - kn/2 g'(rn) (prior component)
+            self.r[n] += (kr_n / ssq_n) * (U_n.T.dot(self.f(self.r[n-1] - self.f(U_n.dot(r_n))[0])[1])) + \
+                                                    + self.rn_topdown_cost_dict[self.classif_method](label) \
+                                                    - (kr_n / 2) * self.g(r_n, self.alph[n])[1]
     
-    def Uo_update_c2(self, label):
+    def Uo_update(self, label):
         # Format: Uo += kU_o / ssq_o * (label - softmax(Uo.dot(r_n)))
         '''
         check k/2 vs k/ssqo
-        ALL THINGS
+        for every top down rn update, U update, V update, (place where a lr is used)
         '''
         o = 'o'
-        r_nT = self.r[self.num_layers].T
-        c2 = (self.kU[o]/ self.ssq[o]) * (label.dot(r_nT) - self.softmax(self.U[o].dot(self.r[self.num_layers])))
-        return c2
-   
-    def Uo_update_None(self, label):
-        '''
-        do nothing if not c2
-        '''
-        return None
+        r_n = self.r[self.num_layers]
+        self.U[o] += (self.kU[o]/ self.ssq[o]) * np.outer((label - self.softmax(self.U[o].dot(r_n))), r_n)
     
     def U_updates(self, label):
         
         n = self.num_layers
-        kU_n = self.kU[n]
-        ssq_n = self.ssq[n]
-        U_n = self.U[n]
-        r_n = self.r[n]
         
-        for i in range(1,n):
+        #i-n will all be the same
+        for i in range(1,n+1):
             
             kU_i = self.kU[i]
             ssq_i = self.ssq[i]
@@ -252,16 +322,7 @@ class PredictiveCodingClassifier:
             U_i = self.U[i]
             
             #i
-            self.U[i] += 0
-        
-        #n
-        self.U[n] += 0
-        
-        # if C2, this does something via dict, else, it does nothing
-        self.Uo_update_dict[self.classif_method](label)
-        
-        
-        
+            self.U[i] += (kU_i / ssq_i) * np.outer((self.f(self.r[i-1] - self.f(U_i.dot(r_i))[0])[1]), r_i)
     
     '''
     make a V_updates for the recurrent subclass
@@ -275,7 +336,7 @@ class PredictiveCodingClassifier:
         '''
         component_updates = self.component_updates
         r_updates = component_updates[0]
-        # Can be U, or U,V
+        # Can be U/Uo or U/Uo,V
         weight_updates = component_updates[1:]
         num_weight_updates = len(weight_updates)
         range_num_weight_updates = range(num_weight_updates)
@@ -292,7 +353,7 @@ class PredictiveCodingClassifier:
         '''
         component_updates = self.component_updates
         r_updates = component_updates[0]
-        # Can be U, or U,V
+        # Can be U/Uo or U/Uo,V
         weight_updates = component_updates[1:]
         num_weight_updates = len(weight_updates)
         range_num_weight_updates = range(num_weight_updates)
@@ -320,7 +381,7 @@ class PredictiveCodingClassifier:
         
         component_updates = self.component_updates
         r_updates = component_updates[0]
-        # Can be U, or U,V
+        # Can be U/Uo or U/Uo,V
         weight_updates = component_updates[1:]
         num_weight_updates = len(weight_updates)
         range_num_weight_updates = range(num_weight_updates)
@@ -369,6 +430,8 @@ class PredictiveCodingClassifier:
         # See config for more.
         update_method_name = next(iter(self.update_method))
         update_method_number = self.update_method[update_method_name]
+        # Add Uo update func if classif_method is c2
+        
         
         for e in epochs:
             for i in images:

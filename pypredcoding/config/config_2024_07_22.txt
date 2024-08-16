@@ -24,8 +24,11 @@ num_layers="3"
 # If 2D array, all tiles associated with a sigle image and a tile's area
 # If Int, size of flattened single image
 input_size="[16,864]"
+# For a 1-layer model, this will be ignored for output_lyr_size
+# in a 2-layer model, this will have one number, and the second layer will be output_lyr_size
 hidden_lyr_sizes="[32,128]"
 # If classif_method None or 'c2', can be any size; 'c1' must have size == number of classes
+# For a 1-layer model, must be the single layer size
 output_lyr_size ="212"
 # C1 or C2, see Rogers/Brown work for clarification; can be None, 'c1', 'c2'
 classif_method="'c1'"
