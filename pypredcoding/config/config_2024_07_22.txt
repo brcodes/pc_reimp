@@ -19,7 +19,7 @@ notes="'A String of any type for note-taking. e.g. Training 2024.07.24 checkpoin
 model_type="'static'"
 # Can be tiled or not
 tiled="True"
-# Total layers ('0', ie input does not count)
+# Total layers ('0th', ie input does not count. only include hidden plus output)
 num_layers="3"
 # If 2D array, all tiles associated with a sigle image and a tile's area
 # If Int, size of flattened single image

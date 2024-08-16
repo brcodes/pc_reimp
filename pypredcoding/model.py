@@ -22,8 +22,14 @@ class PredictiveCodingClassifier:
         self.rn_topdown_cost_dict = {'c1': self.rn_topdown_cost_c1,
                                     'c2': self.rn_topdown_cost_c2,
                                     'None': self.rn_topdown_cost_None}
-    
         
+        if self.num_layers == 1:
+            self.r_updates = self.r_updates_n_1
+        elif self.num_layers == 2:
+            self.r_updates = self.r_updates_n_2
+        else:
+            self.r_updates = self.r_updates_n_gt_eq_3
+            
         self.component_updates = [self.r_updates, self.U_updates]
         if self.classif_method == 'c2':
             self.component_updates.append(self.Uo_update)
@@ -128,7 +134,16 @@ class PredictiveCodingClassifier:
         argument x and return the tuple (f(x), F(x)). Linear transformation.
         """
         f = U_dot_r
-        F = np.eye(len(f))
+        if f.ndim == 1:
+            F = np.eye(len(f))
+        elif f.ndim == 2:
+            F = np.eye(f.shape[0], f.shape[1])
+        else:
+            shape = f.shape
+            F = np.eye(shape[0], shape[1])
+            for dim in range(2, len(shape)):
+                F = np.expand_dims(F, axis=dim)
+                F = np.repeat(F, shape[dim], axis=dim)
         return (f, F)
     
     def tanh_transform(self, U_dot_r):
@@ -178,126 +193,141 @@ class PredictiveCodingClassifier:
     
     def rn_topdown_cost_None(self):
         return 0
+    
+    def set_U1_operation_dims(self, U1_size, input_size):
+        # Transpose dims
+        ndims_U1 = len(U1_size)
+        range_ndims_U1 = range(ndims_U1)
+        last_dim_id_U1 = range_ndims_U1[-1]
+        nonlast_dim_ids_U1 = range_ndims_U1[:-1]
+        transpose_dims_U1 = tuple([last_dim_id_U1] + list(nonlast_dim_ids_U1))
+        self.U1_transpose_dims = transpose_dims_U1
         
-    def r_updates(self, label):
+        # Tensordot dims
+        # U1T, last n-1
+        nonfirst_dim_ids_U1 = range_ndims_U1[1:]
+        self.U1T_tdot_dims = list(nonfirst_dim_ids_U1)
+        
+        # Input dims, all
+        ndims_input = len(input_size)
+        range_ndims_input = range(ndims_input)
+        self.input_min_U1tdotr1_tdot_dims = list(range_ndims_input)
+
+        
+    def r_updates_n_1(self, label):
         '''
         will only work with static, like Us,
-        so when you set component_updates in recurrent, replace with entirely new updates'''
+        so when you set component_updates in recurrent, replace with entirely new updates
+        
+        # rn += kn/ssqn UnT F(rn-1 - f(Un rn)) (bottom up component)
+        # + C1/C2/None (top down component)
+        # - kn/2 g'(rn) (prior component)
+        
+        move to static eventually, as well as update_Component assignment
         '''
-        replace with tensordot
+    
         '''
-        '''
-        test
         
         verify kn / 2 paradigm
         '''
+
+        n = self.num_layers
+            
+        kr_1 = self.kr[n]
+        ssq_1 = self.ssq[n]
+        U_1 = self.U[n]
+        r_1 = self.r[n]
         
-        '''
-        if n = 1,
-        r1 is rn
+        #U1 operations
+        U1_transpose = np.transpose_U(U_1, self.U1_transpose_dims)
+        U1_tdot_r1 = np.tensordot(U_1, r_1, axes=([-1],[0]))
+        input_min_U1tdotr1 = self.f(self.r[n-1] - self.f(U1_tdot_r1)[0])[1]
         
-        if n = 2
-        r1 must be udpated, then rn
-        
-        if n >= 3
-        r1 must be updated, then r2, to rn
-        
-        replace all layer 1 U_n.T's with the permutation, and tensor dot
-        '''
+        self.r[n] += (kr_1 / ssq_1) * np.tensordot(U1_transpose, input_min_U1tdotr1, axes=(self.U1T_tdot_dims, self.input_min_U1tdotr1_tdot_dims)) + \
+                                                + self.rn_topdown_cost_dict[self.classif_method](label) \
+                                                - (kr_1 / 2) * self.g(r_1, self.alph[n])[1]
+    
+    def r_updates_n_2(self, label):
+            
         n = self.num_layers
         
-        if n == 1:
-            
-            kr_n = self.kr[n]
-            ssq_n = self.ssq[n]
-            U_n = self.U[n]
-            r_n = self.r[n]
-            #n
-            # rn += kn/ssqn UnT F(rn-1 - f(Un rn)) (bottom up component)
-            # + C1/C2/None (top down component)
-            # - kn/2 g'(rn) (prior component)
-            self.r[n] += (kr_n / ssq_n) * (U_n.T.dot(self.f(self.r[n-1] - self.f(U_n.dot(r_n))[0])[1])) + \
-                                                    + self.rn_topdown_cost_dict[self.classif_method](label) \
-                                                    - (kr_n / 2) * self.g(r_n, self.alph[n])[1]
+        '''
+        tensor dot and permutation
+        '''
+        #i
+        i = 1
+        kr_i = self.kr[i]
+        ssq_i = self.ssq[i]
+        r_i = self.r[i]
+        U_i = self.U[i]
+        #i=1
+        # ri += ki/ssqi UiT F(ri-1 - f(Ui ri)) (bottom up component)
+        # + ki+1/ssqi+1 (f(Ui+1 ri+1) - ri) (top down component)
+        # - ki/2 g'(ri) (prior component)
+        self.r[i] += (kr_i / ssq_i) * (U_i.T.dot(self.f(self.r[i-1] - self.f(U_i.dot(r_i))[0])[1])) + \
+                                            + (kr_n * ssq_n) * (self.f(U_n.dot(r_n))[0] - r_i) \
+                                            - (kr_i / 2) * self.g(r_i, self.alph[i])[1]
         
-        elif n == 2:
+        '''no permute and tensordot'''                             
+        #n
+        kr_n = self.kr[n]
+        ssq_n = self.ssq[n]
+        U_n = self.U[n]
+        r_n = self.r[n]
+        #n=2
+        # rn += kn/ssqn UnT F(rn-1 - f(Un rn)) (bottom up component)
+        # + C1/C2/None (top down component)
+        # - kn/2 g'(rn) (prior component)
+        self.r[n] += (kr_n / ssq_n) * (U_n.T.dot(self.f(r_i - self.f(U_n.dot(r_n))[0])[1])) + \
+                                                + self.rn_topdown_cost_dict[self.classif_method](label) \
+                                                - (kr_n / 2) * self.g(r_n, self.alph[n])[1]
+                                                
+    def r_updates_n_gt_eq_3(self, label):
+                                                
+        n = self.num_layers
+        
+        '''
+        premute and tensor dot
+        '''
+        
+        #i
+        i = 1
+        kr_i = self.kr[i]
+        ssq_i = self.ssq[i]
+        r_i = self.r[i]
+        U_i = self.U[i]
+        self.r[i] += (kr_i / ssq_i) * (U_i.T.tensordot(self.f(self.r[i-1] - self.f(U_i.dot(r_i))[0])[1],)) + \
+                                                + (self.kr[i+1] * self.ssq[i+1]) * (self.f(self.U[i+1].dot(self.r[i+1]))[0] - r_i) \
+                                                - (kr_i / 2) * self.g(r_i, self.alph[i])[1]
+        
+        ''' no permute and tensordot'''
+        for i in range(2,n):
             
-            '''
-            tensor dot and permutation
-            '''
-            #i
-            i = 1
             kr_i = self.kr[i]
             ssq_i = self.ssq[i]
             r_i = self.r[i]
             U_i = self.U[i]
-            #i=1
+            
+            #i
             # ri += ki/ssqi UiT F(ri-1 - f(Ui ri)) (bottom up component)
             # + ki+1/ssqi+1 (f(Ui+1 ri+1) - ri) (top down component)
             # - ki/2 g'(ri) (prior component)
             self.r[i] += (kr_i / ssq_i) * (U_i.T.dot(self.f(self.r[i-1] - self.f(U_i.dot(r_i))[0])[1])) + \
-                                                + (kr_n * ssq_n) * (self.f(U_n.dot(r_n))[0] - r_i) \
+                                                + (self.kr[i+1] * self.ssq[i+1]) * (self.f(self.U[i+1].dot(self.r[i+1]))[0] - r_i) \
                                                 - (kr_i / 2) * self.g(r_i, self.alph[i])[1]
-            
-            '''no permute and tensordot'''                             
-            #n
-            kr_n = self.kr[n]
-            ssq_n = self.ssq[n]
-            U_n = self.U[n]
-            r_n = self.r[n]
-            #n=2
-            # rn += kn/ssqn UnT F(rn-1 - f(Un rn)) (bottom up component)
-            # + C1/C2/None (top down component)
-            # - kn/2 g'(rn) (prior component)
-            self.r[n] += (kr_n / ssq_n) * (U_n.T.dot(self.f(r_i - self.f(U_n.dot(r_n))[0])[1])) + \
-                                                    + self.rn_topdown_cost_dict[self.classif_method](label) \
-                                                    - (kr_n / 2) * self.g(r_n, self.alph[n])[1]
-                                                
-        elif n >= 3:
-            
-            
-            '''
-            premute and tensor dot
-            '''
-            
-            #i
-            i = 1
-            kr_i = self.kr[i]
-            ssq_i = self.ssq[i]
-            r_i = self.r[i]
-            U_i = self.U[i]
-            self.r[i] += (kr_i / ssq_i) * (U_i.T.dot(self.f(self.r[i-1] - self.f(U_i.dot(r_i))[0])[1])) + \
-                                                    + (self.kr[i+1] * self.ssq[i+1]) * (self.f(self.U[i+1].dot(self.r[i+1]))[0] - r_i) \
-                                                    - (kr_i / 2) * self.g(r_i, self.alph[i])[1]
-            
-            ''' no permute and tensordot'''
-            for i in range(2,n):
-                
-                kr_i = self.kr[i]
-                ssq_i = self.ssq[i]
-                r_i = self.r[i]
-                U_i = self.U[i]
-                
-                #i
-                # ri += ki/ssqi UiT F(ri-1 - f(Ui ri)) (bottom up component)
-                # + ki+1/ssqi+1 (f(Ui+1 ri+1) - ri) (top down component)
-                # - ki/2 g'(ri) (prior component)
-                self.r[i] += (kr_i / ssq_i) * (U_i.T.dot(self.f(self.r[i-1] - self.f(U_i.dot(r_i))[0])[1])) + \
-                                                    + (self.kr[i+1] * self.ssq[i+1]) * (self.f(self.U[i+1].dot(self.r[i+1]))[0] - r_i) \
-                                                    - (kr_i / 2) * self.g(r_i, self.alph[i])[1]
-        
-            #n
-            kr_n = self.kr[n]
-            ssq_n = self.ssq[n]
-            U_n = self.U[n]
-            r_n = self.r[n]
-            #n
-            # rn += kn/ssqn UnT F(rn-1 - f(Un rn)) (bottom up component)
-            # + C1/C2/None (top down component)
-            # - kn/2 g'(rn) (prior component)
-            self.r[n] += (kr_n / ssq_n) * (U_n.T.dot(self.f(self.r[n-1] - self.f(U_n.dot(r_n))[0])[1])) + \
-                                                    + self.rn_topdown_cost_dict[self.classif_method](label) \
-                                                    - (kr_n / 2) * self.g(r_n, self.alph[n])[1]
+    
+        #n
+        kr_n = self.kr[n]
+        ssq_n = self.ssq[n]
+        U_n = self.U[n]
+        r_n = self.r[n]
+        #n
+        # rn += kn/ssqn UnT F(rn-1 - f(Un rn)) (bottom up component)
+        # + C1/C2/None (top down component)
+        # - kn/2 g'(rn) (prior component)
+        self.r[n] += (kr_n / ssq_n) * (U_n.T.dot(self.f(self.r[n-1] - self.f(U_n.dot(r_n))[0])[1])) + \
+                                                + self.rn_topdown_cost_dict[self.classif_method](label) \
+                                                - (kr_n / 2) * self.g(r_n, self.alph[n])[1]
     
     def Uo_update(self, label):
         # Format: Uo += kU_o / ssq_o * (label - softmax(Uo.dot(r_n)))
@@ -310,6 +340,13 @@ class PredictiveCodingClassifier:
         self.U[o] += (self.kU[o]/ self.ssq[o]) * np.outer((label - self.softmax(self.U[o].dot(r_n))), r_n)
     
     def U_updates(self, label):
+        
+        '''u1 will need a tensor dot
+        '''
+        
+        '''
+        check if F will work with 3d+ Us
+        '''
         
         n = self.num_layers
         
@@ -529,6 +566,21 @@ class TiledStaticPCC(StaticPCC):
         # Could be 3D or 5D
         U1_size = tuple(list(self.input_size) + list(self.r[1].shape))
         self.U[1] = self.prior_dist(size=U1_size)
+        # Get transpose and tensordot axes ready
+        # Transpose axes for 'U1T' (a permutation)
+        self.set_U1_transpose_dims(U1_size)
+        # Tensordot axes for UIT.tdot(I-U1r1)
+        self.set_U1T_tdot_dims(U1_size)
+        self.set_input_min_U1tdotr1_tdot_dims(self.input_size)
+        
+
+        # Input axes for
+        
+        
+        # Transpose
+        
+        U1T_tdot_axes = 
+        input_minus_U1r1_tdot_axes = 
         
     def validate_attributes(self):
 
