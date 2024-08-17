@@ -36,10 +36,10 @@ classif_method="'c1'"
 activ_func="'linear'"
 # Gaussian random or sparse kurtotic (kurtotic approximatable as zeros- Li method)
 priors="'kurtotic'"
-# Li method, r/U updated together for 30 iters per image: {'rU_niters':30}
-# Rogers/Brown proposal #1: r updated for 100 iters per image before U update {'r_niters_U':100}
-# Rogers/Brown proposal #2. r updated until change in vector < some stop criterion per image, then U {'r_eq_U':0.05}
-update_method="{'rU_niters':30}"
+# Li method, r/U,V (W = Weights) updated together for 30 iters per image: {'rW_niters':30}
+# Rogers/Brown proposal #1: r updated for 100 iters per image before U or V update {'r_niters_W':100}
+# Rogers/Brown proposal #2. r updated until change in vector < some stop criterion per image, then U or V  {'r_eq_W':0.05}
+update_method="{'rW_niters':30}"
 
 ## TRAINING DATASET
 # << will automatically create this dataset if not found in data/ >>
@@ -52,6 +52,10 @@ batch_size="1"
 # how many exposures to all of the data (shuffled)
 epoch_n="300"
 # learning rates
+k_r="{1:0.05, 2:0.05, 3:0.05, 'o':0.01}"
+k_U="{1:0.05, 2:0.05, 3:0.05, 'o':0.01}"
+# rPCC only
+# k_V="{1:0.05, 2:0.05, 3:0.05}"
 
 # save checkpoints? None, save every ('save_every') Int or every 'fraction' (Float, 1/N) of total epochs
 # The only thing that differentiates a 'checkpoint' from a 'model' is abstractly the latter is considered fully trained, while the former is not
