@@ -92,6 +92,11 @@ class PredictiveCodingClassifier:
         if self.classif_method == 'c2':
             Uo_size = (self.num_classes, self.output_lyr_size)
             self.U['o'] = self.prior_dist(size=Uo_size)
+            
+        # Initiate Je, Jc and accuracy (diagnostics) storage for print/log, plot
+        self.Je = {i: [0] * (self.epoch_n + 1) for i in range(self.num_layers)}
+        self.Jc = {i: [0] * (self.epoch_n + 1) for i in range(self.num_layers)}
+        self.accuracy = [0] * (self.epoch_n + 1)
     
         
     # r, U or V prior functions
@@ -264,23 +269,40 @@ class PredictiveCodingClassifier:
             - Final model is always saved. (models/)
             - Saving any model also saves a log.
         '''
+        
+        diagnostics = True
+        
         # Parse update method
         # e.g. self.update_method = {'rW_niters' (update method name): 30 (update method number)}
         # See config for more.
         update_method_name = next(iter(self.update_method))
         update_method_number = self.update_method[update_method_name]
-        # Add Uo update func if classif_method is c2
+        
+        num_imgs = X.shape[0]
+        
+        # Rep cost, other diagnostics at "Epoch 0" (initialized, untrained)
         
         
-        for e in epochs:
-            for i in images:
+        for e in range(self.epoch_n):
+            print(f'Epoch {e+1}')
+            for i in num_imgs:
+                input = X[i]
                 self.r[0] = input
                 label = Y[i]
                 
                 # Update components
                 self.update_method_dict[update_method_name](update_method_number, label)
                 
-        pass
+                '''
+                don't worry about checkpointing now
+                '''
+                
+        if plot:
+            # Plot loss and accuracy
+            
+            
+            
+            pass
 
     def evaluate(self, X, Y, plot=None):
         '''
@@ -344,6 +366,30 @@ class StaticPCC(PredictiveCodingClassifier):
         self.component_updates = [self.r_updates, self.U_updates]
         if self.classif_method == 'c2':
             self.component_updates.append(self.Uo_update)
+            
+        def rep_cost(self):
+            '''
+            Uses current r/U states to compute the least squares portion of the error
+            (concerned with accurate reconstruction of the input).
+            '''
+            E = 0
+            # LSQ cost
+            PE_list = []
+            for i in range(0,len(self.r)-1):
+                v = (self.r[i] - self.f(self.U[i+1].dot(self.r[i+1]))[0])
+                vTdotv = v.T.dot(v)
+                E = E + ((1 / self.ssq[i+1]) * vTdotv)[0,0]
+
+                # Also calulate prediction error for each layer
+                PE = np.sqrt(vTdotv)
+                PE_list.append(PE)
+
+            # priors on r[1],...,r[n]; U[1],...,U[n]
+            for i in range(1,len(self.r)):
+                E = E + (self.h(self.U[i],self.lam[i])[0] + self.g(np.squeeze(self.r[i]),self.alph[i])[0])
+
+            return (E, PE_list)
+            
         
         def rn_topdown_cost_c1(self, label):
             '''
