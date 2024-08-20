@@ -16,62 +16,73 @@ class PredictiveCodingClassifier:
                                 'kurtotic': self.kurtotic_prior_costs}
         self.prior_dist_dict = {'gaussian': partial(np.random.normal, loc=0, scale=1),
                                 'kurtotic': partial(np.random.laplace, loc=0.0, scale=0.5)}
-        self.update_method_dict = {'rW_niters': self.update_method_rWniters,
-                                    'r_niters_W': self.update_method_r_niters_W,
-                                    'r_eq_W': self.update_method_r_eq_W}
-        
-        # Transforms and priors
-        self.f = self.act_fxn_dict[self.activ_func]
-        self.g = self.prior_cost_dict[self.priors]
-        self.h = self.prior_cost_dict[self.priors]
-        
-        '''
-        dict fill later
-        '''
+    
         '''
         change rpcc learning rates to kr ku kv, etc.
         npt alpha beta gamma
         '''
-        # Prior parameters
-        self.alph = {}
-        self.lam = {}
-        
-        # None inits are to be received from assignment
+        # None/wrapped None inits are to be received from assignment
         # Rough types are given
+        # Model
+        self.model_type = 'None'
+        self.tiled = None
         # Size
         self.num_layers = None
         self.input_size = (None)
         self.hidden_layer_sizes = [None]
         self.output_layer_size = None
-        
+        # Model components, V's specific to recurrent subclass
+        self.r = {}
+        self.U = {}
         # Training
         self.dataset_train = 'None'
+        self.classif_method = 'None'
+        self.activ_func = 'None'
+        self.priors = 'None'
         self.update_method = {None:None}
         self.batch_size = None
         self.epoch_n = None
         self.save_checkpoint = None
         self.load_checkpoint = None
+        self.online_diagnostics = None
         self.plot_train = None
-        
-        # Evaluation
-        self.dataset_eval = 'None'
-        self.plot_eval = 'None'
-        
-        # Prediction
-        self.dataset_pred = 'None'
-        self.plot_pred = 'None'
-        
-        # Model components, V's specific to recurrent subclass
-        self.r = {}
-        self.U = {}
         # Learning rates
         self.kr = {}
         self.kU = {}
-        
         # Layer variances (just a divisor for learning rates, functionally)
         # All ssqs should be 2 (fulfills gradient coefficient in some cases), could experiment with other (dynamic?) values later
         self.ssq = {}
+        # Prior parameters
+        self.alph = {}
+        self.lam = {}
+        # Evaluation
+        self.dataset_eval = 'None'
+        self.plot_eval = 'None'
+        # Prediction
+        self.dataset_pred = 'None'
+        self.plot_pred = 'None'
+        # Diagnostics
+        self.Je = {}
+        self.Jc = {}
+        self.accuracy = []
         
+    def set_model_attributes(self, params):
+        '''
+        Set model attributes from a dictionary.
+        '''
+        for key, value in params.items():
+            setattr(self, key, value)
+        self.config_from_attributes()
+        
+    def config_from_attributes(self):
+        '''
+        Configure the PCC based on the set attributes.
+        '''
+        # Transforms and priors
+        self.f = self.act_fxn_dict[self.activ_func]
+        self.g = self.prior_cost_dict[self.priors]
+        self.h = self.prior_cost_dict[self.priors]
+
         # Initiate rs
         # Layer 1 until n will be the same
         # r0 is the input, assigned in subclass
@@ -97,7 +108,6 @@ class PredictiveCodingClassifier:
         self.Je = {i: [0] * (self.epoch_n + 1) for i in range(self.num_layers)}
         self.Jc = {i: [0] * (self.epoch_n + 1) for i in range(self.num_layers)}
         self.accuracy = [0] * (self.epoch_n + 1)
-    
         
     # r, U or V prior functions
     def gaussian_prior_costs(self, r_or_U=None, alph_or_lam=None):
@@ -165,8 +175,11 @@ class PredictiveCodingClassifier:
         softmax_vector = exp_vector / np.sum(exp_vector)
         return softmax_vector
     
-    def rn_topdown_cost_None(self):
+    def rn_topdown_term_None(self):
             return 0
+        
+    def classif_cost_None(self):
+        return 0
     
     '''
     make a V_updates for the recurrent subclass
@@ -174,11 +187,10 @@ class PredictiveCodingClassifier:
     
     '''
     
-    def update_method_rWniters(self, niters, label):
+    def update_method_rWniters(self, niters, label, component_updates):
         '''
         Li def: 30
         '''
-        component_updates = self.component_updates
         r_updates = component_updates[0]
         # Can be U/Uo or U/Uo,V
         weight_updates = component_updates[1:]
@@ -191,11 +203,10 @@ class PredictiveCodingClassifier:
                 # For as many weight sets are there are to update, update them.
                 weight_updates[w](label)
         
-    def update_method_r_niters_W(self, niters, label):
+    def update_method_r_niters_W(self, niters, label, component_updates):
         '''
         Rogers/Brown def: 100
         '''
-        component_updates = self.component_updates
         r_updates = component_updates[0]
         # Can be U/Uo or U/Uo,V
         weight_updates = component_updates[1:]
@@ -208,7 +219,7 @@ class PredictiveCodingClassifier:
             # For as many weight sets are there are to update, update them.
             weight_updates[w](label)
 
-    def update_method_r_eq_W(self, stop_criterion, label):
+    def update_method_r_eq_W(self, stop_criterion, label, component_updates):
         '''
         Rogers/Brown def: 0.05
         '''
@@ -223,7 +234,6 @@ class PredictiveCodingClassifier:
         r[2] 128
         r[3] 212'''
         
-        component_updates = self.component_updates
         r_updates = component_updates[0]
         # Can be U/Uo or U/Uo,V
         weight_updates = component_updates[1:]
@@ -251,7 +261,7 @@ class PredictiveCodingClassifier:
         with open(output_file, 'wb') as f:
             f.write(str(results))
             
-    def train(self, X, Y, save_checkpoint=None, plot=False):
+    def train(self, X, Y, save_checkpoint=None, online_diagnostics=True, plot=False):
         '''
         Trains the model using input images and labels, with options for checkpointing and plotting.
 
@@ -262,15 +272,14 @@ class PredictiveCodingClassifier:
             save_checkpoint (None or dict, optional): Controls checkpoint saving behavior. None to save only the final model. 
                                             Dict can have keys 'save_every' with int value N to save every N epochs, 
                                              or 'fraction' with float value 1/N to save every 1/N * Tot epochs.
-            plot (bool, optional): If True, plot loss and accuracy.
+            online_diagnostics (bool, optional): If True, store and print diagnostics at each epoch. Must be on for plot.
+            plot (bool, optional): If True, plot loss and accuracy after training. online_diagnostics must be on.
 
         Notes:
             - Epoch 0 (initialized, untrained) model is always saved. (models/checkpoints/)
             - Final model is always saved. (models/)
             - Saving any model also saves a log.
         '''
-        
-        diagnostics = True
         
         # Parse update method
         # e.g. self.update_method = {'rW_niters' (update method name): 30 (update method number)}
@@ -281,7 +290,10 @@ class PredictiveCodingClassifier:
         num_imgs = X.shape[0]
         
         # Rep cost, other diagnostics at "Epoch 0" (initialized, untrained)
-        
+        if online_diagnostics:
+            # Calculate loss and accuracy
+            Je = self.rep_cost()
+            
         
         for e in range(self.epoch_n):
             print(f'Epoch {e+1}')
@@ -333,10 +345,7 @@ class PredictiveCodingClassifier:
 
 class StaticPCC(PredictiveCodingClassifier):
     
-    def __init__(self):
-        super().__init__()
-        
-        
+    def __init__(self, base_instance: PredictiveCodingClassifier):
         
         """
         SPCC can take:
@@ -348,10 +357,8 @@ class StaticPCC(PredictiveCodingClassifier):
         if flat works, though, great. it'll be faster, and speaks to the power of the PC model.
     
         """
-        
-        self.rn_topdown_cost_dict = {'c1': self.rn_topdown_cost_c1,
-                                    'c2': self.rn_topdown_cost_c2,
-                                    'None': self.rn_topdown_cost_None}
+        # Copy attributes from the base instance
+        self.__dict__.update(base_instance.__dict__)
         
         if self.num_layers == 1:
             self.r_updates = self.r_updates_n_1
@@ -359,22 +366,42 @@ class StaticPCC(PredictiveCodingClassifier):
         elif self.num_layers == 2:
             self.r_updates = self.r_updates_n_2
             self.U_updates = self.U_updates_n_gt_eq_2
-        else:
+        elif self.num_layers >= 3:
             self.r_updates = self.r_updates_n_gt_eq_3
             self.U_updates = self.U_updates_n_gt_eq_2
+        else:
+            raise ValueError("Number of layers must be at least 1.")
             
         self.component_updates = [self.r_updates, self.U_updates]
         if self.classif_method == 'c2':
             self.component_updates.append(self.Uo_update)
+            
+        self.update_method_dict = {'rW_niters': partial(self.update_method_rWniters, component_updates=self.component_updates),
+                                    'r_niters_W': partial(self.update_method_r_niters_W, component_updates=self.component_updates),
+                                    'r_eq_W': partial(self.update_method_r_eq_W, component_updates=self.component_updates)}
+        
+        # Subclass needs topdown and cost None terms to exist before assignment
+        self.rn_topdown_term_dict = {'c1': self.rn_topdown_term_c1,
+                                    'c2': self.rn_topdown_term_c2,
+                                    'None': self.rn_topdown_term_None}
+        
+        self.class_cost_dict = {'c1': self.class_cost_c1,
+                                'c2': self.class_cost_c2,
+                                'None': self.class_cost_None}
             
         def rep_cost(self):
             '''
             Uses current r/U states to compute the least squares portion of the error
             (concerned with accurate reconstruction of the input).
             '''
+            
+            '''
+            change layer 1 to match tensordot form
+            '''
             E = 0
             # LSQ cost
             PE_list = []
+            
             for i in range(0,len(self.r)-1):
                 v = (self.r[i] - self.f(self.U[i+1].dot(self.r[i+1]))[0])
                 vTdotv = v.T.dot(v)
@@ -389,9 +416,17 @@ class StaticPCC(PredictiveCodingClassifier):
                 E = E + (self.h(self.U[i],self.lam[i])[0] + self.g(np.squeeze(self.r[i]),self.alph[i])[0])
 
             return (E, PE_list)
-            
         
-        def rn_topdown_cost_c1(self, label):
+        def classif_cost_c1(self, label):
+            # Format: -label.dot(np.log(softmax(r_n)))
+            return -label.dot(np.log(self.softmax(self.r[self.num_layers])))
+        
+        def classif_cost_c2(self, label):
+            # Format: -label.dot(np.log(softmax(Uo.dot(r_n))))
+            o = 'o'
+            return -label.dot(np.log(self.softmax(self.U[o].dot(self.r[self.num_layers])))) + self.h(self.U[o], self.lam[o])[0]
+        
+        def rn_topdown_term_c1(self, label):
             '''
             redo for recurrent =will all be the same except rn_bar'''
             '''
@@ -402,7 +437,7 @@ class StaticPCC(PredictiveCodingClassifier):
             c1 = (self.kr[o]/ self.ssq[o]) * (label - self.softmax(self.r[self.num_layers]))
             return c1
     
-        def rn_topdown_cost_c2(self, label):
+        def rn_topdown_term_c2(self, label):
             # Format: k_o / ssq_o * (label - softmax(Uo.dot(r_n)))
             o = 'o'
             c2 = (self.kr[o]/ self.ssq[o]) * (label - self.softmax(self.U[o].dot(self.r[self.num_layers])))
@@ -443,7 +478,7 @@ class StaticPCC(PredictiveCodingClassifier):
             input_min_U1tdotr1 = self.f(self.r[0] - self.f(U1_tdot_r1)[0])[1]
             
             self.r[1] += (kr_1 / ssq_1) * np.tensordot(U1_transpose, input_min_U1tdotr1, axes=(self.U1T_tdot_dims, self.input_min_U1tdotr1_tdot_dims)) \
-                                                    + self.rn_topdown_cost_dict[self.classif_method](label) \
+                                                    + self.rn_topdown_term_dict[self.classif_method](label) \
                                                     - (kr_1 / ssq_1) * self.g(r_1, self.alph[1])[1]
         
         def r_updates_n_2(self, label):
@@ -471,7 +506,7 @@ class StaticPCC(PredictiveCodingClassifier):
                                                 - (kr_1 / ssq_1) * self.g(r_1, self.alph[1])[1]
                                                 
             self.r[2] += (kr_2 / ssq_2) * (U_2.T.dot(self.f(self.r[1] - self.f(U_2.dot(r_2))[0])[1])) \
-                                                    + self.rn_topdown_cost_dict[self.classif_method](label) \
+                                                    + self.rn_topdown_term_dict[self.classif_method](label) \
                                                     - (kr_2 / ssq_2) * self.g(r_2, self.alph[2])[1]
                                                 
         def r_updates_n_gt_eq_3(self, label):
@@ -516,7 +551,7 @@ class StaticPCC(PredictiveCodingClassifier):
             r_n = self.r[n]
 
             self.r[n] += (kr_n / ssq_n) * (U_n.T.dot(self.f(self.r[n-1] - self.f(U_n.dot(r_n))[0])[1])) \
-                                                    + self.rn_topdown_cost_dict[self.classif_method](label) \
+                                                    + self.rn_topdown_term_dict[self.classif_method](label) \
                                                     - (kr_n / ssq_n) * self.g(r_n, self.alph[n])[1]
                                                     
         def U_updates_n_1(self):

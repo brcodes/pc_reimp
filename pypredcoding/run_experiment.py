@@ -1,5 +1,5 @@
 from ast import literal_eval
-from model import StaticPCC, TiledStaticPCC, RecurrentPCC, TiledRecurrentPCC
+from model import PredictiveCodingClassifier, StaticPCC, TiledStaticPCC, RecurrentPCC, TiledRecurrentPCC
 from data import load_data
 from os.path import join, exists
 from os import listdir
@@ -127,6 +127,13 @@ def load_checkpoint(model_name, params):
             
 def instantiate_model(params):
     
+    # Base class
+    model = PredictiveCodingClassifier()
+    model.set_model_attributes(params)
+    
+    if model.model_type == 'static' and model.tiled == False:
+        
+    
     # Just the subclass
     if params['type'] == 'static' and params['tiled'] == False:
         model_init = StaticPCC
@@ -140,6 +147,7 @@ def instantiate_model(params):
         raise ValueError('Invalid model type')
     
     # Now attributes are params
+    model = PredictiveCodingClassifier()
     model = set_model_attributes(model_init, params)
     model.validate_attributes()
     return model
@@ -148,6 +156,7 @@ def set_model_attributes(model, params):
     '''
     Set model attributes from the params dictionary.
     '''
+    
     pass
 
 def run_experiment(config_file_path):

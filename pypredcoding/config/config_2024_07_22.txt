@@ -1,6 +1,9 @@
 ## Config file for PCC (r/s) experiments
 ## Parsed downstream by literal_eval (ast)
 ## << KEEP EVERYTHING IN THE FORMAT DENOTED BY COMMENTS, OR ERRORS MAY OCCUR >>
+## Parameters must all have " " around them, but are simple python types besides
+## Parameters relevant for sPCC but not rPCC will be ignored for the latter, and vice versa.
+## You can keep them all in, as long as your model_type is set correctly.
 
 ## METADATA AND EXPERIMENT
 # Keep in format TEXT_YEAR_TWODIGMONTH_DAY
@@ -23,7 +26,7 @@ tiled="True"
 num_layers="3"
 # If 2D array, all tiles associated with a sigle image and a tile's area
 # If Int, size of flattened single image
-input_size="[16,864]"
+input_size="(16,864)"
 # For a 1-layer model, this will be ignored for output_lyr_size
 # in a 2-layer model, this will have one number, and the second layer will be output_lyr_size
 hidden_lyr_sizes="[32,128]"
@@ -51,11 +54,16 @@ dataset_train=ds.trace212_212_li_trace212_132_84_tl_16_36_24_32_20.pydb
 batch_size="1"
 # how many exposures to all of the data (shuffled)
 epoch_n="300"
-# learning rates
+# learning rates, one per layer plus o needs to be correct if classif_method == 'c2'
 k_r="{1:0.05, 2:0.05, 3:0.05, 'o':0.01}"
 k_U="{1:0.05, 2:0.05, 3:0.05, 'o':0.01}"
-# rPCC only
-# k_V="{1:0.05, 2:0.05, 3:0.05}"
+# rPCC only (will ignore if sPCC)
+k_V="{1:0.05, 2:0.05, 3:0.05}"
+# prior distribution parameters, sPCC only. one per layer, incl. Uo case (alpha for r, lambda for U)
+alpha="{1:0.05, 2:0.04, 3:0.05}"
+lambda="{1:0.05, 2:0.04, 3:0.05, 'o':0.01}"
+# layer covariance parameters, sigma squared. (they will all be 2, to increase conformity to derivative math, unless experiments here are desired)
+ssq="{1:2, 2:2, 3:2, 'o':2}"
 
 # save checkpoints? None, save every ('save_every') Int or every 'fraction' (Float, 1/N) of total epochs
 # The only thing that differentiates a 'checkpoint' from a 'model' is abstractly the latter is considered fully trained, while the former is not
@@ -63,7 +71,12 @@ k_U="{1:0.05, 2:0.05, 3:0.05, 'o':0.01}"
 save_checkpoint="{'save_every':50}"
 # if checkpoints present, load? None, or Int != -1 for checkpoint epoch desired. Int == -1 for latest checkpoint.
 load_checkpoint="-1"
-# plot loss and accuracy by epoch
+# calculates and stores loss and accuracy by epoch, prints by epoch. Must be true for plot_train to print anything but 0s.
+# You'd want to turn this off if, for example, you care about speed, you know the model will train (most likely), and you don't mind doing the accuracy evaluation post-hoc on the full (trained) model.
+# You will not get any loss evaluation, though, online or post-hoc, if you turn this off. 
+online_diagnostics="True"
+# plot loss and accuracy by epoch directly after training (online_diagnostics must == "True" for this to plot real data)
+# If you're running something on the cluster, it may not work unless you turn this off.
 plot_train="True"
 
 ## EVALUATION DATASET
