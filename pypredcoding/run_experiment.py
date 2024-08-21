@@ -147,10 +147,11 @@ def instantiate_model(params):
     
     return model
 
-def load_data(data_path):
+def load_data(dataset_name):
     '''
     Load data from a filename using pickle.
     '''
+    data_path = join('data', dataset_name)
     if not exists(data_path):
         raise ValueError(f"The data path {data_path} does not exist.")
     
