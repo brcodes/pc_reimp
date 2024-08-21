@@ -4,6 +4,7 @@ from data import load_data
 from os.path import join, exists
 from os import listdir
 from pickle import load
+import numpy as np
 
 def load_params(file_path):
     params = {}
@@ -147,16 +148,31 @@ def instantiate_model(params):
     
     return model
 
+def create_data(dataset_name):
+    '''
+    Create data from scratch using desired parameters scraped from filename.
+    '''
+    
+    # Get parameters from filename
+    
+        
+    return X, Y
+
 def load_data(dataset_name):
     '''
     Load data from a filename using pickle.
+    Create it if it does not exist.
     '''
     data_path = join('data', dataset_name)
     if not exists(data_path):
-        raise ValueError(f"The data path {data_path} does not exist.")
-    
-    with open(data_path, 'rb') as file:
-        X, Y = load(file)
+        print(f"The data path {data_path} does not exist.")
+        # Create
+        X, Y = create_data(dataset_name)
+    else:
+        # Load
+        with open(data_path, 'rb') as file:
+            X, Y = load(file)
+        
     return X, Y
 
 def run_experiment(config_file_path):

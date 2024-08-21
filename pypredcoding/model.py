@@ -1,6 +1,10 @@
 from parameters import constant_lr, step_decay_lr, polynomial_decay_lr
 import numpy as np
 from functools import partial
+from no_transform_updates_and_costs import r_updates_n_1_no_transform, r_updates_n_2_no_transform, r_updates_n_gt_eq_3_no_transform, \
+                                            U_updates_n_1_no_transform, U_updates_n_gt_eq_2_no_transform, \
+                                            rep_cost_n_1_no_transform, rep_cost_n_2_no_transform, rep_cost_n_gt_eq_3_no_transform
+
         
 class PredictiveCodingClassifier:
 
@@ -47,14 +51,14 @@ class PredictiveCodingClassifier:
         self.online_diagnostics = None
         self.plot_train = None
         # Learning rates
-        self.kr = {}
-        self.kU = {}
+        self.kr = {None:None}
+        self.kU = {None:None}
         # Layer variances (just a divisor for learning rates, functionally)
         # All ssqs should be 2 (fulfills gradient coefficient in some cases), could experiment with other (dynamic?) values later
-        self.ssq = {}
+        self.ssq = {None:None}
         # Prior parameters
-        self.alph = {}
-        self.lam = {}
+        self.alph = {None:None}
+        self.lam = {None:None}
         # Evaluation
         self.dataset_eval = 'None'
         self.plot_eval = 'None'
@@ -69,6 +73,8 @@ class PredictiveCodingClassifier:
     def set_model_attributes(self, params):
         '''
         Set model attributes from a dictionary.
+        This will set a bunch of external attributes too,
+        which will serve no other purpose than to recount the last experiment run on the model. e.g. name, train, notes.
         '''
         for key, value in params.items():
             setattr(self, key, value)
@@ -261,7 +267,7 @@ class PredictiveCodingClassifier:
         with open(output_file, 'wb') as f:
             f.write(str(results))
             
-    def train(self, X, Y, save_checkpoint=None, online_diagnostics=True, plot=False):
+    def train(self, X, Y, save_checkpoint=None, online_diagnostics=False, plot=False):
         '''
         Trains the model using input images and labels, with options for checkpointing and plotting.
 
@@ -280,30 +286,51 @@ class PredictiveCodingClassifier:
             - Final model is always saved. (models/)
             - Saving any model also saves a log.
         '''
+        # Params
+        epoch_n = self.epoch_n
+        num_imgs = X.shape[0]
         
         # Parse update method
         # e.g. self.update_method = {'rW_niters' (update method name): 30 (update method number)}
         # See config for more.
         update_method_name = next(iter(self.update_method))
         update_method_number = self.update_method[update_method_name]
+        update_components = partial(self.update_method_dict[update_method_name], update_method_number)
         
-        num_imgs = X.shape[0]
+        # Representation cost
+        rep_cost = self.rep_cost
+        # Classification
+        classif_method = self.classif_method
+        classif_cost = self.classif_cost_dict[classif_method]
+        # Accuracy
+        evaluate = partial(self.evaluate, plot=None)
+        
         
         # Rep cost, other diagnostics at "Epoch 0" (initialized, untrained)
         if online_diagnostics:
-            # Calculate loss and accuracy
-            Je = self.rep_cost()
-            
+            # Epoch 0
+            epoch = 0
+            for i in range(num_imgs):
+                input = X[i]
+                self.r[0] = input
+                label = Y[i]
+                # Calculate loss and accuracy
+                Je = rep_cost()
+                Jc = classif_cost(label)
+            accuracy = evaluate(X, Y)
+            self.accuracy[epoch] = accuracy
         
-        for e in range(self.epoch_n):
-            print(f'Epoch {e+1}')
-            for i in num_imgs:
+        for e in range(epoch_n):
+            epoch = e + 1
+            print(f'Epoch {epoch}')
+            for i in range(num_imgs):
                 input = X[i]
                 self.r[0] = input
                 label = Y[i]
                 
                 # Update components
-                self.update_method_dict[update_method_name](update_method_number, label)
+                # e.g. r, U/Uo, V
+                update_components(label=label)
                 
                 '''
                 don't worry about checkpointing now
@@ -323,11 +350,11 @@ class PredictiveCodingClassifier:
         Parameters:
             X (np.array): Input images to be evaluated by the model.
             Y (np.array): True labels for the input images.
-            plot (None or Str, optional): Assigns prediction error (pe) plotting behavior. None to plot nothing. 
+            plot (None or Str, optional): Assigns prediction error (pe) plotting behavior. None to save no PE data and plot nothing. 
                                 Str can be 'first' to plot model response to first image, f'rand{N}' to plot responses to N random 
                                 images, or 'all' for those of all images.
         '''
-        pass
+        return accuracy
     
     def predict(self, X, plot=None):
         '''
@@ -340,7 +367,7 @@ class PredictiveCodingClassifier:
                                 images, or 'all' for those of all images.
         '''
         
-        pass
+        return class_predictions
 
 
 class StaticPCC(PredictiveCodingClassifier):
@@ -360,15 +387,35 @@ class StaticPCC(PredictiveCodingClassifier):
         # Copy attributes from the base instance
         self.__dict__.update(base_instance.__dict__)
         
+        '''
+        test
+        '''
+        # No F in the update equations. only f().
+        self.r_updates_n_1 = r_updates_n_1_no_transform
+        self.r_updates_n_2 = r_updates_n_2_no_transform
+        self.r_updates_n_gt_eq_3 = r_updates_n_gt_eq_3_no_transform
+        self.U_updates_n_1 = U_updates_n_1_no_transform
+        self.U_updates_n_gt_eq_2 = U_updates_n_gt_eq_2_no_transform
+        self.rep_cost_n_1 = rep_cost_n_1_no_transform
+        self.rep_cost_n_2 = rep_cost_n_2_no_transform
+        self.rep_cost_n_gt_eq_3 = rep_cost_n_gt_eq_3_no_transform
+        
+        '''
+        test
+        '''
+        
         if self.num_layers == 1:
             self.r_updates = self.r_updates_n_1
             self.U_updates = self.U_updates_n_1
+            self.rep_cost = self.rep_cost_n_1
         elif self.num_layers == 2:
             self.r_updates = self.r_updates_n_2
             self.U_updates = self.U_updates_n_gt_eq_2
+            self.rep_cost = self.rep_cost_n_2
         elif self.num_layers >= 3:
             self.r_updates = self.r_updates_n_gt_eq_3
             self.U_updates = self.U_updates_n_gt_eq_2
+            self.rep_cost = self.rep_cost_n_gt_eq_3
         else:
             raise ValueError("Number of layers must be at least 1.")
             
@@ -383,13 +430,13 @@ class StaticPCC(PredictiveCodingClassifier):
         # Subclass needs topdown and cost None terms to exist before assignment
         self.rn_topdown_term_dict = {'c1': self.rn_topdown_term_c1,
                                     'c2': self.rn_topdown_term_c2,
-                                    'None': self.rn_topdown_term_None}
+                                    None: self.rn_topdown_term_None}
         
-        self.class_cost_dict = {'c1': self.class_cost_c1,
-                                'c2': self.class_cost_c2,
-                                'None': self.class_cost_None}
+        self.classif_cost_dict = {'c1': self.classif_cost_c1,
+                                'c2': self.classif_cost_c2,
+                                None: self.classif_cost_None}
             
-        def rep_cost(self):
+        def rep_cost_n_1(self):
             '''
             Uses current r/U states to compute the least squares portion of the error
             (concerned with accurate reconstruction of the input).
@@ -415,6 +462,13 @@ class StaticPCC(PredictiveCodingClassifier):
             for i in range(1,len(self.r)):
                 E = E + (self.h(self.U[i],self.lam[i])[0] + self.g(np.squeeze(self.r[i]),self.alph[i])[0])
 
+            return (E, PE_list)
+        
+        def rep_cost_n_2(self):
+
+            return (E, PE_list)
+        
+        def rep_cost_n_gt_eq_3(self):
             return (E, PE_list)
         
         def classif_cost_c1(self, label):
