@@ -128,36 +128,35 @@ def load_checkpoint(model_name, params):
 def instantiate_model(params):
     
     # Base class
-    model = PredictiveCodingClassifier()
-    model.set_model_attributes(params)
+    base_model = PredictiveCodingClassifier()
+    base_model.set_model_attributes(params)
     
-    if model.model_type == 'static' and model.tiled == False:
-        
-    
-    # Just the subclass
-    if params['type'] == 'static' and params['tiled'] == False:
-        model_init = StaticPCC
-    elif params['type'] == 'static' and params['tiled'] == True:
-        model_init = TiledStaticPCC
-    elif params['type'] == 'recurrent' and params['tiled'] == False:
-        model_init = RecurrentPCC
-    elif params['type'] == 'recurrent' and params['tiled'] == True:
-        model_init = TiledRecurrentPCC
+    if base_model.model_type == 'static' and base_model.tiled == False:
+        model = StaticPCC(base_model)
+    elif base_model.model_type == 'static' and base_model.tiled == True:
+        model = TiledStaticPCC(base_model)
+    elif base_model.model_type == 'recurrent' and base_model.tiled == False:
+        model = RecurrentPCC(base_model)
+    elif base_model.model_type == 'recurrent' and base_model.tiled == True:
+        model = TiledRecurrentPCC(base_model)
     else:
         raise ValueError('Invalid model type')
     
     # Now attributes are params
-    model = PredictiveCodingClassifier()
-    model = set_model_attributes(model_init, params)
     model.validate_attributes()
+    
     return model
 
-def set_model_attributes(model, params):
+def load_data(data_path):
     '''
-    Set model attributes from the params dictionary.
+    Load data from a filename using pickle.
     '''
+    if not exists(data_path):
+        raise ValueError(f"The data path {data_path} does not exist.")
     
-    pass
+    with open(data_path, 'rb') as file:
+        X, Y = load(file)
+    return X, Y
 
 def run_experiment(config_file_path):
     params = load_params(config_file_path)
