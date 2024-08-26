@@ -317,19 +317,36 @@ class PredictiveCodingClassifier:
         if online_diagnostics:
             # Epoch 0
             epoch = 0
+            Jr0 = 0
+            Jc0 = 0
             for i in range(num_imgs):
                 input = X[i]
                 self.r[0] = input
                 label = Y[i]
                 # Calculate loss and accuracy
-                Jr = rep_cost()
+                '''
+                test, remove self later'''
+                Jr = rep_cost(self)
                 Jc = classif_cost(label)
+                
+                Jr0 += Jr
+                Jc0 += Jc
             accuracy = evaluate(X, Y)
             self.accuracy[epoch] = accuracy
+            self.Jr[epoch] = Jr0
+            self.Jc[epoch] = Jc0
         
         for e in range(epoch_n):
             epoch = e + 1
             print(f'Epoch {epoch}')
+            Jre = 0
+            Jrc = 0
+            
+            # Shuffle X, Y
+            shuffle_indices = np.random.permutation(num_imgs)
+            X = X[shuffle_indices]
+            Y = Y[shuffle_indices]
+            
             for i in range(num_imgs):
                 input = X[i]
                 self.r[0] = input
@@ -342,11 +359,23 @@ class PredictiveCodingClassifier:
                 '''
                 don't worry about checkpointing now
                 '''
+                if online_diagnostics:
+                    # Calculate loss and accuracy
+                    Jr = rep_cost(self)
+                    Jc = classif_cost(label)
+                    
+                    Jre += Jr
+                    Jrc += Jc
+            
+            
+            self.Jr[epoch] = Jre
+            self.Jc[epoch] = Jrc
+            if online_diagnostics:
+                accuracy = evaluate(X, Y)
+                self.accuracy[epoch] = accuracy 
                 
         if plot:
             # Plot loss and accuracy
-            
-            
             
             pass
 
@@ -434,58 +463,8 @@ class StaticPCC(PredictiveCodingClassifier):
                                 None: self.classif_cost_None}
             
         def rep_cost_n_1(self):
-            '''
-            Uses current r/U states to compute the least squares portion of the error
-            (concerned with accurate reconstruction of the input).
-            '''
-            
-            '''
-            change layer 1 to match tensordot form
-            '''
-            E = 0
-            # LSQ cost
-            PE_list = []
-            
-            
-            r_0 = self.r[0]
-            r_1 = self.r[1]
-            U_1 = self.U[1]
-            r_2 = self.r[2]
-            U_2 = self.U[2]
-            
-            ssq_1 = self.ssq[1]
-            ssq_2 = self.ssq[2]
-            
-            bu_v = r_0 - self.f(U_1.dot(r_1))[0]
-            bu_sq = bu_v.T.dot(bu_v)
-            bu_tot = (1 / ssq_1) * bu_sq
-            
-            td_v = r_1 - self.f(U_2.dot(r_2))[0]
-            td_sq = td_v.T.dot(td_v)
-            td_tot = (1 / ssq_2) * td_sq
-            
-            pri_r = self.g(r_1, self.alph[1])[0]
-            pri_U = self.h(U_1, self.lam[1])[0]
-            
-            
-            
-            
-            
-            
-            for i in range(1,self.num_layers+1):
-                v = (self.r[i-1] - self.f(self.U[i].dot(self.r[i]))[0])
-                vTdotv = v.T.dot(v)
-                E = E + ((1 / self.ssq[i+1]) * vTdotv)[0,0]
 
-                # Also calulate prediction error for each layer
-                PE = np.sqrt(vTdotv)
-                PE_list.append(PE)
-
-            # priors on r[1],...,r[n]; U[1],...,U[n]
-            for i in range(1,len(self.r)):
-                E = E + (self.h(self.U[i],self.lam[i])[0] + self.g(np.squeeze(self.r[i]),self.alph[i])[0])
-
-            return (E, PE_list)
+            pass
         
         def rep_cost_n_2(self):
             pass
