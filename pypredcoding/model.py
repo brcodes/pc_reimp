@@ -5,7 +5,9 @@ from functools import partial
 from no_transform_updates_and_costs import r_updates_n_1_no_transform, r_updates_n_2_no_transform, r_updates_n_gt_eq_3_no_transform, \
                                             U_updates_n_1_no_transform, U_updates_n_gt_eq_2_no_transform, Uo_update_no_transform, \
                                             rep_cost_n_1_no_transform, rep_cost_n_2_no_transform, rep_cost_n_gt_eq_3_no_transform
-
+from datetime import datetime
+import pickle
+from os import path
         
 class PredictiveCodingClassifier:
 
@@ -302,9 +304,12 @@ class PredictiveCodingClassifier:
                 diff_norm = np.linalg.norm(post_r - prev_r[i])
                 diffs[i-1] = (diff_norm / initial_norms[i-1]) * 100  # Calculate the percentage change
     
-    def save_results(self, results, output_file):
-        with open(output_file, 'wb') as f:
-            f.write(str(results))
+    def save_results(self, output_dir):
+        
+        output_path = path.join(output_dir, self.name)
+        
+        with open(output_path, 'wb') as f:
+            pickle.dump(self, f)
             
     def train(self, X, Y, save_checkpoint=None, online_diagnostics=False, plot=False):
         '''
@@ -363,6 +368,8 @@ class PredictiveCodingClassifier:
         
         # Rep cost, other diagnostics at "Epoch 0" (initialized, untrained)
         if online_diagnostics:
+            print('Diagnostics: On')
+            print('Epoch 0')
             # Epoch 0
             epoch = 0
             Jr0 = 0
@@ -383,13 +390,19 @@ class PredictiveCodingClassifier:
             self.accuracy[epoch] = accuracy
             self.Jr[epoch] = Jr0
             self.Jc[epoch] = Jc0
-        
+            print(f'Jr: {Jr0}, Jc: {Jc0}, Accuracy: {accuracy}')
+        else:
+            print('Diagnostics: Off')
+            
+        # Training
+        print('Training...')
         for e in range(epoch_n):
             epoch = e + 1
             print(f'Epoch {epoch}')
+            t_start_epoch = datetime.now()
             Jre = 0
-            Jrc = 0
-            
+            Jce = 0
+            accuracy = 0
             # Shuffle X, Y
             shuffle_indices = np.random.permutation(num_imgs)
             X_shuff = X[shuffle_indices]
@@ -418,14 +431,22 @@ class PredictiveCodingClassifier:
                     Jc = classif_cost(label)
                     
                     Jre += Jr
-                    Jrc += Jc
+                    Jce += Jc
             
             
             self.Jr[epoch] = Jre
-            self.Jc[epoch] = Jrc
+            self.Jc[epoch] = Jce
             if online_diagnostics:
                 accuracy = evaluate(X, Y)
                 self.accuracy[epoch] = accuracy
+            print(f'Jr: {Jre}, Jc: {Jce}, Accuracy: {accuracy}')
+            t_end_epoch = datetime.now()
+            print(f'Epoch time: {t_end_epoch - t_start_epoch}')
+            
+        print('Training complete.')
+        print('Saving final model...')
+        # Save final model
+        self.save_results(output_dir='models/')
 
     def evaluate(self, X, Y, update_method_name, update_method_number, classif_method, plot=None):
         '''
