@@ -441,11 +441,33 @@ class PredictiveCodingClassifier:
         update_non_weight_components = partial(self.update_method_non_weight_dict[update_method_name], update_method_number)
         guess_func = self.classif_guess_dict[classif_method]
         
+        # Make sure priors are reset correctly and efficiently
+        num_layers = self.num_layers
+        
+        all_lyr_sizes = self.hidden_lyr_sizes.append(self.output_lyr_size)
+        # if kurtotic, don't redo a laplacian each time, but once here
+        if self.priors == 'kurtotic':
+            self.r_dists = {}
+            for lyr in range(1, num_layers + 1):
+                lyr_size = all_lyr_sizes[lyr - 1]
+                self.r_dists[lyr_size] = self.prior_dist(size=lyr_size)
+            
+            def premade_prior_dist(r_dists, size):
+                return r_dists[size]
+                    
+            prior_dist = partial(premade_prior_dist, self.r_dists)
+            
+        else:
+            prior_dist = self.prior_dist
+        
         num_imgs = X.shape[0]
         accuracy = 0
         for i in range(num_imgs):
             input = X[i]
             self.r[0] = input
+            
+            for lyr in range(1,num_layers+1):
+                self.r[lyr] = prior_dist(size=(all_lyr_sizes[lyr-1]))
             
             label = Y[i]
             
