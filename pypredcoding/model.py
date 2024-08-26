@@ -182,10 +182,13 @@ class PredictiveCodingClassifier:
         softmax_vector = exp_vector / np.sum(exp_vector)
         return softmax_vector
     
-    def rn_topdown_term_None(self):
-            return 0
+    def rn_topdown_term_None(self, label):
+        return 0
         
-    def classif_cost_None(self):
+    def classif_cost_None(self, label):
+        return 0
+    
+    def classif_guess_None(self, label):
         return 0
     
     '''
@@ -210,7 +213,7 @@ class PredictiveCodingClassifier:
         num_weight_updates = len(weight_updates)
         range_num_weight_updates = range(num_weight_updates)
         
-        for i in range(niters):
+        for _ in range(niters):
             r_updates(self,label)
             for w in range_num_weight_updates:
                 # For as many weight sets are there are to update, update them.
@@ -269,6 +272,35 @@ class PredictiveCodingClassifier:
         for w in range_num_weight_updates:
             # For as many weight sets are there are to update, update them.
             weight_updates[w](self,label) 
+            
+    def update_method_rniters(self, niters, label, component_updates):
+        '''
+        Li def: 30, Rogers/Brown def: 100
+        '''
+        r_updates = component_updates[0]
+        
+        for _ in range(niters):
+            r_updates(self,label)
+
+    def update_method_r_eq(self, stop_criterion, label, component_updates):
+        '''
+        Rogers/Brown def: 0.05
+        '''
+        
+        r_updates = component_updates[0]
+        
+        num_layers = self.num_layers
+        initial_norms = [np.linalg.norm(self.r[i]) for i in range(1, num_layers + 1)]
+        diffs = [float('inf')] * num_layers  # Initialize diffs to a large number
+        
+        while any(diff > stop_criterion for diff in diffs):
+            prev_r = {i: self.r[i].copy() for i in range(1, num_layers + 1)}  # Copy all vectors to avoid reference issues
+            r_updates(self,label)
+            
+            for i in range(1, num_layers + 1):
+                post_r = self.r[i]
+                diff_norm = np.linalg.norm(post_r - prev_r[i])
+                diffs[i-1] = (diff_norm / initial_norms[i-1]) * 100  # Calculate the percentage change
     
     def save_results(self, results, output_file):
         with open(output_file, 'wb') as f:
@@ -302,7 +334,7 @@ class PredictiveCodingClassifier:
         # See config for more.
         update_method_name = next(iter(self.update_method))
         update_method_number = self.update_method[update_method_name]
-        update_components = partial(self.update_method_dict[update_method_name], update_method_number)
+        update_all_components = partial(self.update_method_dict[update_method_name], update_method_number)
         
         # Representation cost
         rep_cost = self.rep_cost
@@ -310,8 +342,7 @@ class PredictiveCodingClassifier:
         classif_method = self.classif_method
         classif_cost = self.classif_cost_dict[classif_method]
         # Accuracy
-        evaluate = partial(self.evaluate, plot=None)
-        
+        evaluate = partial(self.evaluate, update_method_name=update_method_name, update_method_number=update_method_number, classif_method=classif_method, plot=None)
         
         # Rep cost, other diagnostics at "Epoch 0" (initialized, untrained)
         if online_diagnostics:
@@ -344,17 +375,17 @@ class PredictiveCodingClassifier:
             
             # Shuffle X, Y
             shuffle_indices = np.random.permutation(num_imgs)
-            X = X[shuffle_indices]
-            Y = Y[shuffle_indices]
+            X_shuff = X[shuffle_indices]
+            Y_shuff = Y[shuffle_indices]
             
             for i in range(num_imgs):
-                input = X[i]
+                input = X_shuff[i]
                 self.r[0] = input
-                label = Y[i]
+                label = Y_shuff[i]
                 
                 # Update components
                 # e.g. r, U/Uo, V
-                update_components(label=label)
+                update_all_components(label=label)
                 
                 '''
                 don't worry about checkpointing now
@@ -372,14 +403,9 @@ class PredictiveCodingClassifier:
             self.Jc[epoch] = Jrc
             if online_diagnostics:
                 accuracy = evaluate(X, Y)
-                self.accuracy[epoch] = accuracy 
-                
-        if plot:
-            # Plot loss and accuracy
-            
-            pass
+                self.accuracy[epoch] = accuracy
 
-    def evaluate(self, X, Y, plot=None):
+    def evaluate(self, X, Y, update_method_name, update_method_number, classif_method, plot=None):
         '''
         Evaluates the model's classification accuracy using input images and labels.
 
@@ -390,6 +416,22 @@ class PredictiveCodingClassifier:
                                 Str can be 'first' to plot model response to first image, f'rand{N}' to plot responses to N random 
                                 images, or 'all' for those of all images.
         '''
+        update_non_weight_components = partial(self.update_method_non_weight_dict[update_method_name], update_method_number)
+        guess_func = self.classif_guess_dict[classif_method]
+        
+        num_imgs = X.shape[0]
+        accuracy = 0
+        for i in range(num_imgs):
+            input = X[i]
+            self.r[0] = input
+            label = Y[i]
+            
+            # Update non-weight components (r)
+            update_non_weight_components(label=label)
+            
+            guess = guess_func(label)
+            accuracy += guess
+        
         return accuracy
     
     def predict(self, X, plot=None):
@@ -453,6 +495,10 @@ class StaticPCC(PredictiveCodingClassifier):
                                     'r_niters_W': partial(self.update_method_r_niters_W, component_updates=self.component_updates),
                                     'r_eq_W': partial(self.update_method_r_eq_W, component_updates=self.component_updates)}
         
+        self.update_method_non_weight_dict = {'rW_niters': partial(self.update_method_r_niters, component_updates=self.component_updates),
+                                    'r_niters_W': partial(self.update_method_r_niters, component_updates=self.component_updates),
+                                    'r_eq_W': partial(self.update_method_r_eq, component_updates=self.component_updates)}
+        
         # Subclass needs topdown and cost None terms to exist before assignment
         self.rn_topdown_term_dict = {'c1': self.rn_topdown_term_c1,
                                     'c2': self.rn_topdown_term_c2,
@@ -461,6 +507,10 @@ class StaticPCC(PredictiveCodingClassifier):
         self.classif_cost_dict = {'c1': self.classif_cost_c1,
                                 'c2': self.classif_cost_c2,
                                 None: self.classif_cost_None}
+        
+        self.classif_guess_dict = {'c1': self.classif_guess_c1,
+                                'c2': self.classif_guess_c2,
+                                None: self.classif_guess_None}
             
         def rep_cost_n_1(self):
 
@@ -480,6 +530,20 @@ class StaticPCC(PredictiveCodingClassifier):
             # Format: -label.dot(np.log(softmax(Uo.dot(r_n))))
             o = 'o'
             return -label.dot(np.log(self.softmax(self.U[o].dot(self.r[self.num_layers])))) + self.h(self.U[o], self.lam[o])[0]
+        
+        def classif_guess_c1(self, label):
+            guess = np.argmax(self.softmax(self.r[self.num_layers]))
+            if guess == np.argmax(label):
+                return 1
+            else:
+                return 0
+        
+        def classif_guess_c2(self, label):
+            guess = np.argmax(self.softmax(self.U["o"].dot(self.r[self.num_layers])))
+            if guess == np.argmax(label):
+                return 1
+            else:
+                return 0
         
         def rn_topdown_term_c1(self, label):
             '''
