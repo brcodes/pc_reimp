@@ -1,8 +1,9 @@
 from parameters import constant_lr, step_decay_lr, polynomial_decay_lr
 import numpy as np
 from functools import partial
+
 from no_transform_updates_and_costs import r_updates_n_1_no_transform, r_updates_n_2_no_transform, r_updates_n_gt_eq_3_no_transform, \
-                                            U_updates_n_1_no_transform, U_updates_n_gt_eq_2_no_transform, \
+                                            U_updates_n_1_no_transform, U_updates_n_gt_eq_2_no_transform, Uo_update_no_transform, \
                                             rep_cost_n_1_no_transform, rep_cost_n_2_no_transform, rep_cost_n_gt_eq_3_no_transform
 
         
@@ -65,8 +66,8 @@ class PredictiveCodingClassifier:
         # Prediction
         self.dataset_pred = 'None'
         self.plot_pred = 'None'
-        # Diagnostics
-        self.Je = {}
+        # Diagnostics (Je (tot cost, energy) = Jr (representation cost) + Jc (classification cost))
+        self.Jr = {}
         self.Jc = {}
         self.accuracy = []
         
@@ -110,8 +111,8 @@ class PredictiveCodingClassifier:
             Uo_size = (self.num_classes, self.output_lyr_size)
             self.U['o'] = self.prior_dist(size=Uo_size)
             
-        # Initiate Je, Jc and accuracy (diagnostics) storage for print/log, plot
-        self.Je = {i: [0] * (self.epoch_n + 1) for i in range(self.num_layers)}
+        # Initiate Jr, Jc and accuracy (diagnostics) storage for print/log, plot
+        self.Jr = {i: [0] * (self.epoch_n + 1) for i in range(self.num_layers)}
         self.Jc = {i: [0] * (self.epoch_n + 1) for i in range(self.num_layers)}
         self.accuracy = [0] * (self.epoch_n + 1)
         
@@ -193,6 +194,12 @@ class PredictiveCodingClassifier:
     
     '''
     
+    '''
+    Change the r updates self, label to label
+    after no-F experiments
+    2024.08.26
+    '''
+    
     def update_method_rWniters(self, niters, label, component_updates):
         '''
         Li def: 30
@@ -204,10 +211,10 @@ class PredictiveCodingClassifier:
         range_num_weight_updates = range(num_weight_updates)
         
         for i in range(niters):
-            r_updates(label)
+            r_updates(self,label)
             for w in range_num_weight_updates:
                 # For as many weight sets are there are to update, update them.
-                weight_updates[w](label)
+                weight_updates[w](self,label)
         
     def update_method_r_niters_W(self, niters, label, component_updates):
         '''
@@ -220,10 +227,10 @@ class PredictiveCodingClassifier:
         range_num_weight_updates = range(num_weight_updates)
         
         for _ in range(niters):
-            r_updates(label)
+            r_updates(self,label)
         for w in range_num_weight_updates:
             # For as many weight sets are there are to update, update them.
-            weight_updates[w](label)
+            weight_updates[w](self,label)
 
     def update_method_r_eq_W(self, stop_criterion, label, component_updates):
         '''
@@ -252,7 +259,7 @@ class PredictiveCodingClassifier:
         
         while any(diff > stop_criterion for diff in diffs):
             prev_r = {i: self.r[i].copy() for i in range(1, num_layers + 1)}  # Copy all vectors to avoid reference issues
-            r_updates(label)
+            r_updates(self,label)
             
             for i in range(1, num_layers + 1):
                 post_r = self.r[i]
@@ -261,7 +268,7 @@ class PredictiveCodingClassifier:
         
         for w in range_num_weight_updates:
             # For as many weight sets are there are to update, update them.
-            weight_updates[w](label) 
+            weight_updates[w](self,label) 
     
     def save_results(self, results, output_file):
         with open(output_file, 'wb') as f:
@@ -315,7 +322,7 @@ class PredictiveCodingClassifier:
                 self.r[0] = input
                 label = Y[i]
                 # Calculate loss and accuracy
-                Je = rep_cost()
+                Jr = rep_cost()
                 Jc = classif_cost(label)
             accuracy = evaluate(X, Y)
             self.accuracy[epoch] = accuracy
@@ -390,38 +397,28 @@ class StaticPCC(PredictiveCodingClassifier):
         '''
         test
         '''
-        # No F in the update equations. only f().
-        self.r_updates_n_1 = r_updates_n_1_no_transform
-        self.r_updates_n_2 = r_updates_n_2_no_transform
-        self.r_updates_n_gt_eq_3 = r_updates_n_gt_eq_3_no_transform
-        self.U_updates_n_1 = U_updates_n_1_no_transform
-        self.U_updates_n_gt_eq_2 = U_updates_n_gt_eq_2_no_transform
-        self.rep_cost_n_1 = rep_cost_n_1_no_transform
-        self.rep_cost_n_2 = rep_cost_n_2_no_transform
-        self.rep_cost_n_gt_eq_3 = rep_cost_n_gt_eq_3_no_transform
-        
-        '''
-        test
-        '''
         
         if self.num_layers == 1:
-            self.r_updates = self.r_updates_n_1
-            self.U_updates = self.U_updates_n_1
-            self.rep_cost = self.rep_cost_n_1
+            self.r_updates = r_updates_n_1_no_transform
+            self.U_updates = U_updates_n_1_no_transform
+            self.rep_cost = rep_cost_n_1_no_transform
         elif self.num_layers == 2:
-            self.r_updates = self.r_updates_n_2
-            self.U_updates = self.U_updates_n_gt_eq_2
-            self.rep_cost = self.rep_cost_n_2
+            self.r_updates = r_updates_n_2_no_transform
+            self.U_updates = U_updates_n_gt_eq_2_no_transform
+            self.rep_cost = rep_cost_n_2_no_transform
         elif self.num_layers >= 3:
-            self.r_updates = self.r_updates_n_gt_eq_3
-            self.U_updates = self.U_updates_n_gt_eq_2
-            self.rep_cost = self.rep_cost_n_gt_eq_3
+            self.r_updates = r_updates_n_gt_eq_3_no_transform
+            self.U_updates = U_updates_n_gt_eq_2_no_transform
+            self.rep_cost = rep_cost_n_gt_eq_3_no_transform
         else:
             raise ValueError("Number of layers must be at least 1.")
             
         self.component_updates = [self.r_updates, self.U_updates]
         if self.classif_method == 'c2':
-            self.component_updates.append(self.Uo_update)
+            self.component_updates.append(Uo_update_no_transform)
+        '''
+        test
+        '''
             
         self.update_method_dict = {'rW_niters': partial(self.update_method_rWniters, component_updates=self.component_updates),
                                     'r_niters_W': partial(self.update_method_r_niters_W, component_updates=self.component_updates),
@@ -449,8 +446,34 @@ class StaticPCC(PredictiveCodingClassifier):
             # LSQ cost
             PE_list = []
             
-            for i in range(0,len(self.r)-1):
-                v = (self.r[i] - self.f(self.U[i+1].dot(self.r[i+1]))[0])
+            
+            r_0 = self.r[0]
+            r_1 = self.r[1]
+            U_1 = self.U[1]
+            r_2 = self.r[2]
+            U_2 = self.U[2]
+            
+            ssq_1 = self.ssq[1]
+            ssq_2 = self.ssq[2]
+            
+            bu_v = r_0 - self.f(U_1.dot(r_1))[0]
+            bu_sq = bu_v.T.dot(bu_v)
+            bu_tot = (1 / ssq_1) * bu_sq
+            
+            td_v = r_1 - self.f(U_2.dot(r_2))[0]
+            td_sq = td_v.T.dot(td_v)
+            td_tot = (1 / ssq_2) * td_sq
+            
+            pri_r = self.g(r_1, self.alph[1])[0]
+            pri_U = self.h(U_1, self.lam[1])[0]
+            
+            
+            
+            
+            
+            
+            for i in range(1,self.num_layers+1):
+                v = (self.r[i-1] - self.f(self.U[i].dot(self.r[i]))[0])
                 vTdotv = v.T.dot(v)
                 E = E + ((1 / self.ssq[i+1]) * vTdotv)[0,0]
 
@@ -465,11 +488,10 @@ class StaticPCC(PredictiveCodingClassifier):
             return (E, PE_list)
         
         def rep_cost_n_2(self):
-
-            return (E, PE_list)
+            pass
         
         def rep_cost_n_gt_eq_3(self):
-            return (E, PE_list)
+            pass
         
         def classif_cost_c1(self, label):
             # Format: -label.dot(np.log(softmax(r_n)))
@@ -516,6 +538,12 @@ class StaticPCC(PredictiveCodingClassifier):
             range_ndims_input = range(ndims_input)
             self.input_min_U1tdotr1_tdot_dims = list(range_ndims_input)
 
+        def set_bu_cost_dims(self, input_size):
+            ndims_input = len(input_size)
+            range_ndims_input = range(ndims_input)
+            self.bu_cost_tdot_dims = list(range_ndims_input)
+            
+        
         def r_updates_n_1(self, label):
             '''
             move to static eventually, as well as update_Component assignment
@@ -608,7 +636,7 @@ class StaticPCC(PredictiveCodingClassifier):
                                                     + self.rn_topdown_term_dict[self.classif_method](label) \
                                                     - (kr_n / ssq_n) * self.g(r_n, self.alph[n])[1]
                                                     
-        def U_updates_n_1(self):
+        def U_updates_n_1(self, label):
     
             '''u1 will need a tensor dot
             '''
@@ -630,7 +658,7 @@ class StaticPCC(PredictiveCodingClassifier):
             self.U[1] += (kU_1 / ssq_1) * np.outer(input_min_U1tdotr1, r_1) \
                             - (kU_1 / ssq_1) * self.h(U_1, self.lam[1])[1]
                                 
-        def U_updates_n_gt_eq_2(self):
+        def U_updates_n_gt_eq_2(self,label):
             
             kU_1 = self.kU[1]
             ssq_1 = self.ssq[1]
@@ -714,6 +742,7 @@ class TiledStaticPCC(StaticPCC):
         self.U[1] = self.prior_dist(size=U1_size)
         # Get transpose and tensordot axes ready for U1 operations
         self.set_U1_operation_dims(U1_size, self.input_size)
+        self.set_bu_cost_dims(self.input_size)
 
         
     def validate_attributes(self):

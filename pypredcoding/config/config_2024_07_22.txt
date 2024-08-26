@@ -55,13 +55,13 @@ batch_size="1"
 # how many exposures to all of the data (shuffled)
 epoch_n="300"
 # learning rates, one per layer plus o needs to be correct if classif_method == 'c2'
-k_r="{1:0.05, 2:0.05, 3:0.05, 'o':0.01}"
-k_U="{1:0.05, 2:0.05, 3:0.05, 'o':0.01}"
+kr="{1:0.05, 2:0.05, 3:0.05, 'o':0.01}"
+kU="{1:0.05, 2:0.05, 3:0.05, 'o':0.01}"
 # rPCC only (will ignore if sPCC)
-k_V="{1:0.05, 2:0.05, 3:0.05}"
+kV="{1:0.05, 2:0.05, 3:0.05}"
 # prior distribution parameters, sPCC only. one per layer, incl. Uo case (alpha for r, lambda for U)
-alpha="{1:0.05, 2:0.04, 3:0.05}"
-lambda="{1:0.05, 2:0.04, 3:0.05, 'o':0.01}"
+alph="{1:0.05, 2:0.04, 3:0.05}"
+lam="{1:0.05, 2:0.04, 3:0.05, 'o':0.01}"
 # layer covariance parameters, sigma squared. (they will all be 2, to increase conformity to derivative math, unless experiments here are desired)
 ssq="{1:2, 2:2, 3:2, 'o':2}"
 
@@ -84,14 +84,14 @@ plot_train="True"
 dataset_eval=ds.trace212_212_li_trace212_132_84_tl_16_36_24_32_20.pydb
 
 ## EVALUATION HYPERPARAMETERS
-# Plot PE of first image only
+# Plot PE of first image only. None for no plotting, first for first image, etc. (see model.py)
 plot_eval="'first'"
 
 ## PREDICTION DATASET
 dataset_pred=ds.trace212_212_li_trace212_132_84_tl_16_36_24_32_20.pydb
 
 ## PREDICTION HYPERPARAMETERS
-# Plot PE, topmost representation of first image only
+# Plot PE, topmost representation of first image only.
 plot_pred="'first'"
 
 ## Dataset creation or loading
