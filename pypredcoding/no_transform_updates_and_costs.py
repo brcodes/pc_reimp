@@ -15,7 +15,7 @@ def r_updates_n_1_no_transform(self, label):
     r_1 = self.r[1]
     
     #U1 operations
-    U1_transpose = np.transpose_U(U_1, self.U1_transpose_dims)
+    U1_transpose = np.transpose(U_1, self.U1_transpose_dims)
     U1_tdot_r1 = np.tensordot(U_1, r_1, axes=([-1],[0]))
     input_min_U1tdotr1 = self.r[0] - self.f(U1_tdot_r1)[0]
     
@@ -39,7 +39,7 @@ def r_updates_n_2_no_transform(self, label):
     r_2 = self.r[2]
     
     #U1 operations
-    U1_transpose = np.transpose_U(U_1, self.U1_transpose_dims)
+    U1_transpose = np.transpose(U_1, self.U1_transpose_dims)
     U1_tdot_r1 = np.tensordot(U_1, r_1, axes=([-1],[0]))
     input_min_U1tdotr1 = self.r[0] - self.f(U1_tdot_r1)[0]
     
@@ -66,7 +66,7 @@ def r_updates_n_gt_eq_3_no_transform(self, label):
     r_2 = self.r[2]
     
     #U1 operations
-    U1_transpose = np.transpose_U(U_1, self.U1_transpose_dims)
+    U1_transpose = np.transpose(U_1, self.U1_transpose_dims)
     U1_tdot_r1 = np.tensordot(U_1, r_1, axes=([-1],[0]))
     input_min_U1tdotr1 = self.r[0] - self.f(U1_tdot_r1)[0]
     
@@ -286,7 +286,7 @@ def rep_cost_n_gt_eq_3_no_transform(self):
     # Final layer will only have bu term
     bu_vn = self.r[n-1] - self.f(self.U[n].dot(self.r[n]))[0]
     bu_sqn = bu_vn.dot(bu_vn)
-    bu_totn += (1 / self.ssq[n]) * bu_sqn
+    bu_totn = (1 / self.ssq[n]) * bu_sqn
     
     pri_rn = self.g(np.squeeze(self.r[n]), self.alph[n])[0]
     pri_Un = self.h(self.U[n], self.lam[n])[0]

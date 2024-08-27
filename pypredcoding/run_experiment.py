@@ -1,6 +1,6 @@
 from ast import literal_eval
 from model import PredictiveCodingClassifier, StaticPCC, TiledStaticPCC, RecurrentPCC, TiledRecurrentPCC
-from data import load_data
+# from data import load_data
 from os.path import join, exists
 from os import listdir
 from pickle import load
@@ -10,14 +10,19 @@ def load_params(file_path):
     params = {}
     with open(file_path, 'r') as file:
         for line in file:
-            # Ignore lines that begin with '#'
-            if not line.strip().startswith('#'):
-                # Assuming each line in the file is in the format 'variable_name="value"'
-                variable, value = line.strip().split('=', 1)
-                # Use literal_eval to safely evaluate the value string
-                evaluated_value = literal_eval(value)
-                # Store the evaluated value in the params dictionary
-                params[variable] = evaluated_value
+            # Strip leading/trailing whitespace
+            stripped_line = line.strip()
+            # Ignore lines that begin with '#' or are empty
+            if stripped_line and not stripped_line.startswith('#'):
+                # Ensure the line contains an '=' character
+                if '=' in stripped_line:
+                    variable, value = stripped_line.split('=', 1)
+                    # Use literal_eval to safely evaluate the value string
+                    evaluated_value = literal_eval(value.strip())
+                    # Store the evaluated value in the params dictionary
+                    params[variable.strip()] = evaluated_value
+                else:
+                    raise ValueError(f"Invalid line in config file: {line}")
     return params
 
 def model_name_from_params(params):
@@ -46,8 +51,8 @@ def model_name_from_params(params):
     um_int_str = str(um_int)  # Convert the value to a string
 
     name = 'mod.' + params['model_type'] + '_' + ('tl' if params['tiled'] else 'ntl') + '_' \
-                    + str(params['num_layers']) + layer_sizes + '_' + num_imgs + '_' + params['activ_func'] + '_' \
-                    + params['priors'] + '_' + params['classif_method'] + '_' + \
+                    + str(params['num_layers']) + '_' + layer_sizes + '_' + num_imgs + '_' + params['activ_func'] + '_' \
+                    + params['priors'] + '_' + params['classif_method'] + '_' \
                     + update_method + '-' + um_int_str + '_' + params['name'] + '_' + str(params['epoch_n']) + '.pydb'
                     
     return name
@@ -129,17 +134,19 @@ def load_checkpoint(model_name, params):
 def instantiate_model(params):
     
     # Base class
-    base_model = PredictiveCodingClassifier()
-    base_model.set_model_attributes(params)
+    PCC = PredictiveCodingClassifier()
+    PCC.set_model_attributes(params)
     
-    if base_model.model_type == 'static' and base_model.tiled == False:
-        model = StaticPCC(base_model)
-    elif base_model.model_type == 'static' and base_model.tiled == True:
-        model = TiledStaticPCC(base_model)
-    elif base_model.model_type == 'recurrent' and base_model.tiled == False:
-        model = RecurrentPCC(base_model)
-    elif base_model.model_type == 'recurrent' and base_model.tiled == True:
-        model = TiledRecurrentPCC(base_model)
+    if PCC.model_type == 'static' and PCC.tiled == False:
+        model = StaticPCC(PCC)
+    elif PCC.model_type == 'static' and PCC.tiled == True:
+        sPCC = StaticPCC(PCC)
+        model = TiledStaticPCC(sPCC)
+    elif PCC.model_type == 'recurrent' and PCC.tiled == False:
+        model = RecurrentPCC(PCC)
+    elif PCC.model_type == 'recurrent' and PCC.tiled == True:
+        rPCC = RecurrentPCC(PCC)
+        model = TiledRecurrentPCC(rPCC)
     else:
         raise ValueError('Invalid model type')
     
@@ -153,10 +160,9 @@ def create_data(dataset_name):
     Create data from scratch using desired parameters scraped from filename.
     '''
     
-    # Get parameters from filename
-    
-        
-    return X, Y
+    # Get parameters from filenam
+    # return x , y 
+    pass
 
 def load_data(dataset_name):
     '''
@@ -180,25 +186,28 @@ def run_experiment(config_file_path):
 
     model_name = model_name_from_params(params)
     
-    if params['train']:
+    if params['train_with']:
         
         # Model
         if params['load_checkpoint'] is not None:
             model = load_checkpoint(model_name, params)
+            print(f'Loaded checkpoint: {model_name}')
         else:
-            model = instantiate_model(params['model_type'], params['tiled'])
+            model = instantiate_model(params)
+            print(f'Instantiated model for desired final state: {model_name}')
     
         # Data
         X_train, Y_train = load_data(params['dataset_train'])
+        print(f'Loaded data: {params["dataset_train"]}')
         
         # Train: will shuffle data automatically
-        model.train(X_train, Y_train, save_checkpoint=params['save_checkpoint'], plot=params['plot_train'])
+        model.train(X_train, Y_train, save_checkpoint=params['save_checkpoint'], online_diagnostics=params['online_diagnostics'], plot=params['plot_train'])
         
         '''
         later remove load_checkpoint from train- this is an outside function
         '''
         
-    if params['evaluate']:
+    if params['evaluate_with']:
         
         mod_file_path = join('models', model_name)
         model = load_model(mod_file_path)
@@ -207,7 +216,7 @@ def run_experiment(config_file_path):
         X_eval, Y_eval = load_data(params['dataset_eval'])
         model.evaluate(X_eval, Y_eval, plot=params['plot_eval'])
         
-    if params['predict']:
+    if params['predict_with']:
         
         mod_file_path = join('models', model_name)
         model = load_model(mod_file_path)

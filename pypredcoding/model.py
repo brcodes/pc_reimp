@@ -33,11 +33,16 @@ class PredictiveCodingClassifier:
         # Model
         self.model_type = 'None'
         self.tiled = None
+        self.flat_input = None
+        # Experiment
+        self.train_with = None
+        self.evaluate_with = None
+        self.predict_with = None
         # Size
         self.num_layers = None
         self.input_size = (None)
-        self.hidden_layer_sizes = [None]
-        self.output_layer_size = None
+        self.hidden_lyr_sizes = [None]
+        self.output_lyr_size = None
         # Model components, V's specific to recurrent subclass
         self.r = {}
         self.U = {}
@@ -96,22 +101,26 @@ class PredictiveCodingClassifier:
         # Layer 1 until n will be the same
         # r0 is the input, assigned in subclass
         for lyr in range(1,self.num_layers+1):
-            self.r[lyr] = self.prior_dist(size=(self.hidden_lyr_sizes[lyr-1]))
             if lyr == self.num_layers:
                 self.r[lyr] = self.prior_dist(size=(self.output_lyr_size))
-                
+            else:
+                self.r[lyr] = self.prior_dist(size=(self.hidden_lyr_sizes[lyr-1]))
+            print(f'r{lyr} size: {self.r[lyr].shape}')   
+            
         # Initiate Us
         # Layer 2 until n will be the same
         # U1 relates r0 to r1, assigned in subclass
         for lyr in range(2,self.num_layers+1):
             # Ui>1 is going to be 2D, and the size is the same as (the r of the previous layer, r of current layer)
-            Ui_gt_1_size = (self.r[lyr-1].shape, self.r[lyr].shape)
+            Ui_gt_1_size = (self.r[lyr-1].shape[0], self.r[lyr].shape[0])
             self.U[lyr] = self.prior_dist(size=Ui_gt_1_size)
+            print(f'U{lyr} size: {self.U[lyr].shape}')
         
         # Uo is an output weight matrix that learns to relate r_n to the label, size of (num_classes, topmost_r)
         if self.classif_method == 'c2':
             Uo_size = (self.num_classes, self.output_lyr_size)
             self.U['o'] = self.prior_dist(size=Uo_size)
+            print(f'Uo size: {self.U["o"].shape}')
             
         # Initiate Jr, Jc and accuracy (diagnostics) storage for print/log, plot
         self.Jr = {i: [0] * (self.epoch_n + 1) for i in range(self.num_layers)}
@@ -165,8 +174,8 @@ class PredictiveCodingClassifier:
         F = np.diag(1 - f.flatten()**2)
         return (f, F)
 
-    def prior_dist(self):
-        return self.prior_dist_dict[self.priors]
+    def prior_dist(self, size):
+        return self.prior_dist_dict[self.priors](size=size)
     
     def softmax(self, vector, k=1):
         """
@@ -275,7 +284,7 @@ class PredictiveCodingClassifier:
             # For as many weight sets are there are to update, update them.
             weight_updates[w](self,label) 
             
-    def update_method_rniters(self, niters, label, component_updates):
+    def update_method_r_niters(self, niters, label, component_updates):
         '''
         Li def: 30, Rogers/Brown def: 100
         '''
@@ -332,10 +341,20 @@ class PredictiveCodingClassifier:
         '''
         # Params
         epoch_n = self.epoch_n
-        num_imgs = X.shape[0]
+        num_imgs = self.num_imgs
+        num_tiles = self.num_tiles
+        
+        print(f'num epochs: {epoch_n}')
+        print(f'num images: {num_imgs}')
+        print(f'num tiles: {num_tiles}')
         num_layers = self.num_layers
         
-        all_lyr_sizes = self.hidden_lyr_sizes.append(self.output_lyr_size)
+        all_lyr_sizes = self.hidden_lyr_sizes.copy()
+        all_lyr_sizes.append(self.output_lyr_size)
+
+        
+        print(f'All layer sizes: {all_lyr_sizes}')
+        
         # if kurtotic, don't redo a laplacian each time, but once here
         if self.priors == 'kurtotic':
             self.r_dists = {}
@@ -365,6 +384,17 @@ class PredictiveCodingClassifier:
         classif_cost = self.classif_cost_dict[classif_method]
         # Accuracy
         evaluate = partial(self.evaluate, update_method_name=update_method_name, update_method_number=update_method_number, classif_method=classif_method, plot=None)
+        
+        # In the future, set up tiled X to be num imgs, tiles tiles tiles. (2d or 4d)
+        '''
+        for now, just use num imgs * num tiles per img...'''
+        
+        if self.flat_input:
+            print('reshaping X into num imgs, num tiles per image, flattened tile')
+            X = X.reshape(num_imgs, num_tiles, -1)
+            print('X shape:', X.shape)
+            print('Y shape:', Y.shape)
+        
         
         # Rep cost, other diagnostics at "Epoch 0" (initialized, untrained)
         if online_diagnostics:
@@ -447,6 +477,9 @@ class PredictiveCodingClassifier:
         print('Saving final model...')
         # Save final model
         self.save_results(output_dir='models/')
+        
+        if plot:
+            pass
 
     def evaluate(self, X, Y, update_method_name, update_method_number, classif_method, plot=None):
         '''
@@ -465,7 +498,9 @@ class PredictiveCodingClassifier:
         # Make sure priors are reset correctly and efficiently
         num_layers = self.num_layers
         
-        all_lyr_sizes = self.hidden_lyr_sizes.append(self.output_lyr_size)
+        all_lyr_sizes = self.hidden_lyr_sizes.copy()
+        all_lyr_sizes.append(self.output_lyr_size)
+        
         # if kurtotic, don't redo a laplacian each time, but once here
         if self.priors == 'kurtotic':
             self.r_dists = {}
@@ -481,7 +516,21 @@ class PredictiveCodingClassifier:
         else:
             prior_dist = self.prior_dist
         
-        num_imgs = X.shape[0]
+        num_imgs = self.num_imgs
+        num_tiles = self.num_tiles
+        
+        # In the future, set up tiled X to be num imgs, tiles tiles tiles. (2d or 4d)
+        '''
+        for now, just use num imgs * num tiles per img...'''
+        
+        if X.shape[0] != num_imgs and self.flat_input:
+            print('reshaping X into num imgs, num tiles per image, flattened tile')
+            X = X.reshape(num_imgs, num_tiles, -1)
+            print('X shape:', X.shape)
+            print('Y shape:', Y.shape)
+        
+        
+        
         accuracy = 0
         for i in range(num_imgs):
             input = X[i]
@@ -578,241 +627,244 @@ class StaticPCC(PredictiveCodingClassifier):
                                 'c2': self.classif_guess_c2,
                                 None: self.classif_guess_None}
             
-        def rep_cost_n_1(self):
+    def rep_cost_n_1(self):
 
-            pass
-        
-        def rep_cost_n_2(self):
-            pass
-        
-        def rep_cost_n_gt_eq_3(self):
-            pass
-        
-        def classif_cost_c1(self, label):
-            # Format: -label.dot(np.log(softmax(r_n)))
-            return -label.dot(np.log(self.softmax(self.r[self.num_layers])))
-        
-        def classif_cost_c2(self, label):
-            # Format: -label.dot(np.log(softmax(Uo.dot(r_n))))
-            o = 'o'
-            return -label.dot(np.log(self.softmax(self.U[o].dot(self.r[self.num_layers])))) + self.h(self.U[o], self.lam[o])[0]
-        
-        def classif_guess_c1(self, label):
-            guess = np.argmax(self.softmax(self.r[self.num_layers]))
-            if guess == np.argmax(label):
-                return 1
-            else:
-                return 0
-        
-        def classif_guess_c2(self, label):
-            guess = np.argmax(self.softmax(self.U["o"].dot(self.r[self.num_layers])))
-            if guess == np.argmax(label):
-                return 1
-            else:
-                return 0
-        
-        def rn_topdown_term_c1(self, label):
-            '''
-            redo for recurrent =will all be the same except rn_bar'''
-            '''
-            see if ssqo or 2 in denom
-            '''
-            o = 'o'
-            # Format: k_o / ssq_o * (label - softmax(r_n))
-            c1 = (self.kr[o]/ self.ssq[o]) * (label - self.softmax(self.r[self.num_layers]))
-            return c1
+        pass
     
-        def rn_topdown_term_c2(self, label):
-            # Format: k_o / ssq_o * (label - softmax(Uo.dot(r_n)))
-            o = 'o'
-            c2 = (self.kr[o]/ self.ssq[o]) * (label - self.softmax(self.U[o].dot(self.r[self.num_layers])))
-            return c2
-        
-        def set_U1_operation_dims(self, U1_size, input_size):
-            # Transpose dims
-            ndims_U1 = len(U1_size)
-            range_ndims_U1 = range(ndims_U1)
-            last_dim_id_U1 = range_ndims_U1[-1]
-            nonlast_dim_ids_U1 = range_ndims_U1[:-1]
-            transpose_dims_U1 = tuple([last_dim_id_U1] + list(nonlast_dim_ids_U1))
-            self.U1_transpose_dims = transpose_dims_U1
-            
-            # Tensordot dims
-            # U1T, last n-1
-            nonfirst_dim_ids_U1 = range_ndims_U1[1:]
-            self.U1T_tdot_dims = list(nonfirst_dim_ids_U1)
-            
-            # Input dims, all
-            ndims_input = len(input_size)
-            range_ndims_input = range(ndims_input)
-            self.input_min_U1tdotr1_tdot_dims = list(range_ndims_input)
-
-        def set_bu_cost_dims(self, input_size):
-            ndims_input = len(input_size)
-            range_ndims_input = range(ndims_input)
-            self.bu_cost_tdot_dims = list(range_ndims_input)
-            
-        
-        def r_updates_n_1(self, label):
-            '''
-            move to static eventually, as well as update_Component assignment
-            '''
-                
-            kr_1 = self.kr[1]
-            ssq_1 = self.ssq[1]
-            U_1 = self.U[1]
-            r_1 = self.r[1]
-            
-            #U1 operations
-            U1_transpose = np.transpose_U(U_1, self.U1_transpose_dims)
-            U1_tdot_r1 = np.tensordot(U_1, r_1, axes=([-1],[0]))
-            input_min_U1tdotr1 = self.f(self.r[0] - self.f(U1_tdot_r1)[0])[1]
-            
-            self.r[1] += (kr_1 / ssq_1) * np.tensordot(U1_transpose, input_min_U1tdotr1, axes=(self.U1T_tdot_dims, self.input_min_U1tdotr1_tdot_dims)) \
-                                                    + self.rn_topdown_term_dict[self.classif_method](label) \
-                                                    - (kr_1 / ssq_1) * self.g(r_1, self.alph[1])[1]
-        
-        def r_updates_n_2(self, label):
-            
-            '''
-            two layer model
-            '''
-            kr_1 = self.kr[1]
-            ssq_1 = self.ssq[1]
-            U_1 = self.U[1]
-            r_1 = self.r[1]
-            
-            kr_2 = self.kr[2]
-            ssq_2 = self.ssq[2]
-            U_2 = self.U[2]
-            r_2 = self.r[2]
-            
-            #U1 operations
-            U1_transpose = np.transpose_U(U_1, self.U1_transpose_dims)
-            U1_tdot_r1 = np.tensordot(U_1, r_1, axes=([-1],[0]))
-            input_min_U1tdotr1 = self.f(self.r[0] - self.f(U1_tdot_r1)[0])[1]
-            
-            self.r[1] += (kr_1 / ssq_1) * np.tensordot(U1_transpose, input_min_U1tdotr1, axes=(self.U1T_tdot_dims, self.input_min_U1tdotr1_tdot_dims)) \
-                                                + (kr_2 * ssq_2) * (self.f(U_2.dot(r_2))[0] - r_1) \
-                                                - (kr_1 / ssq_1) * self.g(r_1, self.alph[1])[1]
-                                                
-            self.r[2] += (kr_2 / ssq_2) * (U_2.T.dot(self.f(self.r[1] - self.f(U_2.dot(r_2))[0])[1])) \
-                                                    + self.rn_topdown_term_dict[self.classif_method](label) \
-                                                    - (kr_2 / ssq_2) * self.g(r_2, self.alph[2])[1]
-                                                
-        def r_updates_n_gt_eq_3(self, label):
-            
-            n = self.num_layers
-                                                    
-            kr_1 = self.kr[1]
-            ssq_1 = self.ssq[1]
-            U_1 = self.U[1]
-            r_1 = self.r[1]
-            
-            kr_2 = self.kr[2]
-            ssq_2 = self.ssq[2]
-            U_2 = self.U[2]
-            r_2 = self.r[2]
-            
-            #U1 operations
-            U1_transpose = np.transpose_U(U_1, self.U1_transpose_dims)
-            U1_tdot_r1 = np.tensordot(U_1, r_1, axes=([-1],[0]))
-            input_min_U1tdotr1 = self.f(self.r[0] - self.f(U1_tdot_r1)[0])[1]
-            
-            # Layer 1
-            self.r[1] += (kr_1 / ssq_1) * np.tensordot(U1_transpose, input_min_U1tdotr1, axes=(self.U1T_tdot_dims, self.input_min_U1tdotr1_tdot_dims)) \
-                                                + (kr_2 * ssq_2) * (self.f(U_2.dot(r_2))[0] - r_1) \
-                                                - (kr_1 / ssq_1) * self.g(r_1, self.alph[1])[1]
-            # Layers 2 to n-1                                    
-            for i in range(2,n):
-                
-                kr_i = self.kr[i]
-                ssq_i = self.ssq[i]
-                r_i = self.r[i]
-                U_i = self.U[i]
-                
-                self.r[i] += (kr_i / ssq_i) * (U_i.T.dot(self.f(self.r[i-1] - self.f(U_i.dot(r_i))[0])[1])) \
-                                                    + (self.kr[i+1] * self.ssq[i+1]) * (self.f(self.U[i+1].dot(self.r[i+1]))[0] - r_i) \
-                                                    - (kr_i / ssq_i) * self.g(r_i, self.alph[i])[1]
-        
-            # Layer n
-            kr_n = self.kr[n]
-            ssq_n = self.ssq[n]
-            U_n = self.U[n]
-            r_n = self.r[n]
-
-            self.r[n] += (kr_n / ssq_n) * (U_n.T.dot(self.f(self.r[n-1] - self.f(U_n.dot(r_n))[0])[1])) \
-                                                    + self.rn_topdown_term_dict[self.classif_method](label) \
-                                                    - (kr_n / ssq_n) * self.g(r_n, self.alph[n])[1]
-                                                    
-        def U_updates_n_1(self, label):
+    def rep_cost_n_2(self):
+        pass
     
-            '''u1 will need a tensor dot
-            '''
-            
-            '''
-            check if F will work with 3d+ Us
-            '''
-            
-            kU_1 = self.kU[1]
-            ssq_1 = self.ssq[1]
-            U_1 = self.U[1]
-            r_1 = self.r[1]
-            
-            #U1 operations
-            U1_tdot_r1 = np.tensordot(U_1, r_1, axes=([-1],[0]))
-            input_min_U1tdotr1 = self.f(self.r[0] - self.f(U1_tdot_r1)[0])[1]
-            
-            # Layer 1
-            self.U[1] += (kU_1 / ssq_1) * np.outer(input_min_U1tdotr1, r_1) \
-                            - (kU_1 / ssq_1) * self.h(U_1, self.lam[1])[1]
-                                
-        def U_updates_n_gt_eq_2(self,label):
-            
-            kU_1 = self.kU[1]
-            ssq_1 = self.ssq[1]
-            U_1 = self.U[1]
-            r_1 = self.r[1]
-            
-            #U1 operations
-            U1_tdot_r1 = np.tensordot(U_1, r_1, axes=([-1],[0]))
-            input_min_U1tdotr1 = self.f(self.r[0] - self.f(U1_tdot_r1)[0])[1]
-            
-            # Layer 1
-            self.U[1] += (kU_1 / ssq_1) * np.outer(input_min_U1tdotr1, r_1) \
-                            - (kU_1 / ssq_1) * self.h(U_1, self.lam[1])[1]
-            
-            n = self.num_layers
-            
-            #i>1 - n will all be the same
-            for i in range(1,n+1):
-                
-                kU_i = self.kU[i]
-                ssq_i = self.ssq[i]
-                r_i = self.r[i]
-                U_i = self.U[i]
-                
-                #i
-                self.U[i] += (kU_i / ssq_i) * np.outer((self.f(self.r[i-1] - self.f(U_i.dot(r_i))[0])[1]), r_i) \
-                            - (kU_i / ssq_i) * self.h(U_i, self.lam[i])[1]
+    def rep_cost_n_gt_eq_3(self):
+        pass
+    
+    def classif_cost_c1(self, label):
+        # Format: -label.dot(np.log(softmax(r_n)))
+        return -label.dot(np.log(self.softmax(self.r[self.num_layers])))
+    
+    def classif_cost_c2(self, label):
+        # Format: -label.dot(np.log(softmax(Uo.dot(r_n))))
+        o = 'o'
+        return -label.dot(np.log(self.softmax(self.U[o].dot(self.r[self.num_layers])))) + self.h(self.U[o], self.lam[o])[0]
+    
+    def classif_guess_c1(self, label):
+        guess = np.argmax(self.softmax(self.r[self.num_layers]))
+        if guess == np.argmax(label):
+            return 1
+        else:
+            return 0
+    
+    def classif_guess_c2(self, label):
+        guess = np.argmax(self.softmax(self.U["o"].dot(self.r[self.num_layers])))
+        if guess == np.argmax(label):
+            return 1
+        else:
+            return 0
+    
+    def rn_topdown_term_c1(self, label):
+        '''
+        redo for recurrent =will all be the same except rn_bar'''
+        '''
+        see if ssqo or 2 in denom
+        '''
+        o = 'o'
+        # Format: k_o / ssq_o * (label - softmax(r_n))
+        c1 = (self.kr[o]/ self.ssq[o]) * (label - self.softmax(self.r[self.num_layers]))
+        return c1
+
+    def rn_topdown_term_c2(self, label):
+        # Format: k_o / ssq_o * (label - softmax(Uo.dot(r_n)))
+        o = 'o'
+        c2 = (self.kr[o]/ self.ssq[o]) * (label - self.softmax(self.U[o].dot(self.r[self.num_layers])))
+        return c2
+    
+    
+    def set_U1_operation_dims(self, U1_size, input_size):
+        # Transpose dims
+        ndims_U1 = len(U1_size)
+        range_ndims_U1 = range(ndims_U1)
+        last_dim_id_U1 = range_ndims_U1[-1]
+        nonlast_dim_ids_U1 = range_ndims_U1[:-1]
+        transpose_dims_U1 = tuple([last_dim_id_U1] + list(nonlast_dim_ids_U1))
+        self.U1_transpose_dims = transpose_dims_U1
         
-        def Uo_update(self, label):
-            # Format: Uo += kU_o / ssq_o * (label - softmax(Uo.dot(r_n)))
-            '''
-            check k/2 vs k/ssqo
-            for every top down rn update, U update, V update, (place where a lr is used)
-            '''
-            o = 'o'
-            r_n = self.r[self.num_layers]
-            self.U[o] += (self.kU[o]/ self.ssq[o]) * np.outer((label - self.softmax(self.U[o].dot(r_n))), r_n)
+        # Tensordot dims
+        # U1T, last n-1
+        nonfirst_dim_ids_U1 = range_ndims_U1[1:]
+        self.U1T_tdot_dims = list(nonfirst_dim_ids_U1)
         
+        # Input dims, all
+        ndims_input = len(input_size)
+        range_ndims_input = range(ndims_input)
+        self.input_min_U1tdotr1_tdot_dims = list(range_ndims_input)
+
+    def set_bu_cost_dims(self, input_size):
+        ndims_input = len(input_size)
+        range_ndims_input = range(ndims_input)
+        self.bu_cost_tdot_dims = list(range_ndims_input)
+        
+    
+    def r_updates_n_1(self, label):
+        '''
+        move to static eventually, as well as update_Component assignment
+        '''
+            
+        kr_1 = self.kr[1]
+        ssq_1 = self.ssq[1]
+        U_1 = self.U[1]
+        r_1 = self.r[1]
+        
+        #U1 operations
+        U1_transpose = np.transpose(U_1, self.U1_transpose_dims)
+        U1_tdot_r1 = np.tensordot(U_1, r_1, axes=([-1],[0]))
+        input_min_U1tdotr1 = self.f(self.r[0] - self.f(U1_tdot_r1)[0])[1]
+        
+        self.r[1] += (kr_1 / ssq_1) * np.tensordot(U1_transpose, input_min_U1tdotr1, axes=(self.U1T_tdot_dims, self.input_min_U1tdotr1_tdot_dims)) \
+                                                + self.rn_topdown_term_dict[self.classif_method](label) \
+                                                - (kr_1 / ssq_1) * self.g(r_1, self.alph[1])[1]
+    
+    def r_updates_n_2(self, label):
+        
+        '''
+        two layer model
+        '''
+        kr_1 = self.kr[1]
+        ssq_1 = self.ssq[1]
+        U_1 = self.U[1]
+        r_1 = self.r[1]
+        
+        kr_2 = self.kr[2]
+        ssq_2 = self.ssq[2]
+        U_2 = self.U[2]
+        r_2 = self.r[2]
+        
+        #U1 operations
+        U1_transpose = np.transpose(U_1, self.U1_transpose_dims)
+        U1_tdot_r1 = np.tensordot(U_1, r_1, axes=([-1],[0]))
+        input_min_U1tdotr1 = self.f(self.r[0] - self.f(U1_tdot_r1)[0])[1]
+        
+        self.r[1] += (kr_1 / ssq_1) * np.tensordot(U1_transpose, input_min_U1tdotr1, axes=(self.U1T_tdot_dims, self.input_min_U1tdotr1_tdot_dims)) \
+                                            + (kr_2 * ssq_2) * (self.f(U_2.dot(r_2))[0] - r_1) \
+                                            - (kr_1 / ssq_1) * self.g(r_1, self.alph[1])[1]
+                                            
+        self.r[2] += (kr_2 / ssq_2) * (U_2.T.dot(self.f(self.r[1] - self.f(U_2.dot(r_2))[0])[1])) \
+                                                + self.rn_topdown_term_dict[self.classif_method](label) \
+                                                - (kr_2 / ssq_2) * self.g(r_2, self.alph[2])[1]
+                                            
+    def r_updates_n_gt_eq_3(self, label):
+        
+        n = self.num_layers
+                                                
+        kr_1 = self.kr[1]
+        ssq_1 = self.ssq[1]
+        U_1 = self.U[1]
+        r_1 = self.r[1]
+        
+        kr_2 = self.kr[2]
+        ssq_2 = self.ssq[2]
+        U_2 = self.U[2]
+        r_2 = self.r[2]
+        
+        #U1 operations
+        U1_transpose = np.transpose(U_1, self.U1_transpose_dims)
+        U1_tdot_r1 = np.tensordot(U_1, r_1, axes=([-1],[0]))
+        input_min_U1tdotr1 = self.f(self.r[0] - self.f(U1_tdot_r1)[0])[1]
+        
+        # Layer 1
+        self.r[1] += (kr_1 / ssq_1) * np.tensordot(U1_transpose, input_min_U1tdotr1, axes=(self.U1T_tdot_dims, self.input_min_U1tdotr1_tdot_dims)) \
+                                            + (kr_2 * ssq_2) * (self.f(U_2.dot(r_2))[0] - r_1) \
+                                            - (kr_1 / ssq_1) * self.g(r_1, self.alph[1])[1]
+        # Layers 2 to n-1                                    
+        for i in range(2,n):
+            
+            kr_i = self.kr[i]
+            ssq_i = self.ssq[i]
+            r_i = self.r[i]
+            U_i = self.U[i]
+            
+            self.r[i] += (kr_i / ssq_i) * (U_i.T.dot(self.f(self.r[i-1] - self.f(U_i.dot(r_i))[0])[1])) \
+                                                + (self.kr[i+1] * self.ssq[i+1]) * (self.f(self.U[i+1].dot(self.r[i+1]))[0] - r_i) \
+                                                - (kr_i / ssq_i) * self.g(r_i, self.alph[i])[1]
+    
+        # Layer n
+        kr_n = self.kr[n]
+        ssq_n = self.ssq[n]
+        U_n = self.U[n]
+        r_n = self.r[n]
+
+        self.r[n] += (kr_n / ssq_n) * (U_n.T.dot(self.f(self.r[n-1] - self.f(U_n.dot(r_n))[0])[1])) \
+                                                + self.rn_topdown_term_dict[self.classif_method](label) \
+                                                - (kr_n / ssq_n) * self.g(r_n, self.alph[n])[1]
+                                                
+    def U_updates_n_1(self, label):
+
+        '''u1 will need a tensor dot
+        '''
+        
+        '''
+        check if F will work with 3d+ Us
+        '''
+        
+        kU_1 = self.kU[1]
+        ssq_1 = self.ssq[1]
+        U_1 = self.U[1]
+        r_1 = self.r[1]
+        
+        #U1 operations
+        U1_tdot_r1 = np.tensordot(U_1, r_1, axes=([-1],[0]))
+        input_min_U1tdotr1 = self.f(self.r[0] - self.f(U1_tdot_r1)[0])[1]
+        
+        # Layer 1
+        self.U[1] += (kU_1 / ssq_1) * np.outer(input_min_U1tdotr1, r_1) \
+                        - (kU_1 / ssq_1) * self.h(U_1, self.lam[1])[1]
+                            
+    def U_updates_n_gt_eq_2(self,label):
+        
+        kU_1 = self.kU[1]
+        ssq_1 = self.ssq[1]
+        U_1 = self.U[1]
+        r_1 = self.r[1]
+        
+        #U1 operations
+        U1_tdot_r1 = np.tensordot(U_1, r_1, axes=([-1],[0]))
+        input_min_U1tdotr1 = self.f(self.r[0] - self.f(U1_tdot_r1)[0])[1]
+        
+        # Layer 1
+        self.U[1] += (kU_1 / ssq_1) * np.outer(input_min_U1tdotr1, r_1) \
+                        - (kU_1 / ssq_1) * self.h(U_1, self.lam[1])[1]
+        
+        n = self.num_layers
+        
+        #i>1 - n will all be the same
+        for i in range(1,n+1):
+            
+            kU_i = self.kU[i]
+            ssq_i = self.ssq[i]
+            r_i = self.r[i]
+            U_i = self.U[i]
+            
+            #i
+            self.U[i] += (kU_i / ssq_i) * np.outer((self.f(self.r[i-1] - self.f(U_i.dot(r_i))[0])[1]), r_i) \
+                        - (kU_i / ssq_i) * self.h(U_i, self.lam[i])[1]
+    
+    def Uo_update(self, label):
+        # Format: Uo += kU_o / ssq_o * (label - softmax(Uo.dot(r_n)))
+        '''
+        check k/2 vs k/ssqo
+        for every top down rn update, U update, V update, (place where a lr is used)
+        '''
+        o = 'o'
+        r_n = self.r[self.num_layers]
+        self.U[o] += (self.kU[o]/ self.ssq[o]) * np.outer((label - self.softmax(self.U[o].dot(r_n))), r_n)
+    
 
     # Override methods as necessary for static PCC
     
 class TiledStaticPCC(StaticPCC):
     
-    def __init__(self):
-        super().__init__()
+    def __init__(self, base_instance: StaticPCC):
+        
+        # Copy attributes from the base instance
+        self.__dict__.update(base_instance.__dict__)
         
         """
         tSPCC can take:
@@ -836,9 +888,16 @@ class TiledStaticPCC(StaticPCC):
         
         # Tiles
         if self.flat_input:
+            print(f' fix later to always have images, tiled or not indexable by 1st d num images.\n')
+            print(f'setting num tiles')
+            print(f'input size: {self.input_size}')
             self.num_tiles = self.input_size[0]
         else:
-            self.num_tiles = self.input_size[0] * self.input_size[1]
+            raise ValueError("Unflattened input not yet supported.")
+            # self.num_tiles = self.input_size[0] * self.input_size[1]
+            
+        print(f'flat input: {self.flat_input}')
+        print(f'num tiles: {self.num_tiles}')
         
         # Initiate r0
         # Layer 0 will be the input, filled during training, testing, etc.
@@ -851,6 +910,11 @@ class TiledStaticPCC(StaticPCC):
         self.U[1] = self.prior_dist(size=U1_size)
         # Get transpose and tensordot axes ready for U1 operations
         self.set_U1_operation_dims(U1_size, self.input_size)
+        print(f'U1 size: {U1_size}')
+        print(f'U1 operations dims')
+        print(f'U1 transpose dims: {self.U1_transpose_dims}')
+        print(f'U1 tensordot dims: {self.U1T_tdot_dims}')
+        print(f'U1 input dims: {self.input_min_U1tdotr1_tdot_dims}')
         self.set_bu_cost_dims(self.input_size)
 
         
