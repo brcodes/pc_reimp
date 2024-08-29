@@ -10,7 +10,7 @@
 # Will append model and log filenames
 # When you want to access a checkpoint later, you need to use this exact name. 
 # You can note that you are re-training in the notes below- and note the new date of the retraining.
-name='Experiment_2024_07_24'
+exp_name='Experiment_2024_07_24'
 train_with=True
 evaluate_with=False
 predict_with= False
@@ -22,6 +22,8 @@ notes='A String of any type for note-taking. e.g. Training 2024.07.24 checkpoint
 model_type='static'
 # Can be tiled or not
 tiled=True
+#tiles per image, if tiled. will ignore else.
+num_tiles=16
 # Flat or not
 flat_input=True
 # Total layers ('0th', ie input does not count. only include hidden plus output)
