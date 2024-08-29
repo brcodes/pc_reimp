@@ -53,7 +53,7 @@ def model_name_from_params(params):
     name = 'mod.' + params['model_type'] + '_' + ('tl' if params['tiled'] else 'ntl') + '_' \
                     + str(params['num_layers']) + '_' + layer_sizes + '_' + num_imgs + '_' + params['activ_func'] + '_' \
                     + params['priors'] + '_' + params['classif_method'] + '_' \
-                    + update_method + '-' + um_int_str + '_' + params['name'] + '_' + str(params['epoch_n']) + '.pydb'
+                    + update_method + '-' + um_int_str + '_' + params['exp_name'] + '_' + str(params['epoch_n']) + '.pydb'
                     
     return name
 
@@ -136,6 +136,7 @@ def instantiate_model(params):
     # Base class
     PCC = PredictiveCodingClassifier()
     PCC.set_model_attributes(params)
+    PCC.config_from_attributes()
     
     if PCC.model_type == 'static' and PCC.tiled == False:
         model = StaticPCC(PCC)
@@ -196,6 +197,8 @@ def run_experiment(config_file_path):
             print(f'Loaded checkpoint: {model_name}')
         else:
             model = instantiate_model(params)
+            model_name_param = {'mod_name': model_name}
+            model.set_model_attributes(model_name_param)
             print(f'Instantiated model for desired final state: {model_name}')
     
         # Data

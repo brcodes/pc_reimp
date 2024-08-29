@@ -26,7 +26,8 @@ class PredictiveCodingClassifier:
         "self."
         
         # metadata and experiment (this is grabbed by run_experiment, but saved here as a flag)
-        name: str: name of experiment
+        mod_name: str: name of chosen model if eval, pred or end-state model if train
+        exp_name: str: name of experiment
         train_with: bool: whether to train the model (in here, has or has not init a training)
         evaluate_with: bool: whether to evaluate the model (in here, has or has not init an evaluation)
         predict_with: bool: whether to predict with the model (in here, has or has not init a prediction)
@@ -87,7 +88,6 @@ class PredictiveCodingClassifier:
         '''
         for key, value in params.items():
             setattr(self, key, value)
-        self.config_from_attributes()
         
     def config_from_attributes(self):
         '''
@@ -114,7 +114,8 @@ class PredictiveCodingClassifier:
         
         # Initiate Us
         # U1 is going to be a little bit different
-        U1_size = tuple(list(self.input_size) + list(self.r[1].shape))
+        input_size = self.input_size
+        U1_size = tuple(list(input_size) + list(self.r[1].shape))
         self.U[1] = self.prior_dist(size=U1_size)
         # U2 through Un
         for i in range(2, n + 1):
@@ -126,8 +127,123 @@ class PredictiveCodingClassifier:
             self.U['o'] = self.prior_dist(size=Uo_size)
             print(f'Uo shape: {self.U['o'].shape}')
             
+        # Initiate U1-based operations dims (dimentions flex based on input)
+        # Transpose dims
+        ndims_U1 = len(U1_size)
+        range_ndims_U1 = range(ndims_U1)
+        last_dim_id_U1 = range_ndims_U1[-1]
+        nonlast_dim_ids_U1 = range_ndims_U1[:-1]
+        transpose_dims_U1 = tuple([last_dim_id_U1] + list(nonlast_dim_ids_U1))
+        self.U1T_dims = transpose_dims_U1
+        
+        # Tensordot dims
+        # U1T, last n-1
+        nonfirst_dim_ids_U1 = range_ndims_U1[1:]
+        self.U1T_tdot_dims = list(nonfirst_dim_ids_U1)
+        
+        # Input dims, all
+        ndims_input = len(input_size)
+        range_ndims_input = range(ndims_input)
+        # Bottom-up error and cost dims (either used in update, or cost)
+        self.bu_error_tdot_dims = list(range_ndims_input)
+        
         # Initiate Jr, Jc, and accuracy (diagnostics) for storage, print, plot
         epoch_n = self.epoch_n
         self.Jr = {i: [0] * (epoch_n + 1) for i in range(n)}
         self.Jc = {i: [0] * (epoch_n + 1) for i in range(n)}
         self.accuracy = [0] * (epoch_n + 1)
+        
+    def update_method_rWniters(self, niters, label, component_updates):
+        '''
+        Li def: 30
+        '''
+        r_updates = component_updates[0]
+        # Can be U/Uo or U/Uo,V
+        weight_updates = component_updates[1:]
+        num_weight_updates = len(weight_updates)
+        range_num_weight_updates = range(num_weight_updates)
+        
+        for _ in range(niters):
+            r_updates(label)
+            for w in range_num_weight_updates:
+                # For as many weight sets are there are to update, update them.
+                weight_updates[w](label)
+        
+    def update_method_r_niters_W(self, niters, label, component_updates):
+        '''
+        Rogers/Brown def: 100
+        '''
+        r_updates = component_updates[0]
+        # Can be U/Uo or U/Uo,V
+        weight_updates = component_updates[1:]
+        num_weight_updates = len(weight_updates)
+        range_num_weight_updates = range(num_weight_updates)
+        
+        for _ in range(niters):
+            r_updates(label)
+        for w in range_num_weight_updates:
+            # For as many weight sets are there are to update, update them.
+            weight_updates[w](label)
+
+    def update_method_r_eq_W(self, stop_criterion, label, component_updates):
+
+        r_updates = component_updates[0]
+        # Can be U/Uo or U/Uo,V
+        weight_updates = component_updates[1:]
+        num_weight_updates = len(weight_updates)
+        range_num_weight_updates = range(num_weight_updates)
+        
+        num_layers = self.num_layers
+        n = num_layers
+        initial_norms = [np.linalg.norm(self.r[i]) for i in range(1, n + 1)]
+        diffs = [float('inf')] * n  # Initialize diffs to a large number
+        
+        while any(diff > stop_criterion for diff in diffs):
+            prev_r = {i: self.r[i].copy() for i in range(1, n + 1)}  # Copy all vectors to avoid reference issues
+            r_updates(label)
+            
+            for i in range(1, n + 1):
+                post_r = self.r[i]
+                diff_norm = np.linalg.norm(post_r - prev_r[i])
+                diffs[i-1] = (diff_norm / initial_norms[i-1]) * 100  # Calculate the percentage change
+        
+        for w in range_num_weight_updates:
+            # For as many weight sets are there are to update, update them.
+            weight_updates[w](label) 
+            
+    def update_method_r_niters(self, niters, label, component_updates):
+        '''
+        Li def: 30, Rogers/Brown def: 100
+        '''
+        r_updates = component_updates[0]
+        
+        for _ in range(niters):
+            r_updates(label)
+
+    def update_method_r_eq(self, stop_criterion, label, component_updates):
+        '''
+        Rogers/Brown def: 0.05
+        '''
+        
+        r_updates = component_updates[0]
+        
+        num_layers = self.num_layers
+        n = num_layers
+        initial_norms = [np.linalg.norm(self.r[i]) for i in range(1, n + 1)]
+        diffs = [float('inf')] * n # Initialize diffs to a large number
+        
+        while any(diff > stop_criterion for diff in diffs):
+            prev_r = {i: self.r[i].copy() for i in range(1, n + 1)}  # Copy all vectors to avoid reference issues
+            r_updates(label)
+            
+            for i in range(1, n + 1):
+                post_r = self.r[i]
+                diff_norm = np.linalg.norm(post_r - prev_r[i])
+                diffs[i-1] = (diff_norm / initial_norms[i-1]) * 100  # Calculate the percentage change
+    
+    def save_results(self, output_dir):
+        
+        output_path = path.join(output_dir, self.exp_name)
+        
+        with open(output_path, 'wb') as f:
+            pickle.dump(self, f)
