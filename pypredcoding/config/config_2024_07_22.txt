@@ -50,6 +50,7 @@ update_method={'rW_niters':30}
 # << will automatically create this dataset if not found in data/ >>
 # Format ds.NAME_NUMIMGS_PREPRO(li_trace212)_IMGX_IMGY_TILED_NUMTILES_TILEX_TILEY_TILEOFFSETX_TILEOFFSETY.pydb
 num_imgs=212
+num_classes=212
 dataset_train='ds.trace212_212_li_trace212_132_84_tl_16_36_24_32_20.pydb'
 
 ## TRAINING HYPERPARAMETERS

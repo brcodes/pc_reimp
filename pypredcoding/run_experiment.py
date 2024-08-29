@@ -153,6 +153,8 @@ def instantiate_model(params):
     # Now attributes are params
     model.validate_attributes()
     
+    print(f'Model class instantiated: {model.__class__.__name__}')
+    
     return model
 
 def create_data(dataset_name):
