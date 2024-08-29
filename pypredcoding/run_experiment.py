@@ -29,7 +29,7 @@ def model_name_from_params(params):
     '''
     format 
     mod.TYPE_TILED_NUMLYRS_LR1SIZE...-LRNSIZE_NUMIMGS_ACTIVFUNC_PRIORS_CLASSIFMETHOD...
-    ..._UPDATEMETHOD_CONFIGNAME_EP.pydb
+    ..._UPDATEMETHOD_EXPNAME_EP.pydb
     '''
     
     '''

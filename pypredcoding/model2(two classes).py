@@ -240,10 +240,17 @@ class PredictiveCodingClassifier:
                 post_r = self.r[i]
                 diff_norm = np.linalg.norm(post_r - prev_r[i])
                 diffs[i-1] = (diff_norm / initial_norms[i-1]) * 100  # Calculate the percentage change
+                
+    def generate_output_name(base_name, epoch):
+        # Split the base name at the last underscore
+        parts = base_name.rsplit('_', 1)
+        # Insert the epoch number before the .pydb extension
+        new_name = f"{parts[0]}_{epoch}.pydb"
+        return new_name
     
-    def save_results(self, output_dir):
+    def save_results(self, output_dir, output_name):
         
-        output_path = path.join(output_dir, self.exp_name)
+        output_path = path.join(output_dir, output_name)
         
         with open(output_path, 'wb') as f:
             pickle.dump(self, f)

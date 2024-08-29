@@ -205,11 +205,6 @@ class PredictiveCodingClassifier:
     
     '''
     
-    '''
-    Change the r updates self, label to label
-    after no-F experiments
-    2024.08.26
-    '''
     
     def update_method_rWniters(self, niters, label, component_updates):
         '''
@@ -474,7 +469,8 @@ class PredictiveCodingClassifier:
         print('Training complete.')
         print('Saving final model...')
         # Save final model
-        self.save_results(output_dir='models/')
+        final_name = self.generate_output_name(self.mod_name, epoch)
+        self.save_results(output_dir='models/', output_name=final_name)
         
         if plot:
             pass
