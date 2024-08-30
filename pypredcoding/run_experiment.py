@@ -1,5 +1,5 @@
 from ast import literal_eval
-from model import PredictiveCodingClassifier, StaticPCC, TiledStaticPCC, RecurrentPCC, TiledRecurrentPCC
+from model2classes import PredictiveCodingClassifier, StaticPCC, RecurrentPCC
 # from data import load_data
 from os.path import join, exists
 from os import listdir
@@ -138,23 +138,15 @@ def instantiate_model(params):
     PCC.set_model_attributes(params)
     PCC.config_from_attributes()
     
-    if PCC.model_type == 'static' and PCC.tiled == False:
+    if PCC.model_type == 'static':
         model = StaticPCC(PCC)
-    elif PCC.model_type == 'static' and PCC.tiled == True:
-        sPCC = StaticPCC(PCC)
-        model = TiledStaticPCC(sPCC)
-    elif PCC.model_type == 'recurrent' and PCC.tiled == False:
+    elif PCC.model_type == 'recurrent':
         model = RecurrentPCC(PCC)
-    elif PCC.model_type == 'recurrent' and PCC.tiled == True:
-        rPCC = RecurrentPCC(PCC)
-        model = TiledRecurrentPCC(rPCC)
     else:
         raise ValueError('Invalid model type')
     
     # Now attributes are params
     model.validate_attributes()
-    
-    print(f'Model class instantiated: {model.__class__.__name__}')
     
     return model
 

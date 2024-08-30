@@ -108,6 +108,7 @@ class PredictiveCodingClassifier:
         num_layers = self.num_layers
         n = num_layers
         self.r[0] = np.zeros(input_size)
+        print(f'r0 and input shape: {self.r[0].shape}')
         for i in range(1, n + 1):
             if i == n:
                 self.r[i] = self.prior_dist(size=(self.output_lyr_size))
@@ -127,7 +128,7 @@ class PredictiveCodingClassifier:
         if self.classif_method == 'c2':
             Uo_size = (self.num_classes, self.output_lyr_size)
             self.U['o'] = self.prior_dist(size=Uo_size)
-            print(f'Uo shape: {self.U['o'].shape}')
+            print(f'Uo shape: {self.U["o"].shape}')
             
         # Initiate U1-based operations dims (dimentions flex based on input)
         # Transpose dims
@@ -148,6 +149,17 @@ class PredictiveCodingClassifier:
         range_ndims_input = range(ndims_input)
         # Bottom-up error and cost dims (either used in update, or cost)
         self.bu_error_tdot_dims = list(range_ndims_input)
+        
+        # Einsum dims
+        self.einsum_arg_U1 = ''
+        dim_str = 'ijklmnopqrstuvwxyz'
+        for dim in range(ndims_input):
+            self.einsum_arg_U1 += dim_str[dim]
+        self.einsum_arg += ',' + dim_str[ndims_input] + '->' + dim_str[:ndims_input + 1]
+        if ndims_input > len(dim_str):
+            raise ValueError('Too many dimensions.')
+        
+        print(f'einsum arg: {self.einsum_arg}')
         
         # Hidden layer sizes for priors
         self.all_hlyr_sizes = self.hidden_lyr_sizes.copy()
@@ -223,9 +235,15 @@ class PredictiveCodingClassifier:
             lyr_size = self.all_hlyr_sizes[i - 1]
             self.r_dists_hard[lyr_size] = self.prior_dist(size=lyr_size)
     
-    def load_hard_prior_dist(r_dists_hard, size):
-        return r_dists_hard[size]
-        
+    def load_hard_prior_dist(self, size):
+        return self.r_dists_hard[size]
+    
+    def softmax(self, vector, k=1):
+
+        exp_vector = np.exp(k * vector)
+        softmax_vector = exp_vector / np.sum(exp_vector)
+        return softmax_vector
+    
     def train(self, X, Y, save_checkpoint=None, online_diagnostics=False, plot=False):
         
         num_imgs = self.num_imgs
@@ -234,7 +252,7 @@ class PredictiveCodingClassifier:
         test: re-shape 3392,864 (num imgs * tiles per image, flattened tile) to 212, 16, 864 (num imgs, tiles per image, flattened tile)
         This will be completed by data.py in the future
         '''
-        print('reshaping X into num imgs, num tiles per image, flattened tile')
+        print('test: reshaping X into num imgs, num tiles per image, flattened tile')
         X = X.reshape(num_imgs, num_tiles, -1)
 
         '''
@@ -251,7 +269,7 @@ class PredictiveCodingClassifier:
         for speed
         '''
         self.hard_set_prior_dist()
-        prior_dist = partial(self.load_hard_prior_dist, self.r_dists_hard)
+        prior_dist = self.load_hard_prior_dist
 
         '''
         test
@@ -283,7 +301,7 @@ class PredictiveCodingClassifier:
                 label = Y[img]
                 self.r[0] = input
                 for i in range(1, n + 1):
-                    self.r[i] = prior_dist(all_hlyr_sizes[i - 1])
+                    self.r[i] = prior_dist(size=all_hlyr_sizes[i - 1])
                 Jr0 += rep_cost()
                 Jc0 += classif_cost(label)
             accuracy += evaluate(X, Y)
@@ -313,7 +331,7 @@ class PredictiveCodingClassifier:
                 label = Y_shuff[img]
                 self.r[0] = input
                 for i in range(1, n + 1):
-                    self.r[i] = prior_dist(all_hlyr_sizes[i - 1])
+                    self.r[i] = prior_dist(size=all_hlyr_sizes[i - 1])
                 update_all_components(label=label)
                 if online_diagnostics:
                     Jre += rep_cost()
@@ -337,7 +355,7 @@ class PredictiveCodingClassifier:
         for speed
         '''
 
-        prior_dist = partial(self.load_hard_prior_dist, self.r_dists_hard)
+        prior_dist = self.load_hard_prior_dist
 
         '''
         test
@@ -355,7 +373,7 @@ class PredictiveCodingClassifier:
             label = Y[img]
             self.r[0] = input
             for i in range(1, n + 1):
-                self.r[i] = prior_dist(self.all_hlyr_sizes[i - 1])
+                self.r[i] = prior_dist(size=self.all_hlyr_sizes[i - 1])
             update_non_weight_components(label=label)
             guess = guess_func(label)
             accuracy += guess
@@ -364,17 +382,8 @@ class PredictiveCodingClassifier:
         return accuracy
     
     def predict(self, X, plot=None):
-        '''
-        Predicts the class of input images and optionally plots the topmost representation
 
-        Parameters:
-            X (np.array): Input images for prediction.
-            plot (None or Str, optional): Assigns topmost representation and prediction error (pe) plotting behavior. None to plot nothing. 
-                                Str can be 'first' to plot model response to first image, f'rand{N}' to plot responses to N random 
-                                images, or 'all' for those of all images.
-        '''
-        
-        return class_predictions
+        return None
 
         
     def update_method_rWniters(self, niters, label, component_updates):
@@ -540,6 +549,9 @@ class StaticPCC(PredictiveCodingClassifier):
                                 'c2': self.classif_guess_c2,
                                 None: self.classif_guess_None}
         
+    def validate_attributes(self):
+        pass
+        
     def rep_cost_n_1(self):
         pass
     
@@ -563,7 +575,7 @@ class StaticPCC(PredictiveCodingClassifier):
         U1_tdot_r1 = np.tensordot(U_1, r_1, axes=([-1],[0]))
         
         # 1st layer axes necessary for dot product (2D or 4D)
-        bu_tdot_dims = self.bu_cost_tdot_dims
+        bu_tdot_dims = self.bu_error_tdot_dims
         
         # Bottom up only
         bu_v = r_0 - self.f(U1_tdot_r1)[0]
@@ -593,7 +605,7 @@ class StaticPCC(PredictiveCodingClassifier):
         U1_tdot_r1 = np.tensordot(U_1, r_1, axes=([-1],[0]))
         
         # 1st layer axes necessary for dot product (2D or 4D)
-        bu_tdot_dims = self.bu_cost_tdot_dims
+        bu_tdot_dims = self.bu_error_tdot_dims
         
         # Bottom up and td
         bu_v = r_0 - self.f(U1_tdot_r1)[0]
@@ -637,7 +649,7 @@ class StaticPCC(PredictiveCodingClassifier):
         U1_tdot_r1 = np.tensordot(U_1, r_1, axes=([-1],[0]))
         
         # 1st layer axes necessary for dot product (2D or 4D)
-        bu_tdot_dims = self.bu_cost_tdot_dims
+        bu_tdot_dims = self.bu_error_tdot_dims
         
         # Bottom up and td
         bu_v = r_0 - self.f(U1_tdot_r1)[0]
@@ -726,11 +738,11 @@ class StaticPCC(PredictiveCodingClassifier):
         r_1 = self.r[1]
         
         #U1 operations
-        U1_transpose = np.transpose(U_1, self.U1_transpose_dims)
+        U1_transpose = np.transpose(U_1, self.U1T_dims)
         U1_tdot_r1 = np.tensordot(U_1, r_1, axes=([-1],[0]))
         input_min_U1tdotr1 = self.f(self.r[0] - self.f(U1_tdot_r1)[0])[1]
         
-        self.r[1] += (kr_1 / ssq_1) * np.tensordot(U1_transpose, input_min_U1tdotr1, axes=(self.U1T_tdot_dims, self.input_min_U1tdotr1_tdot_dims)) \
+        self.r[1] += (kr_1 / ssq_1) * np.tensordot(U1_transpose, input_min_U1tdotr1, axes=(self.U1T_tdot_dims, self.bu_error_tdot_dims)) \
                                                 + self.rn_topdown_upd_dict[self.classif_method](label) \
                                                 - (kr_1 / ssq_1) * self.g(r_1, self.alph[1])[1]
     
@@ -750,11 +762,11 @@ class StaticPCC(PredictiveCodingClassifier):
         r_2 = self.r[2]
         
         #U1 operations
-        U1_transpose = np.transpose(U_1, self.U1_transpose_dims)
+        U1_transpose = np.transpose(U_1, self.U1T_dims)
         U1_tdot_r1 = np.tensordot(U_1, r_1, axes=([-1],[0]))
         input_min_U1tdotr1 = self.f(self.r[0] - self.f(U1_tdot_r1)[0])[1]
         
-        self.r[1] += (kr_1 / ssq_1) * np.tensordot(U1_transpose, input_min_U1tdotr1, axes=(self.U1T_tdot_dims, self.input_min_U1tdotr1_tdot_dims)) \
+        self.r[1] += (kr_1 / ssq_1) * np.tensordot(U1_transpose, input_min_U1tdotr1, axes=(self.U1T_tdot_dims, self.bu_error_tdot_dims)) \
                                             + (kr_2 * ssq_2) * (self.f(U_2.dot(r_2))[0] - r_1) \
                                             - (kr_1 / ssq_1) * self.g(r_1, self.alph[1])[1]
                                             
@@ -777,12 +789,12 @@ class StaticPCC(PredictiveCodingClassifier):
         r_2 = self.r[2]
         
         #U1 operations
-        U1_transpose = np.transpose(U_1, self.U1_transpose_dims)
+        U1_transpose = np.transpose(U_1, self.U1T_dims)
         U1_tdot_r1 = np.tensordot(U_1, r_1, axes=([-1],[0]))
         input_min_U1tdotr1 = self.f(self.r[0] - self.f(U1_tdot_r1)[0])[1]
         
         # Layer 1
-        self.r[1] += (kr_1 / ssq_1) * np.tensordot(U1_transpose, input_min_U1tdotr1, axes=(self.U1T_tdot_dims, self.input_min_U1tdotr1_tdot_dims)) \
+        self.r[1] += (kr_1 / ssq_1) * np.tensordot(U1_transpose, input_min_U1tdotr1, axes=(self.U1T_tdot_dims, self.bu_error_tdot_dims)) \
                                             + (kr_2 * ssq_2) * (self.f(U_2.dot(r_2))[0] - r_1) \
                                             - (kr_1 / ssq_1) * self.g(r_1, self.alph[1])[1]
         # Layers 2 to n-1                                    
@@ -826,7 +838,7 @@ class StaticPCC(PredictiveCodingClassifier):
         input_min_U1tdotr1 = self.f(self.r[0] - self.f(U1_tdot_r1)[0])[1]
         
         # Layer 1
-        self.U[1] += (kU_1 / ssq_1) * np.outer(input_min_U1tdotr1, r_1) \
+        self.U[1] += (kU_1 / ssq_1) * np.einsum(self.einsum_arg_U1, input_min_U1tdotr1, r_1) \
                         - (kU_1 / ssq_1) * self.h(U_1, self.lam[1])[1]
                             
     def U_updates_n_gt_eq_2(self,label):
@@ -841,7 +853,7 @@ class StaticPCC(PredictiveCodingClassifier):
         input_min_U1tdotr1 = self.f(self.r[0] - self.f(U1_tdot_r1)[0])[1]
         
         # Layer 1
-        self.U[1] += (kU_1 / ssq_1) * np.outer(input_min_U1tdotr1, r_1) \
+        self.U[1] += (kU_1 / ssq_1) * np.einsum(self.einsum_arg_U1, input_min_U1tdotr1, r_1) \
                         - (kU_1 / ssq_1) * self.h(U_1, self.lam[1])[1]
         
         n = self.num_layers
@@ -879,11 +891,11 @@ class StaticPCC(PredictiveCodingClassifier):
         r_1 = self.r[1]
         
         #U1 operations
-        U1_transpose = np.transpose(U_1, self.U1_transpose_dims)
+        U1_transpose = np.transpose(U_1, self.U1T_dims)
         U1_tdot_r1 = np.tensordot(U_1, r_1, axes=([-1],[0]))
         input_min_U1tdotr1 = self.r[0] - self.f(U1_tdot_r1)[0]
         
-        self.r[1] += (kr_1 / ssq_1) * np.tensordot(U1_transpose, input_min_U1tdotr1, axes=(self.U1T_tdot_dims, self.input_min_U1tdotr1_tdot_dims)) \
+        self.r[1] += (kr_1 / ssq_1) * np.tensordot(U1_transpose, input_min_U1tdotr1, axes=(self.U1T_tdot_dims, self.bu_error_tdot_dims)) \
                                                 + self.rn_topdown_upd_dict[self.classif_method](label) \
                                                 - (kr_1 / ssq_1) * self.g(r_1, self.alph[1])[1]
 
@@ -903,11 +915,11 @@ class StaticPCC(PredictiveCodingClassifier):
         r_2 = self.r[2]
         
         #U1 operations
-        U1_transpose = np.transpose(U_1, self.U1_transpose_dims)
+        U1_transpose = np.transpose(U_1, self.U1T_dims)
         U1_tdot_r1 = np.tensordot(U_1, r_1, axes=([-1],[0]))
         input_min_U1tdotr1 = self.r[0] - self.f(U1_tdot_r1)[0]
         
-        self.r[1] += (kr_1 / ssq_1) * np.tensordot(U1_transpose, input_min_U1tdotr1, axes=(self.U1T_tdot_dims, self.input_min_U1tdotr1_tdot_dims)) \
+        self.r[1] += (kr_1 / ssq_1) * np.tensordot(U1_transpose, input_min_U1tdotr1, axes=(self.U1T_tdot_dims, self.bu_error_tdot_dims)) \
                                             + (kr_2 * ssq_2) * (self.f(U_2.dot(r_2))[0] - r_1) \
                                             - (kr_1 / ssq_1) * self.g(r_1, self.alph[1])[1]
                                             
@@ -930,12 +942,12 @@ class StaticPCC(PredictiveCodingClassifier):
         r_2 = self.r[2]
         
         #U1 operations
-        U1_transpose = np.transpose(U_1, self.U1_transpose_dims)
+        U1_transpose = np.transpose(U_1, self.U1T_dims)
         U1_tdot_r1 = np.tensordot(U_1, r_1, axes=([-1],[0]))
         input_min_U1tdotr1 = self.r[0] - self.f(U1_tdot_r1)[0]
         
         # Layer 1
-        self.r[1] += (kr_1 / ssq_1) * np.tensordot(U1_transpose, input_min_U1tdotr1, axes=(self.U1T_tdot_dims, self.input_min_U1tdotr1_tdot_dims)) \
+        self.r[1] += (kr_1 / ssq_1) * np.tensordot(U1_transpose, input_min_U1tdotr1, axes=(self.U1T_tdot_dims, self.bu_error_tdot_dims)) \
                                             + (kr_2 * ssq_2) * (self.f(U_2.dot(r_2))[0] - r_1) \
                                             - (kr_1 / ssq_1) * self.g(r_1, self.alph[1])[1]
         # Layers 2 to n-1                                    
@@ -993,6 +1005,9 @@ class StaticPCC(PredictiveCodingClassifier):
         U1_tdot_r1 = np.tensordot(U_1, r_1, axes=([-1],[0]))
         input_min_U1tdotr1 = self.r[0] - self.f(U1_tdot_r1)[0]
         
+        print(f'input_min_U1tdotr1: {input_min_U1tdotr1.shape}')
+        print(f'U1_tdot_r1: {U1_tdot_r1.shape}')
+        
         # Layer 1
         self.U[1] += (kU_1 / ssq_1) * np.outer(input_min_U1tdotr1, r_1) \
                         - (kU_1 / ssq_1) * self.h(U_1, self.lam[1])[1]
@@ -1037,3 +1052,15 @@ class StaticPCC(PredictiveCodingClassifier):
         
     def classif_guess_None(self, label):
         return 0
+    
+    
+class RecurrentPCC(PredictiveCodingClassifier):
+
+    def __init__(self, base_instance: PredictiveCodingClassifier):
+        
+        # This is a safeguard for now, as PCC doesn't actually have any init logic but setting attrs.
+        # Initialize the base class
+        super().__init__()
+
+        # Copy attributes from the base instance
+        self.__dict__.update(base_instance.__dict__)
