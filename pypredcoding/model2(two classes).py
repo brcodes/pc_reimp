@@ -149,14 +149,15 @@ class PredictiveCodingClassifier:
         # Bottom-up error and cost dims (either used in update, or cost)
         self.bu_error_tdot_dims = list(range_ndims_input)
         
+        # Hidden layer sizes for priors
+        self.all_hlyr_sizes = self.hidden_lyr_sizes.copy()
+        self.all_hlyr_sizes.append(self.output_lyr_size)
+        
         # Initiate Jr, Jc, and accuracy (diagnostics) for storage, print, plot
         epoch_n = self.epoch_n
         self.Jr = [0] * (epoch_n + 1)
         self.Jc = [0] * (epoch_n + 1)
         self.accuracy = [0] * (epoch_n + 1)
-        # self.Jr = {i: 0 for i in range(epoch_n + 1)}
-        # self.Jc = {i: 0 for i in range(epoch_n + 1)}
-        # self.accuracy = {i: 0 for i in range(epoch_n + 1)}
         
         # Later: by layer
         # self.Jr = {i: [0] * (epoch_n + 1) for i in range(n)}
@@ -211,6 +212,19 @@ class PredictiveCodingClassifier:
 
     def prior_dist(self, size):
         return self.prior_dist_dict[self.priors](size=size)
+    
+    def hard_set_prior_dist(self):
+        '''
+        so a new one isn't made every tiem'''
+        
+        self.r_dists_hard = {}
+        n = self.num_layers
+        for i in range (1, n + 1):
+            lyr_size = self.all_hlyr_sizes[i - 1]
+            self.r_dists_hard[lyr_size] = self.prior_dist(size=lyr_size)
+    
+    def load_hard_prior_dist(r_dists_hard, size):
+        return r_dists_hard[size]
         
     def train(self, X, Y, save_checkpoint=None, online_diagnostics=False, plot=False):
         
@@ -236,23 +250,15 @@ class PredictiveCodingClassifier:
         pre-initiate all distributions
         for speed
         '''
-        all_lyr_sizes = self.hidden_lyr_sizes.copy()
-        all_lyr_sizes.append(self.output_lyr_size)
-        
-        self.r_dists = {}
-        n = self.num_layers
-        for i in range (1, n + 1):
-            lyr_size = all_lyr_sizes[i - 1]
-            self.r_dists[lyr_size] = self.prior_dist(size=lyr_size)
-            
-        def premade_prior_dist(r_dists, size):
-            return r_dists[size]
-        
-        prior_dist = partial(premade_prior_dist, self.r_dists)
+        self.hard_set_prior_dist()
+        prior_dist = partial(self.load_hard_prior_dist, self.r_dists_hard)
 
         '''
         test
         '''
+        
+        n = self.num_layers
+        all_hlyr_sizes = self.all_hlyr_sizes
         
         update_method_name = next(iter(self.update_method))
         update_method_number = self.update_method[update_method_name]
@@ -277,7 +283,7 @@ class PredictiveCodingClassifier:
                 label = Y[img]
                 self.r[0] = input
                 for i in range(1, n + 1):
-                    self.r[i] = prior_dist(all_lyr_sizes[i - 1])
+                    self.r[i] = prior_dist(all_hlyr_sizes[i - 1])
                 Jr0 += rep_cost()
                 Jc0 += classif_cost(label)
             accuracy += evaluate(X, Y)
@@ -307,7 +313,7 @@ class PredictiveCodingClassifier:
                 label = Y_shuff[img]
                 self.r[0] = input
                 for i in range(1, n + 1):
-                    self.r[i] = prior_dist(all_lyr_sizes[i - 1])
+                    self.r[i] = prior_dist(all_hlyr_sizes[i - 1])
                 update_all_components(label=label)
                 if online_diagnostics:
                     Jre += rep_cost()
@@ -325,6 +331,36 @@ class PredictiveCodingClassifier:
 
     def evaluate(self, X, Y, update_method_name, update_method_number, classif_method, plot=None):
         
+        '''
+        training test
+        pre-initiate all distributions
+        for speed
+        '''
+
+        prior_dist = partial(self.load_hard_prior_dist, self.r_dists_hard)
+
+        '''
+        test
+        '''
+        
+        update_non_weight_components = partial(self.update_method_no_weight_dict[update_method_name], update_method_number)
+        
+        guess_func = self.classif_guess_dict[classif_method]
+        
+        n = self.num_layers
+        num_imgs = self.num_imgs
+        accuracy = 0
+        for img in range(num_imgs):
+            input = X[img]
+            label = Y[img]
+            self.r[0] = input
+            for i in range(1, n + 1):
+                self.r[i] = prior_dist(self.all_hlyr_sizes[i - 1])
+            update_non_weight_components(label=label)
+            guess = guess_func(label)
+            accuracy += guess
+        accuracy /= num_imgs
+    
         return accuracy
     
     def predict(self, X, plot=None):
