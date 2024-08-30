@@ -272,10 +272,12 @@ class PredictiveCodingClassifier:
             Jr0 = 0
             Jc0 = 0
             accuracy = 0
-            for i in range(num_imgs):
-                input = X[i]
-                label = Y[i]
+            for img in range(num_imgs):
+                input = X[img]
+                label = Y[img]
                 self.r[0] = input
+                for i in range(1, n + 1):
+                    self.r[i] = prior_dist(all_lyr_sizes[i - 1])
                 Jr0 += rep_cost()
                 Jc0 += classif_cost(label)
             accuracy += evaluate(X, Y)
@@ -307,9 +309,15 @@ class PredictiveCodingClassifier:
                 for i in range(1, n + 1):
                     self.r[i] = prior_dist(all_lyr_sizes[i - 1])
                 update_all_components(label=label)
-                Jre += rep_cost()
-                Jce += classif_cost(label)
-                
+                if online_diagnostics:
+                    Jre += rep_cost()
+                    Jce += classif_cost(label)
+            if online_diagnostics:
+                accuracy += evaluate(X, Y)
+            self.accuracy[epoch] = accuracy
+            self.Jr[epoch] = Jre
+            self.Jc[epoch] = Jce
+            print(f'Jr: {Jre}, Jc: {Jce}, Accuracy: {accuracy}')   
             
                 
         if plot:
