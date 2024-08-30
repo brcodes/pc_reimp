@@ -155,11 +155,13 @@ class PredictiveCodingClassifier:
         dim_str = 'ijklmnopqrstuvwxyz'
         for dim in range(ndims_input):
             self.einsum_arg_U1 += dim_str[dim]
-        self.einsum_arg += ',' + dim_str[ndims_input] + '->' + dim_str[:ndims_input + 1]
+        self.einsum_arg_U1 += ',' + dim_str[ndims_input] + '->' + dim_str[:ndims_input + 1]
         if ndims_input > len(dim_str):
             raise ValueError('Too many dimensions.')
+        # Will always be 'i,j->ij' for U2 through Un
+        self.einsum_arg_Ui = 'i,j->ij'
         
-        print(f'einsum arg: {self.einsum_arg}')
+        print(f'einsum arg U1: {self.einsum_arg_U1}')
         
         # Hidden layer sizes for priors
         self.all_hlyr_sizes = self.hidden_lyr_sizes.copy()
@@ -859,15 +861,17 @@ class StaticPCC(PredictiveCodingClassifier):
         n = self.num_layers
         
         #i>1 - n will all be the same
-        for i in range(1,n+1):
+        for i in range(2,n+1):
             
             kU_i = self.kU[i]
             ssq_i = self.ssq[i]
             r_i = self.r[i]
             U_i = self.U[i]
+
+            rimin1_min_Uidotri = self.f(self.r[i-1] - self.f(U_i.dot(r_i))[0])[1]
             
             #i
-            self.U[i] += (kU_i / ssq_i) * np.outer((self.f(self.r[i-1] - self.f(U_i.dot(r_i))[0])[1]), r_i) \
+            self.U[i] += (kU_i / ssq_i) * np.outer(rimin1_min_Uidotri, r_i) \
                         - (kU_i / ssq_i) * self.h(U_i, self.lam[i])[1]
     
     def Uo_update(self, label):
@@ -991,7 +995,7 @@ class StaticPCC(PredictiveCodingClassifier):
         input_min_U1tdotr1 = self.r[0] - self.f(U1_tdot_r1)[0]
         
         # Layer 1
-        self.U[1] += (kU_1 / ssq_1) * np.outer(input_min_U1tdotr1, r_1) \
+        self.U[1] += (kU_1 / ssq_1) * np.einsum(self.einsum_arg_U1, input_min_U1tdotr1, r_1) \
                         - (kU_1 / ssq_1) * self.h(U_1, self.lam[1])[1]
                             
     def U_updates_n_gt_eq_2_no_transform(self,label):
@@ -1005,25 +1009,24 @@ class StaticPCC(PredictiveCodingClassifier):
         U1_tdot_r1 = np.tensordot(U_1, r_1, axes=([-1],[0]))
         input_min_U1tdotr1 = self.r[0] - self.f(U1_tdot_r1)[0]
         
-        print(f'input_min_U1tdotr1: {input_min_U1tdotr1.shape}')
-        print(f'U1_tdot_r1: {U1_tdot_r1.shape}')
-        
         # Layer 1
-        self.U[1] += (kU_1 / ssq_1) * np.outer(input_min_U1tdotr1, r_1) \
+        self.U[1] += (kU_1 / ssq_1) * np.einsum(self.einsum_arg_U1, input_min_U1tdotr1, r_1) \
                         - (kU_1 / ssq_1) * self.h(U_1, self.lam[1])[1]
         
         n = self.num_layers
         
         #i>1 - n will all be the same
-        for i in range(1,n+1):
+        for i in range(2,n+1):
             
             kU_i = self.kU[i]
             ssq_i = self.ssq[i]
             r_i = self.r[i]
             U_i = self.U[i]
             
+            rimin1_min_Uidotri = self.r[i-1] - self.f(U_i.dot(r_i))[0]
+            
             #i
-            self.U[i] += (kU_i / ssq_i) * np.outer((self.r[i-1] - self.f(U_i.dot(r_i))[0]), r_i) \
+            self.U[i] += (kU_i / ssq_i) * np.outer(rimin1_min_Uidotri, r_i) \
                         - (kU_i / ssq_i) * self.h(U_i, self.lam[i])[1]
                         
     def Uo_update_no_transform(self, label):

@@ -176,6 +176,10 @@ def load_data(dataset_name):
         
     return X, Y
 
+def print_params(params):
+    for key, value in params.items():
+        print(f'{key}: {value}')
+
 def run_experiment(config_file_path):
     params = load_params(config_file_path)
 
@@ -193,6 +197,9 @@ def run_experiment(config_file_path):
             model.set_model_attributes(model_name_param)
             print(f'Instantiated model for desired final state: {model_name}')
     
+        # Print params
+        print_params(params)
+        
         # Data
         X_train, Y_train = load_data(params['dataset_train'])
         print(f'Loaded data: {params["dataset_train"]}')
