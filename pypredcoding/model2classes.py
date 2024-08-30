@@ -215,14 +215,46 @@ class PredictiveCodingClassifier:
         gprime_or_hprime = 2 * alph_or_lam * r_or_U
         return (g_or_h, gprime_or_hprime)
 
+    # def kurtotic_prior_costs(self, r_or_U=None, alph_or_lam=None):
+    #     """
+    #     Takes an argument pair of either r & alpha, or U & lambda, and returns
+    #     a tuple of (g(r), g'(r)), or (h(U), h'(U)), respectively. Sparse kurtotic prior.
+    #     """
+        
+    #     g_or_h = alph_or_lam * np.log(1 + np.square(r_or_U)).sum()
+    #     gprime_or_hprime = 2 * alph_or_lam * r_or_U / (1 + np.square(r_or_U))
+    #     return (g_or_h, gprime_or_hprime)
+    
+    '''
+    test
+    '''
     def kurtotic_prior_costs(self, r_or_U=None, alph_or_lam=None):
         """
         Takes an argument pair of either r & alpha, or U & lambda, and returns
         a tuple of (g(r), g'(r)), or (h(U), h'(U)), respectively. Sparse kurtotic prior.
         """
-        g_or_h = alph_or_lam * np.log(1 + np.square(r_or_U)).sum()
-        gprime_or_hprime = 2 * alph_or_lam * r_or_U / (1 + np.square(r_or_U))
-        return (g_or_h, gprime_or_hprime)
+        try:
+            # Set NumPy to raise exceptions on overflow and invalid operations
+            np.seterr(over='raise', invalid='raise')
+            
+            g_or_h = alph_or_lam * np.log(1 + np.square(r_or_U)).sum()
+            gprime_or_hprime = 2 * alph_or_lam * r_or_U / (1 + np.square(r_or_U))
+            
+            # Reset NumPy error handling to default
+            np.seterr(over='warn', invalid='warn')
+            
+            return (g_or_h, gprime_or_hprime)
+        
+        except FloatingPointError as e:
+            print(f"FloatingPointError: {e}")
+            
+            if r_or_U is not None:
+                if r_or_U.ndim == 1:  # r_or_U is a vector
+                    print("First five elements of r_or_U:", r_or_U[:5])
+                elif r_or_U.ndim == 2:  # r_or_U is a matrix
+                    print("First 5x5 elements of r_or_U:\n", r_or_U[:5, :5])
+            
+            return None
 
     def prior_dist(self, size):
         return self.prior_dist_dict[self.priors](size=size)
@@ -240,11 +272,19 @@ class PredictiveCodingClassifier:
     def load_hard_prior_dist(self, size):
         return self.r_dists_hard[size]
     
-    def softmax(self, vector, k=1):
-
-        exp_vector = np.exp(k * vector)
+    def stable_softmax(self, vector, k=1):
+        # Subtract the maximum value from the vector for numerical stability
+        shift_vector = vector - np.max(vector)
+        # Compute the exponentials of the shifted vector
+        exp_vector = np.exp(k * shift_vector)
+        # Compute the softmax values
         softmax_vector = exp_vector / np.sum(exp_vector)
         return softmax_vector
+    
+    def reset_rs(self, all_hlyr_sizes, prior_dist):
+        n = self.num_layers
+        for i in range(1, n + 1):
+            self.r[i] = prior_dist(size=all_hlyr_sizes[i - 1])
     
     def train(self, X, Y, save_checkpoint=None, online_diagnostics=False, plot=False):
         
@@ -273,12 +313,14 @@ class PredictiveCodingClassifier:
         self.hard_set_prior_dist()
         prior_dist = self.load_hard_prior_dist
 
+        # Else: prior_dist = self.prior_dist
         '''
         test
         '''
         
         n = self.num_layers
         all_hlyr_sizes = self.all_hlyr_sizes
+        reset_rs = partial(self.reset_rs, all_hlyr_sizes=all_hlyr_sizes)
         
         update_method_name = next(iter(self.update_method))
         update_method_number = self.update_method[update_method_name]
@@ -302,8 +344,7 @@ class PredictiveCodingClassifier:
                 input = X[img]
                 label = Y[img]
                 self.r[0] = input
-                for i in range(1, n + 1):
-                    self.r[i] = prior_dist(size=all_hlyr_sizes[i - 1])
+                reset_rs(prior_dist)
                 Jr0 += rep_cost()
                 Jc0 += classif_cost(label)
             accuracy += evaluate(X, Y)
@@ -332,8 +373,7 @@ class PredictiveCodingClassifier:
                 input = X_shuff[img]
                 label = Y_shuff[img]
                 self.r[0] = input
-                for i in range(1, n + 1):
-                    self.r[i] = prior_dist(size=all_hlyr_sizes[i - 1])
+                reset_rs(prior_dist)
                 update_all_components(label=label)
                 if online_diagnostics:
                     Jre += rep_cost()
@@ -358,10 +398,11 @@ class PredictiveCodingClassifier:
         '''
 
         prior_dist = self.load_hard_prior_dist
-
+        # Else: prior_dist = self.prior_dist
         '''
         test
         '''
+        reset_rs = partial(self.reset_rs, all_hlyr_sizes=self.all_hlyr_sizes)
         
         update_non_weight_components = partial(self.update_method_no_weight_dict[update_method_name], update_method_number)
         
@@ -374,8 +415,7 @@ class PredictiveCodingClassifier:
             input = X[img]
             label = Y[img]
             self.r[0] = input
-            for i in range(1, n + 1):
-                self.r[i] = prior_dist(size=self.all_hlyr_sizes[i - 1])
+            reset_rs(prior_dist)
             update_non_weight_components(label=label)
             guess = guess_func(label)
             accuracy += guess
@@ -701,12 +741,12 @@ class StaticPCC(PredictiveCodingClassifier):
     
     def classif_cost_c1(self, label):
         # Format: -label.dot(np.log(softmax(r_n)))
-        return -label.dot(np.log(self.softmax(self.r[self.num_layers])))
+        return -label.dot(np.log(self.stable_softmax(self.r[self.num_layers])))
     
     def classif_cost_c2(self, label):
         # Format: -label.dot(np.log(softmax(Uo.dot(r_n))))
         o = 'o'
-        return -label.dot(np.log(self.softmax(self.U[o].dot(self.r[self.num_layers])))) + self.h(self.U[o], self.lam[o])[0]
+        return -label.dot(np.log(self.stable_softmax(self.U[o].dot(self.r[self.num_layers])))) + self.h(self.U[o], self.lam[o])[0]
     
     def classif_cost_None(self, label):
         return 0
@@ -717,13 +757,13 @@ class StaticPCC(PredictiveCodingClassifier):
 
         o = 'o'
         # Format: k_o / ssq_o * (label - softmax(r_n))
-        c1 = (self.kr[o]/ self.ssq[o]) * (label - self.softmax(self.r[self.num_layers]))
+        c1 = (self.kr[o]/ self.ssq[o]) * (label - self.stable_softmax(self.r[self.num_layers]))
         return c1
 
     def rn_topdown_upd_c2(self, label):
         # Format: k_o / ssq_o * (label - softmax(Uo.dot(r_n)))
         o = 'o'
-        c2 = (self.kr[o]/ self.ssq[o]) * (label - self.softmax(self.U[o].dot(self.r[self.num_layers])))
+        c2 = (self.kr[o]/ self.ssq[o]) * (label - self.stable_softmax(self.U[o].dot(self.r[self.num_layers])))
         return c2
     
     def rn_topdown_upd_None(self, label):
@@ -882,7 +922,7 @@ class StaticPCC(PredictiveCodingClassifier):
         '''
         o = 'o'
         r_n = self.r[self.num_layers]
-        self.U[o] += (self.kU[o]/ self.ssq[o]) * np.outer((label - self.softmax(self.U[o].dot(r_n))), r_n)
+        self.U[o] += (self.kU[o]/ self.ssq[o]) * np.outer((label - self.stable_softmax(self.U[o].dot(r_n))), r_n)
     
     def r_updates_n_1_no_transform(self, label):
         '''
@@ -1037,17 +1077,17 @@ class StaticPCC(PredictiveCodingClassifier):
         '''
         o = 'o'
         r_n = self.r[self.num_layers]
-        self.U[o] += (self.kU[o]/ self.ssq[o]) * np.outer((label - self.softmax(self.U[o].dot(r_n))), r_n)
+        self.U[o] += (self.kU[o]/ self.ssq[o]) * np.outer((label - self.stable_softmax(self.U[o].dot(r_n))), r_n)
 
     def classif_guess_c1(self, label):
-        guess = np.argmax(self.softmax(self.r[self.num_layers]))
+        guess = np.argmax(self.stable_softmax(self.r[self.num_layers]))
         if guess == np.argmax(label):
             return 1
         else:
             return 0
     
     def classif_guess_c2(self, label):
-        guess = np.argmax(self.softmax(self.U['o'].dot(self.r[self.num_layers])))
+        guess = np.argmax(self.stable_softmax(self.U['o'].dot(self.r[self.num_layers])))
         if guess == np.argmax(label):
             return 1
         else:

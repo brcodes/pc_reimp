@@ -10,11 +10,11 @@
 # Will append model and log filenames
 # When you want to access a checkpoint later, you need to use this exact name. 
 # You can note that you are re-training in the notes below- and note the new date of the retraining.
-exp_name='Experiment_2024_07_24'
+exp_name='Experiment_2024_08_30'
 train_with=True
 evaluate_with=False
 predict_with= False
-notes='A String of any type for note-taking. e.g. Training 2024.07.24 checkpoint ep 70 to epoch 300 on 2024.07.26 '
+notes='212 li train inits, save ssq'
 
 ## PCC MODEL
 # << will automatically make this model if not found in models/ and train=True above; else ValueError >>
@@ -61,13 +61,13 @@ batch_size=1
 # how many exposures to all of the data (shuffled)
 epoch_n=300
 # learning rates, one per layer plus o needs to be correct if classif_method == 'c2'
-kr={1:0.05, 2:0.05, 3:0.05, 'o':0.01}
-kU={1:0.05, 2:0.05, 3:0.05, 'o':0.01}
+kr={1:0.001, 2:0.001, 3:0.001, 'o':0.001}
+kU={1:0.001, 2:0.001, 3:0.001, 'o':0.001}
 # rPCC only (will ignore if sPCC)
 kV= {1:0.05, 2:0.05, 3:0.05} 
 # prior distribution parameters, sPCC only. one per layer, incl. Uo case (alpha for r, lambda for U)
-alph= {1:0.05, 2:0.04, 3:0.05} 
-lam= {1:0.05, 2:0.04, 3:0.05, 'o':0.01} 
+alph= {1:1.0, 2:0.05, 3:0.05} 
+lam= {1:0.001, 2:0.001, 3:0.001, 'o':0.001}
 # layer covariance parameters, sigma squared. (they will all be 2, to increase conformity to derivative math, unless experiments here are desired)
 ssq= {1:2, 2:2, 3:2, 'o':2} 
 
