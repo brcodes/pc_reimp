@@ -4,7 +4,9 @@ from functools import partial
 
 from datetime import datetime
 import pickle
-from os import path
+from os import path, makedirs
+import io
+import contextlib
 
 
 class PredictiveCodingClassifier:
@@ -115,6 +117,7 @@ class PredictiveCodingClassifier:
             else:
                 self.r[i] = self.prior_dist(size=(self.hidden_lyr_sizes[i - 1]))
             print(f'r{i} shape: {self.r[i].shape}')
+            print(f'r{i} first 3: {self.r[i][:3]}')
         
         # Initiate Us
         # U1 is going to be a little bit different
@@ -125,6 +128,7 @@ class PredictiveCodingClassifier:
             Ui_size = (self.r[i-1].shape[0], self.r[i].shape[0])
             self.U[i] = self.prior_dist(size=Ui_size)
             print(f'U{i} shape: {self.U[i].shape}')
+            print(f'U{i} first 3x3: {self.U[i][:3, :3]}')
         if self.classif_method == 'c2':
             Uo_size = (self.num_classes, self.output_lyr_size)
             self.U['o'] = self.prior_dist(size=Uo_size)
@@ -250,9 +254,9 @@ class PredictiveCodingClassifier:
             
             if r_or_U is not None:
                 if r_or_U.ndim == 1:  # r_or_U is a vector
-                    print("First five elements of r_or_U:", r_or_U[:5])
+                    print("First five elements of r:", r_or_U[:5])
                 elif r_or_U.ndim == 2:  # r_or_U is a matrix
-                    print("First 5x5 elements of r_or_U:\n", r_or_U[:5, :5])
+                    print("First 5x5 elements of U:\n", r_or_U[:5, :5])
             
             return None
 
@@ -285,8 +289,20 @@ class PredictiveCodingClassifier:
         n = self.num_layers
         for i in range(1, n + 1):
             self.r[i] = prior_dist(size=all_hlyr_sizes[i - 1])
+            
+    def initiate_logging(self):
+        log_dir = 'models/log'
+        makedirs(log_dir, exist_ok=True)
+        timestamp = datetime.now().strftime('%y%m%d_%H%M')
+        log_file_path = path.join(log_dir, f'mod_{timestamp}.txt')
+        log_buffer = io.StringIO()
+        return log_buffer, log_file_path
     
     def train(self, X, Y, save_checkpoint=None, online_diagnostics=False, plot=False):
+        
+        # log_buffer, log_file_path = self.initiate_logging()
+        
+        # with contextlib.redirect_stdout(log_buffer):
         
         num_imgs = self.num_imgs
         num_tiles = self.num_tiles
@@ -325,6 +341,7 @@ class PredictiveCodingClassifier:
         update_method_name = next(iter(self.update_method))
         update_method_number = self.update_method[update_method_name]
         update_all_components = partial(self.update_method_dict[update_method_name], update_method_number)
+        update_non_weight_components = partial(self.update_method_no_weight_dict[update_method_name], update_method_number)
         
         rep_cost = self.rep_cost
         
@@ -332,7 +349,7 @@ class PredictiveCodingClassifier:
         classif_cost = self.classif_cost_dict[classif_method]
         
         evaluate = partial(self.evaluate, update_method_name=update_method_name, update_method_number=update_method_number, classif_method=classif_method, plot=None)
-        
+    
         if online_diagnostics:
             print('Diagnostics on')
             print('Epoch: 0')
@@ -344,7 +361,8 @@ class PredictiveCodingClassifier:
                 input = X[img]
                 label = Y[img]
                 self.r[0] = input
-                reset_rs(prior_dist)
+                reset_rs(prior_dist=prior_dist)
+                update_non_weight_components(label=label)
                 Jr0 += rep_cost()
                 Jc0 += classif_cost(label)
             accuracy += evaluate(X, Y)
@@ -373,21 +391,38 @@ class PredictiveCodingClassifier:
                 input = X_shuff[img]
                 label = Y_shuff[img]
                 self.r[0] = input
-                reset_rs(prior_dist)
+                reset_rs(prior_dist=prior_dist)
                 update_all_components(label=label)
                 if online_diagnostics:
                     Jre += rep_cost()
                     Jce += classif_cost(label)
             if online_diagnostics:
+                print(f'eval {epoch}')
                 accuracy += evaluate(X, Y)
             self.accuracy[epoch] = accuracy
             self.Jr[epoch] = Jre
             self.Jc[epoch] = Jce
-            print(f'Jr: {Jre}, Jc: {Jce}, Accuracy: {accuracy}')   
+            print(f'Jr: {Jre}, Jc: {Jce}, Accuracy: {accuracy}')
+            t_end_epoch = datetime.now()
+            print(f'Epoch time: {t_end_epoch - t_start_epoch}.')
+            print(f'Est. time remaining: {(t_end_epoch - t_start_epoch) * (epoch_n - epoch)}.')
+            if epoch == 1:
+                print(f'Est. tot time: {(t_end_epoch - t_start_epoch) * epoch_n}.')
             
-                
+        print('Training complete.')
+        print('Saving final model...')
+        # Save final model
+        final_name = self.generate_output_name(self.mod_name, epoch)
+        self.save_model(output_dir='models/', output_name=final_name)
+        
         if plot:
             pass
+            
+        # # Write the captured output to the log file
+        # with open(log_file_path, 'w') as log_file:
+        #     log_file.write(log_buffer.getvalue())
+
+        # log_buffer.close()
 
     def evaluate(self, X, Y, update_method_name, update_method_number, classif_method, plot=None):
         
@@ -415,7 +450,7 @@ class PredictiveCodingClassifier:
             input = X[img]
             label = Y[img]
             self.r[0] = input
-            reset_rs(prior_dist)
+            reset_rs(prior_dist=prior_dist)
             update_non_weight_components(label=label)
             guess = guess_func(label)
             accuracy += guess
@@ -516,17 +551,16 @@ class PredictiveCodingClassifier:
                 diff_norm = np.linalg.norm(post_r - prev_r[i])
                 diffs[i-1] = (diff_norm / initial_norms[i-1]) * 100  # Calculate the percentage change
                 
-    def generate_output_name(base_name, epoch):
+    def generate_output_name(self, base_name, epoch):
         # Split the base name at the last underscore
         parts = base_name.rsplit('_', 1)
         # Insert the epoch number before the .pydb extension
         new_name = f"{parts[0]}_{epoch}.pydb"
         return new_name
     
-    def save_results(self, output_dir, output_name):
-        
+    def save_model(self, output_dir, output_name):
+        makedirs(output_dir, exist_ok=True)
         output_path = path.join(output_dir, output_name)
-        
         with open(output_path, 'wb') as f:
             pickle.dump(self, f)
             

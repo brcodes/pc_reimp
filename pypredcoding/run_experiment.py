@@ -2,9 +2,10 @@ from ast import literal_eval
 from model2classes import PredictiveCodingClassifier, StaticPCC, RecurrentPCC
 # from data import load_data
 from os.path import join, exists
-from os import listdir
+from os import listdir, makedirs
 from pickle import load
 import numpy as np
+from datetime import datetime
 
 def load_params(file_path):
     params = {}
@@ -179,6 +180,15 @@ def load_data(dataset_name):
 def print_params(params):
     for key, value in params.items():
         print(f'{key}: {value}')
+        
+def log_params(params):
+    timestamp = datetime.now().strftime('%y%m%d_%H%M')
+    log_dir = 'models/log'
+    makedirs(log_dir, exist_ok=True)
+    log_file_path = join(log_dir, f'exp_{timestamp}.txt')
+    with open(log_file_path, 'w') as log_file:
+        for key, value in params.items():
+            log_file.write(f'{key}: {value}\n')
 
 def run_experiment(config_file_path):
     params = load_params(config_file_path)
@@ -199,6 +209,8 @@ def run_experiment(config_file_path):
     
         # Print params
         print_params(params)
+        # Save params in log
+        log_params(params)
         
         # Data
         X_train, Y_train = load_data(params['dataset_train'])
