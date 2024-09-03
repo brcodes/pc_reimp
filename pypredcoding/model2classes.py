@@ -301,6 +301,7 @@ class PredictiveCodingClassifier:
         '''
         clean up
         '''
+        printlog('\n\n')
         printlog(f'priors: {self.priors} init preview:')
         for i in range(0, self.num_layers + 1):
             printlog(f'r{i} shape: {self.r[i].shape}')
@@ -367,8 +368,9 @@ class PredictiveCodingClassifier:
         classif_cost = self.classif_cost_dict[classif_method]
         
         evaluate = partial(self.evaluate, update_method_name=update_method_name, update_method_number=update_method_number, classif_method=classif_method, plot=None)
-    
+
         if online_diagnostics:
+            printlog('\n\n')
             printlog('Diagnostics on')
             printlog('Epoch: 0')
             epoch = 0
@@ -389,6 +391,7 @@ class PredictiveCodingClassifier:
             self.Jc[epoch] = Jc0
             printlog(f'Jr: {Jr0}, Jc: {Jc0}, Accuracy: {accuracy}')
         else:
+            printlog('\n\n')
             printlog('Diagnostics: Off')
         
         # Training
@@ -429,20 +432,30 @@ class PredictiveCodingClassifier:
                 printlog(f'Est. tot time: {(t_end_epoch - t_start_epoch) * epoch_n}.')
             
         printlog('Training complete.')
-        printlog(f'Tot time: {t_end_epoch - t_start_train}.')
+        tot_time = t_end_epoch - t_start_train
+        printlog(f'Tot time: {tot_time}.')
         printlog('Saving final model...')
         # Save final model
         final_name = self.generate_output_name(self.mod_name, epoch)
         self.save_model(output_dir='models/', output_name=final_name)
         
+        # Final diagnostics
+        printlog(f'Final diagnostics over {epoch} epochs:')
+        percent_diff_Jr = (self.Jr[0] - self.Jr[epoch]) / self.Jr[0] * 100 if self.Jr[0] != 0 else 0
+        percent_diff_Jc = (self.Jc[0] - self.Jc[epoch]) / self.Jc[0] * 100 if self.Jc[0] != 0 else 0
+        percent_diff_accuracy = (self.accuracy[0] - self.accuracy[epoch]) / self.accuracy[0] * 100 if self.accuracy[0] != 0 else 0
+        printlog(f'Percent diff Jr: {percent_diff_Jr}, Jc: {percent_diff_Jc}, Accuracy: {percent_diff_accuracy}')
+        change_per_epoch_Jr = percent_diff_Jr / epoch
+        change_per_epoch_Jc = percent_diff_Jc / epoch
+        change_per_epoch_accuracy = percent_diff_accuracy / epoch
+        printlog(f'Change per epoch Jr: {change_per_epoch_Jr}, Jc: {change_per_epoch_Jc}, Accuracy: {change_per_epoch_accuracy}')
+        change_per_min_Jr = percent_diff_Jr / tot_time.total_seconds() * 60
+        change_per_min_Jc = percent_diff_Jc / tot_time.total_seconds() * 60
+        change_per_min_accuracy = percent_diff_accuracy / tot_time.total_seconds() * 60
+        printlog(f'Change per min Jr: {change_per_min_Jr}, Jc: {change_per_min_Jc}, Accuracy: {change_per_min_accuracy}')
+        
         if plot:
             pass
-            
-        # # Write the captured output to the log file
-        # with open(log_file_path, 'w') as log_file:
-        #     log_file.write(log_buffer.getvalue())
-
-        # log_buffer.close()
 
     def evaluate(self, X, Y, update_method_name, update_method_number, classif_method, plot=None):
         
