@@ -94,7 +94,6 @@ class PredictiveCodingClassifier:
         '''
         Set up the model from the attributes.
         '''
-        printlog = self.print_and_log
         
         # Transforms and priors
         self.f = self.act_fxn_dict[self.activ_func]
@@ -110,14 +109,11 @@ class PredictiveCodingClassifier:
         num_layers = self.num_layers
         n = num_layers
         self.r[0] = np.zeros(input_size)
-        printlog(f'r0 and input shape: {self.r[0].shape}')
         for i in range(1, n + 1):
             if i == n:
                 self.r[i] = self.prior_dist(size=(self.output_lyr_size))
             else:
                 self.r[i] = self.prior_dist(size=(self.hidden_lyr_sizes[i - 1]))
-            printlog(f'r{i} shape: {self.r[i].shape}')
-            printlog(f'r{i} first 3: {self.r[i][:3]}')
         
         # Initiate Us
         # U1 is going to be a little bit different
@@ -127,12 +123,9 @@ class PredictiveCodingClassifier:
         for i in range(2, n + 1):
             Ui_size = (self.r[i-1].shape[0], self.r[i].shape[0])
             self.U[i] = self.prior_dist(size=Ui_size)
-            printlog(f'U{i} shape: {self.U[i].shape}')
-            printlog(f'U{i} first 3x3: {self.U[i][:3, :3]}')
         if self.classif_method == 'c2':
             Uo_size = (self.num_classes, self.output_lyr_size)
             self.U['o'] = self.prior_dist(size=Uo_size)
-            printlog(f'Uo shape: {self.U["o"].shape}')
             
         # Initiate U1-based operations dims (dimentions flex based on input)
         # Transpose dims
@@ -164,8 +157,6 @@ class PredictiveCodingClassifier:
             raise ValueError('Too many dimensions.')
         # Will always be 'i,j->ij' for U2 through Un
         self.einsum_arg_Ui = 'i,j->ij'
-        
-        printlog(f'einsum arg U1: {self.einsum_arg_U1}')
         
         # Hidden layer sizes for priors
         self.all_hlyr_sizes = self.hidden_lyr_sizes.copy()
@@ -291,15 +282,7 @@ class PredictiveCodingClassifier:
         n = self.num_layers
         for i in range(1, n + 1):
             self.r[i] = prior_dist(size=all_hlyr_sizes[i - 1])
-            
-    # def initiate_logging(self):
-    #     log_dir = 'models/log'
-    #     makedirs(log_dir, exist_ok=True)
-    #     timestamp = datetime.now().strftime('%y%m%d_%H%M')
-    #     log_file_path = join(log_dir, f'mod_{timestamp}.txt')
-    #     log_buffer = io.StringIO()
-    #     return log_buffer, log_file_path
-    
+
     # Prints and sends to log file
     def print_and_log(self, *args, **kwargs):
         # Print to the terminal
@@ -314,6 +297,30 @@ class PredictiveCodingClassifier:
     def train(self, X, Y, save_checkpoint=None, online_diagnostics=False, plot=False):
         
         printlog = self.print_and_log
+        
+        '''
+        clean up
+        '''
+        printlog(f'priors: {self.priors} init preview:')
+        for i in range(0, self.num_layers + 1):
+            printlog(f'r{i} shape: {self.r[i].shape}')
+            printlog(f'r{i} first 3: {self.r[i][:3]}')
+            if i > 0:
+                # Check if the array is 3D or 5D
+                if self.U[i].ndim == 3:
+                    printlog(f'U{i} first 3x3x3: {self.U[i][:3, :3, :3]}')
+                elif self.U[i].ndim == 5:
+                    printlog(f'U{i} first 3x3x3x3x3: {self.U[i][:3, :3, :3, :3, :3]}')
+                else:
+                    printlog(f'U{i} first 3x3: {self.U[i][:3, :3]}')
+        if self.classif_method == 'c2':
+            printlog(f'Uo shape: {self.U["o"].shape}')
+            printlog(f'Uo first 3x3: {self.U["o"][:3, :3]}')
+        printlog(f'einsum arg U1: {self.einsum_arg_U1}')
+            
+        '''
+        clean up
+        '''
         
         num_imgs = self.num_imgs
         num_tiles = self.num_tiles

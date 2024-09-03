@@ -10,7 +10,7 @@
 # Will append model and log filenames
 # When you want to access a checkpoint later, you need to use this exact name. 
 # You can note that you are re-training in the notes below- and note the new date of the retraining.
-exp_name='Experiment_2024_09_02'
+exp_name='Experiment_2024_09_03'
 train_with=True
 evaluate_with=False
 predict_with= False
@@ -38,7 +38,7 @@ hidden_lyr_sizes=[32,128]
 # For a 1-layer model, must be the single layer size
 output_lyr_size=212
 # C1 or C2, see Rogers/Brown work for clarification; can be None, 'c1', 'c2'
-classif_method='c2'
+classif_method='c1'
 # Tanh or linear
 activ_func='linear'
 # Gaussian random or sparse kurtotic (kurtotic approximatable as zeros- Li method)
@@ -46,7 +46,7 @@ priors='kurtotic'
 # Li method, r/U,V (W = Weights) updated together for 30 iters per image: {'rW_niters':30}
 # Rogers/Brown proposal #1: r updated for 100 iters per image before U or V update {'r_niters_W':100}
 # Rogers/Brown proposal #2. r updated until change in vector < some stop criterion per image, then U or V  {'r_eq_W':0.05}
-update_method={'r_niters_W':100}
+update_method={'r_niters_W':30}
 
 ## TRAINING DATASET
 # << will automatically create this dataset if not found in data/ >>
@@ -61,7 +61,7 @@ batch_size=1
 # how many exposures to all of the data (shuffled)
 epoch_n=30
 # learning rates, one per layer plus o needs to be correct if classif_method == 'c2'
-kr={1:0.0001, 2:0.0001, 3:0.0001, 'o':0.0001}
+kr={1:0.00001, 2:0.00001, 3:0.00001, 'o':0.00001}
 kU={1:0.001, 2:0.001, 3:0.001, 'o':0.001}
 # rPCC only (will ignore if sPCC)
 kV= {1:0.05, 2:0.05, 3:0.05} 

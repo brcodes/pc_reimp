@@ -181,7 +181,7 @@ def print_params(params):
     for key, value in params.items():
         print(f'{key}: {value}')
         
-def log_params(params):
+def initiate_log(params):
     timestamp = datetime.now().strftime('%y%m%d_%H%M')
     log_dir = 'models/log'
     makedirs(log_dir, exist_ok=True)
@@ -192,18 +192,18 @@ def log_params(params):
             log_file.write(f'{key}: {value}\n')
     return log_file_name
 
-def print_and_log_params(params):
+def init_log_print_params(params):
+    log_file_name = initiate_log(params)
     print_params(params)
-    log_file_name = log_params(params)
-    params_logged = True
-    return log_file_name, params_logged
+    initiated_log = True
+    return log_file_name, initiated_log
 
 def run_experiment(config_file_path):
     params = load_params(config_file_path)
 
     model_name = model_name_from_params(params)
     
-    params_logged = False
+    initiated_log = False
     
     if params['train_with']:
         
@@ -218,7 +218,7 @@ def run_experiment(config_file_path):
             print(f'Instantiated model for desired final state: {model_name}')
     
         # Print and log params (base log for appending)
-        log_file_name, params_logged = print_and_log_params(params)
+        log_file_name, initiated_log = init_log_print_params(params)
         log_file_name_param = {'exp_log_name': log_file_name}
         model.set_model_attributes(log_file_name_param)
         
@@ -238,9 +238,9 @@ def run_experiment(config_file_path):
         mod_file_path = join('models', model_name)
         model = load_model(mod_file_path)
 
-        if not params_logged:
+        if not initiated_log:
             # Print and log params (base log for appending)
-            log_file_name, params_logged = print_and_log_params(params)
+            log_file_name, initiated_log = init_log_print_params(params)
             log_file_name_param = {'exp_log_name': log_file_name}
             model.set_model_attributes(log_file_name_param)
         
@@ -253,9 +253,9 @@ def run_experiment(config_file_path):
         mod_file_path = join('models', model_name)
         model = load_model(mod_file_path)
         
-        if not params_logged:
+        if not initiated_log:
             # Print and log params (base log for appending)
-            log_file_name, params_logged = print_and_log_params(params)
+            log_file_name, initiated_log = init_log_print_params(params)
             log_file_name_param = {'exp_log_name': log_file_name}
             model.set_model_attributes(log_file_name_param)
         
@@ -265,7 +265,7 @@ def run_experiment(config_file_path):
 
     return None
 
-def main(config_file_path=join('config', 'config_2024_07_22.txt')):
+def main(config_file_path=join('config', 'config_2024_09_03.txt')):
     '''
     change the second part of the path to the config file you want to use
     '''
