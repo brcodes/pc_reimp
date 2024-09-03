@@ -4,9 +4,8 @@ from functools import partial
 
 from datetime import datetime
 import pickle
-from os import path, makedirs
-import io
-import contextlib
+from os import makedirs
+from os.path import join, exists
 
 
 class PredictiveCodingClassifier:
@@ -95,6 +94,7 @@ class PredictiveCodingClassifier:
         '''
         Set up the model from the attributes.
         '''
+        printlog = self.print_and_log
         
         # Transforms and priors
         self.f = self.act_fxn_dict[self.activ_func]
@@ -110,14 +110,14 @@ class PredictiveCodingClassifier:
         num_layers = self.num_layers
         n = num_layers
         self.r[0] = np.zeros(input_size)
-        print(f'r0 and input shape: {self.r[0].shape}')
+        printlog(f'r0 and input shape: {self.r[0].shape}')
         for i in range(1, n + 1):
             if i == n:
                 self.r[i] = self.prior_dist(size=(self.output_lyr_size))
             else:
                 self.r[i] = self.prior_dist(size=(self.hidden_lyr_sizes[i - 1]))
-            print(f'r{i} shape: {self.r[i].shape}')
-            print(f'r{i} first 3: {self.r[i][:3]}')
+            printlog(f'r{i} shape: {self.r[i].shape}')
+            printlog(f'r{i} first 3: {self.r[i][:3]}')
         
         # Initiate Us
         # U1 is going to be a little bit different
@@ -127,12 +127,12 @@ class PredictiveCodingClassifier:
         for i in range(2, n + 1):
             Ui_size = (self.r[i-1].shape[0], self.r[i].shape[0])
             self.U[i] = self.prior_dist(size=Ui_size)
-            print(f'U{i} shape: {self.U[i].shape}')
-            print(f'U{i} first 3x3: {self.U[i][:3, :3]}')
+            printlog(f'U{i} shape: {self.U[i].shape}')
+            printlog(f'U{i} first 3x3: {self.U[i][:3, :3]}')
         if self.classif_method == 'c2':
             Uo_size = (self.num_classes, self.output_lyr_size)
             self.U['o'] = self.prior_dist(size=Uo_size)
-            print(f'Uo shape: {self.U["o"].shape}')
+            printlog(f'Uo shape: {self.U["o"].shape}')
             
         # Initiate U1-based operations dims (dimentions flex based on input)
         # Transpose dims
@@ -165,7 +165,7 @@ class PredictiveCodingClassifier:
         # Will always be 'i,j->ij' for U2 through Un
         self.einsum_arg_Ui = 'i,j->ij'
         
-        print(f'einsum arg U1: {self.einsum_arg_U1}')
+        printlog(f'einsum arg U1: {self.einsum_arg_U1}')
         
         # Hidden layer sizes for priors
         self.all_hlyr_sizes = self.hidden_lyr_sizes.copy()
@@ -237,6 +237,8 @@ class PredictiveCodingClassifier:
         Takes an argument pair of either r & alpha, or U & lambda, and returns
         a tuple of (g(r), g'(r)), or (h(U), h'(U)), respectively. Sparse kurtotic prior.
         """
+        printlog = self.print_and_log
+        
         try:
             # Set NumPy to raise exceptions on overflow and invalid operations
             np.seterr(over='raise', invalid='raise')
@@ -250,13 +252,13 @@ class PredictiveCodingClassifier:
             return (g_or_h, gprime_or_hprime)
         
         except FloatingPointError as e:
-            print(f"FloatingPointError: {e}")
+            printlog(f"FloatingPointError: {e}")
             
             if r_or_U is not None:
                 if r_or_U.ndim == 1:  # r_or_U is a vector
-                    print("First five elements of r:", r_or_U[:5])
+                    printlog("First five elements of r:", r_or_U[:5])
                 elif r_or_U.ndim == 2:  # r_or_U is a matrix
-                    print("First 5x5 elements of U:\n", r_or_U[:5, :5])
+                    printlog("First 5x5 elements of U:\n", r_or_U[:5, :5])
             
             return None
 
@@ -290,19 +292,28 @@ class PredictiveCodingClassifier:
         for i in range(1, n + 1):
             self.r[i] = prior_dist(size=all_hlyr_sizes[i - 1])
             
-    def initiate_logging(self):
-        log_dir = 'models/log'
-        makedirs(log_dir, exist_ok=True)
-        timestamp = datetime.now().strftime('%y%m%d_%H%M')
-        log_file_path = path.join(log_dir, f'mod_{timestamp}.txt')
-        log_buffer = io.StringIO()
-        return log_buffer, log_file_path
+    # def initiate_logging(self):
+    #     log_dir = 'models/log'
+    #     makedirs(log_dir, exist_ok=True)
+    #     timestamp = datetime.now().strftime('%y%m%d_%H%M')
+    #     log_file_path = join(log_dir, f'mod_{timestamp}.txt')
+    #     log_buffer = io.StringIO()
+    #     return log_buffer, log_file_path
+    
+    # Prints and sends to log file
+    def print_and_log(self, *args, **kwargs):
+        # Print to the terminal
+        print(*args, **kwargs)
+        # Print to the file
+        exp_log_path = join('models/log',self.exp_log_name)
+        if not exists(exp_log_path):
+            raise FileNotFoundError(f"Log file {exp_log_path} not found.")
+        with open(exp_log_path, "a") as f:
+            print(*args, **kwargs, file=f)
     
     def train(self, X, Y, save_checkpoint=None, online_diagnostics=False, plot=False):
         
-        # log_buffer, log_file_path = self.initiate_logging()
-        
-        # with contextlib.redirect_stdout(log_buffer):
+        printlog = self.print_and_log
         
         num_imgs = self.num_imgs
         num_tiles = self.num_tiles
@@ -310,15 +321,15 @@ class PredictiveCodingClassifier:
         test: re-shape 3392,864 (num imgs * tiles per image, flattened tile) to 212, 16, 864 (num imgs, tiles per image, flattened tile)
         This will be completed by data.py in the future
         '''
-        print('test: reshaping X into num imgs, num tiles per image, flattened tile')
+        printlog('test: reshaping X into num imgs, num tiles per image, flattened tile')
         X = X.reshape(num_imgs, num_tiles, -1)
 
         '''
         test
         '''
-        print('Train init:')
-        print('X shape (incl. test reshape):', X.shape)
-        print('Y shape:', Y.shape)
+        printlog('Train init:')
+        printlog('X shape (incl. test reshape):', X.shape)
+        printlog('Y shape:', Y.shape)
         
         
         '''
@@ -351,8 +362,8 @@ class PredictiveCodingClassifier:
         evaluate = partial(self.evaluate, update_method_name=update_method_name, update_method_number=update_method_number, classif_method=classif_method, plot=None)
     
         if online_diagnostics:
-            print('Diagnostics on')
-            print('Epoch: 0')
+            printlog('Diagnostics on')
+            printlog('Epoch: 0')
             epoch = 0
             Jr0 = 0
             Jc0 = 0
@@ -369,17 +380,17 @@ class PredictiveCodingClassifier:
             self.accuracy[epoch] = accuracy
             self.Jr[epoch] = Jr0
             self.Jc[epoch] = Jc0
-            print(f'Jr: {Jr0}, Jc: {Jc0}, Accuracy: {accuracy}')
+            printlog(f'Jr: {Jr0}, Jc: {Jc0}, Accuracy: {accuracy}')
         else:
-            print('Diagnostics: Off')
+            printlog('Diagnostics: Off')
         
         # Training
         epoch_n = self.epoch_n
-        print('Training...')
+        printlog('Training...')
         t_start_train = datetime.now()
         for e in range(epoch_n):
             epoch = e + 1
-            print(f'Epoch {epoch}')
+            printlog(f'Epoch {epoch}')
             t_start_epoch = datetime.now()
             Jre = 0
             Jce = 0
@@ -398,21 +409,21 @@ class PredictiveCodingClassifier:
                     Jre += rep_cost()
                     Jce += classif_cost(label)
             if online_diagnostics:
-                print(f'eval {epoch}')
+                printlog(f'eval {epoch}')
                 accuracy += evaluate(X, Y)
             self.accuracy[epoch] = accuracy
             self.Jr[epoch] = Jre
             self.Jc[epoch] = Jce
-            print(f'Jr: {Jre}, Jc: {Jce}, Accuracy: {accuracy}')
+            printlog(f'Jr: {Jre}, Jc: {Jce}, Accuracy: {accuracy}')
             t_end_epoch = datetime.now()
-            print(f'Epoch time: {t_end_epoch - t_start_epoch}.')
-            print(f'Est. time remaining: {(t_end_epoch - t_start_epoch) * (epoch_n - epoch)}.')
+            printlog(f'Epoch time: {t_end_epoch - t_start_epoch}.')
+            printlog(f'Est. time remaining: {(t_end_epoch - t_start_epoch) * (epoch_n - epoch)}.')
             if epoch == 1:
-                print(f'Est. tot time: {(t_end_epoch - t_start_epoch) * epoch_n}.')
+                printlog(f'Est. tot time: {(t_end_epoch - t_start_epoch) * epoch_n}.')
             
-        print('Training complete.')
-        print(f'Tot time: {t_end_epoch - t_start_train}.')
-        print('Saving final model...')
+        printlog('Training complete.')
+        printlog(f'Tot time: {t_end_epoch - t_start_train}.')
+        printlog('Saving final model...')
         # Save final model
         final_name = self.generate_output_name(self.mod_name, epoch)
         self.save_model(output_dir='models/', output_name=final_name)
@@ -562,7 +573,7 @@ class PredictiveCodingClassifier:
     
     def save_model(self, output_dir, output_name):
         makedirs(output_dir, exist_ok=True)
-        output_path = path.join(output_dir, output_name)
+        output_path = join(output_dir, output_name)
         with open(output_path, 'wb') as f:
             pickle.dump(self, f)
             
