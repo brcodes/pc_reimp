@@ -1,0 +1,254 @@
+exp_name: Experiment_2024_09_02
+train_with: True
+evaluate_with: False
+predict_with: False
+notes:  212 train
+model_type: static
+tiled: True
+num_tiles: 16
+flat_input: True
+num_layers: 3
+input_size: (16, 864)
+hidden_lyr_sizes: [32, 128]
+output_lyr_size: 212
+classif_method: c2
+activ_func: linear
+priors: kurtotic
+update_method: {'r_eq_W': 0.05}
+num_imgs: 212
+num_classes: 212
+dataset_train: ds.trace212_212_li_trace212_132_84_tl_16_36_24_32_20.pydb
+batch_size: 1
+epoch_n: 30
+kr: {1: 0.0001, 2: 0.0001, 3: 0.0001, 'o': 0.0001}
+kU: {1: 0.001, 2: 0.001, 3: 0.001, 'o': 0.001}
+kV: {1: 0.05, 2: 0.05, 3: 0.05}
+alph: {1: 1.0, 2: 0.05, 3: 0.05}
+lam: {1: 0.001, 2: 0.001, 3: 0.001, 'o': 0.001}
+ssq: {1: 2, 2: 2, 3: 2, 'o': 2}
+save_checkpoint: {'save_every': 50}
+load_checkpoint: None
+online_diagnostics: True
+plot_train: True
+dataset_eval: ds.trace212_212_li_trace212_132_84_tl_16_36_24_32_20.pydb
+plot_eval: first
+dataset_pred: ds.trace212_212_li_trace212_132_84_tl_16_36_24_32_20.pydb
+plot_pred: first
+
+
+r0 and input shape: (16, 864)
+r1 shape: (32,)
+r1 first 3: [-1.47344597 -0.5728455   0.08915924]
+r2 shape: (128,)
+r2 first 3: [ 0.17976416 -0.21824701 -1.76183351]
+r3 shape: (212,)
+r3 first 3: [0.58575016 0.27541316 0.19238148]
+U2 shape: (32, 128)
+U2 first 3x3: [[-0.1186002   1.29078767  0.10100865]
+ [-0.42350249  0.88628951 -0.3149247 ]
+ [-0.60029233  0.69206721 -0.71137157]]
+U3 shape: (128, 212)
+U3 first 3x3: [[ 2.15632934e-01 -4.56089377e-04  4.06289467e-01]
+ [ 6.22934676e-01 -3.82523464e-01 -2.08457843e-01]
+ [ 3.40124306e-01 -8.47372629e-02 -5.18504352e-01]]
+Uo shape: (212, 212)
+einsum arg U1: ij,k->ijk
+Instantiated model for desired final state: mod.static_tl_3_32-128-212_212_linear_kurtotic_c2_r_eq_W-0.05_Experiment_2024_09_02_30.pydb
+exp_name: Experiment_2024_09_02
+train_with: True
+evaluate_with: False
+predict_with: False
+notes:  212 train
+model_type: static
+tiled: True
+num_tiles: 16
+flat_input: True
+num_layers: 3
+input_size: (16, 864)
+hidden_lyr_sizes: [32, 128]
+output_lyr_size: 212
+classif_method: c2
+activ_func: linear
+priors: kurtotic
+update_method: {'r_eq_W': 0.05}
+num_imgs: 212
+num_classes: 212
+dataset_train: ds.trace212_212_li_trace212_132_84_tl_16_36_24_32_20.pydb
+batch_size: 1
+epoch_n: 30
+kr: {1: 0.0001, 2: 0.0001, 3: 0.0001, 'o': 0.0001}
+kU: {1: 0.001, 2: 0.001, 3: 0.001, 'o': 0.001}
+kV: {1: 0.05, 2: 0.05, 3: 0.05}
+alph: {1: 1.0, 2: 0.05, 3: 0.05}
+lam: {1: 0.001, 2: 0.001, 3: 0.001, 'o': 0.001}
+ssq: {1: 2, 2: 2, 3: 2, 'o': 2}
+save_checkpoint: {'save_every': 50}
+load_checkpoint: None
+online_diagnostics: True
+plot_train: True
+dataset_eval: ds.trace212_212_li_trace212_132_84_tl_16_36_24_32_20.pydb
+plot_eval: first
+dataset_pred: ds.trace212_212_li_trace212_132_84_tl_16_36_24_32_20.pydb
+plot_pred: first
+Loaded data: ds.trace212_212_li_trace212_132_84_tl_16_36_24_32_20.pydb
+test: reshaping X into num imgs, num tiles per image, flattened tile
+Train init:
+X shape (incl. test reshape): (212, 16, 864)
+Y shape: (212, 212)
+Diagnostics on
+Epoch: 0
+Jr: 34618949.21830321, Jc: 6037.541147216142, Accuracy: 0.0047169811320754715
+Training...
+Epoch 1
+eval 1
+Jr: 34573856.70459386, Jc: 5748.3354587145395, Accuracy: 0.0047169811320754715
+Epoch time: 0:00:06.812811.
+Est. time remaining: 0:03:17.571519.
+Est. tot time: 0:03:24.384330.
+Epoch 2
+eval 2
+Jr: 34346326.47699208, Jc: 5500.132724050765, Accuracy: 0.0047169811320754715
+Epoch time: 0:00:06.603867.
+Est. time remaining: 0:03:04.908276.
+Epoch 3
+eval 3
+Jr: 33249649.04730378, Jc: 5353.7055177109305, Accuracy: 0.0047169811320754715
+Epoch time: 0:00:06.459859.
+Est. time remaining: 0:02:54.416193.
+Epoch 4
+eval 4
+Jr: 29671990.85547984, Jc: 5244.492191380787, Accuracy: 0.0047169811320754715
+Epoch time: 0:00:06.258656.
+Est. time remaining: 0:02:42.725056.
+Epoch 5
+eval 5
+Jr: 24974110.8836573, Jc: 5155.152954189617, Accuracy: 0.0047169811320754715
+Epoch time: 0:00:06.306438.
+Est. time remaining: 0:02:37.660950.
+Epoch 6
+eval 6
+Jr: 22794403.186812654, Jc: 5078.511471701471, Accuracy: 0.0047169811320754715
+Epoch time: 0:00:06.430237.
+Est. time remaining: 0:02:34.325688.
+Epoch 7
+eval 7
+Jr: 22230205.857609883, Jc: 5011.270256421236, Accuracy: 0.0047169811320754715
+Epoch time: 0:00:06.457308.
+Est. time remaining: 0:02:28.518084.
+Epoch 8
+eval 8
+Jr: 22023551.08600472, Jc: 4951.153992175805, Accuracy: 0.0047169811320754715
+Epoch time: 0:00:06.415853.
+Est. time remaining: 0:02:21.148766.
+Epoch 9
+eval 9
+Jr: 21845806.86092024, Jc: 4895.984320793422, Accuracy: 0.0047169811320754715
+Epoch time: 0:00:06.539955.
+Est. time remaining: 0:02:17.339055.
+Epoch 10
+eval 10
+Jr: 21615614.8253642, Jc: 4845.782901308456, Accuracy: 0.0047169811320754715
+Epoch time: 0:00:06.557010.
+Est. time remaining: 0:02:11.140200.
+Epoch 11
+eval 11
+Jr: 21302964.607257556, Jc: 4798.721897516135, Accuracy: 0.0047169811320754715
+Epoch time: 0:00:06.693357.
+Est. time remaining: 0:02:07.173783.
+Epoch 12
+eval 12
+Jr: 20892768.56035391, Jc: 4754.985636429722, Accuracy: 0.0047169811320754715
+Epoch time: 0:00:06.637342.
+Est. time remaining: 0:01:59.472156.
+Epoch 13
+eval 13
+Jr: 20381357.051272035, Jc: 4714.073677888034, Accuracy: 0.0047169811320754715
+Epoch time: 0:00:06.764125.
+Est. time remaining: 0:01:54.990125.
+Epoch 14
+eval 14
+Jr: 19795379.40245052, Jc: 4675.038151974003, Accuracy: 0.0047169811320754715
+Epoch time: 0:00:06.696726.
+Est. time remaining: 0:01:47.147616.
+Epoch 15
+eval 15
+Jr: 19149207.102721, Jc: 4639.015991373844, Accuracy: 0.0047169811320754715
+Epoch time: 0:00:06.700120.
+Est. time remaining: 0:01:40.501800.
+Epoch 16
+eval 16
+Jr: 18502098.46139337, Jc: 4603.761285741979, Accuracy: 0.0047169811320754715
+Epoch time: 0:00:06.785726.
+Est. time remaining: 0:01:35.000164.
+Epoch 17
+eval 17
+Jr: 17863778.463162564, Jc: 4571.177637990244, Accuracy: 0.0047169811320754715
+Epoch time: 0:00:06.763227.
+Est. time remaining: 0:01:27.921951.
+Epoch 18
+eval 18
+Jr: 17254437.18894711, Jc: 4539.894587707756, Accuracy: 0.0047169811320754715
+Epoch time: 0:00:06.831622.
+Est. time remaining: 0:01:21.979464.
+Epoch 19
+eval 19
+Jr: 16685807.899568075, Jc: 4510.569872007435, Accuracy: 0.0047169811320754715
+Epoch time: 0:00:06.885700.
+Est. time remaining: 0:01:15.742700.
+Epoch 20
+eval 20
+Jr: 16159669.264888287, Jc: 4481.935911408291, Accuracy: 0.0047169811320754715
+Epoch time: 0:00:06.986129.
+Est. time remaining: 0:01:09.861290.
+Epoch 21
+eval 21
+Jr: 15671461.140427964, Jc: 4454.659329704627, Accuracy: 0.0047169811320754715
+Epoch time: 0:00:06.973349.
+Est. time remaining: 0:01:02.760141.
+Epoch 22
+eval 22
+Jr: 15223303.672805162, Jc: 4428.623800602003, Accuracy: 0.0047169811320754715
+Epoch time: 0:00:06.975613.
+Est. time remaining: 0:00:55.804904.
+Epoch 23
+eval 23
+Jr: 14809802.126003584, Jc: 4404.57902792774, Accuracy: 0.0047169811320754715
+Epoch time: 0:00:07.133428.
+Est. time remaining: 0:00:49.933996.
+Epoch 24
+eval 24
+Jr: 14425582.243571825, Jc: 4380.888802461875, Accuracy: 0.0047169811320754715
+Epoch time: 0:00:07.104490.
+Est. time remaining: 0:00:42.626940.
+Epoch 25
+eval 25
+Jr: 14064533.751349956, Jc: 4358.20377323464, Accuracy: 0.0047169811320754715
+Epoch time: 0:00:06.993669.
+Est. time remaining: 0:00:34.968345.
+Epoch 26
+eval 26
+Jr: 13720373.72495771, Jc: 4336.521563561256, Accuracy: 0.0047169811320754715
+Epoch time: 0:00:07.087284.
+Est. time remaining: 0:00:28.349136.
+Epoch 27
+eval 27
+Jr: 13387678.656698246, Jc: 4316.067936024136, Accuracy: 0.0047169811320754715
+Epoch time: 0:00:07.031623.
+Est. time remaining: 0:00:21.094869.
+Epoch 28
+eval 28
+Jr: 13066689.983462542, Jc: 4296.473404185592, Accuracy: 0.0047169811320754715
+Epoch time: 0:00:07.033631.
+Est. time remaining: 0:00:14.067262.
+Epoch 29
+eval 29
+Jr: 12749924.446498856, Jc: 4277.304572987693, Accuracy: 0.0047169811320754715
+Epoch time: 0:00:07.736384.
+Est. time remaining: 0:00:07.736384.
+Epoch 30
+eval 30
+Jr: 12437138.863752736, Jc: 4259.186787469731, Accuracy: 0.0047169811320754715
+Epoch time: 0:00:07.617476.
+Est. time remaining: 0:00:00.
+Training complete.
+Saving final model...

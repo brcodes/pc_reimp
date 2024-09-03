@@ -376,6 +376,7 @@ class PredictiveCodingClassifier:
         # Training
         epoch_n = self.epoch_n
         print('Training...')
+        t_start_train = datetime.now()
         for e in range(epoch_n):
             epoch = e + 1
             print(f'Epoch {epoch}')
@@ -410,6 +411,7 @@ class PredictiveCodingClassifier:
                 print(f'Est. tot time: {(t_end_epoch - t_start_epoch) * epoch_n}.')
             
         print('Training complete.')
+        print(f'Tot time: {t_end_epoch - t_start_train}.')
         print('Saving final model...')
         # Save final model
         final_name = self.generate_output_name(self.mod_name, epoch)

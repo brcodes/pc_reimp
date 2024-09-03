@@ -34,3 +34,360 @@ dataset_eval: ds.trace212_212_li_trace212_132_84_tl_16_36_24_32_20.pydb
 plot_eval: first
 dataset_pred: ds.trace212_212_li_trace212_132_84_tl_16_36_24_32_20.pydb
 plot_pred: first
+
+r0 and input shape: (16, 864)
+r1 shape: (32,)
+r1 first 3: [-0.12016312 -2.51290213  1.73495338]
+r2 shape: (128,)
+r2 first 3: [-0.19748028  0.19982797 -1.08861541]
+r3 shape: (212,)
+r3 first 3: [-0.18989113  3.18255188 -1.11234371]
+U2 shape: (32, 128)
+U2 first 3x3: [[-0.8024227  -0.34914624 -0.27260036]
+ [ 0.02358507  0.47341699 -0.2040888 ]
+ [-0.23134974  0.59945462 -0.32497042]]
+U3 shape: (128, 212)
+U3 first 3x3: [[-0.22832846  0.68934446 -0.15733172]
+ [-0.38679557  0.50265485 -0.58654565]
+ [-0.06118215  0.35494518 -0.10831852]]
+einsum arg U1: ij,k->ijk
+Instantiated model for desired final state: mod.static_tl_3_32-128-212_212_linear_kurtotic_c1_rW_niters-30_Experiment_2024_09_02_600.pydb
+exp_name: Experiment_2024_09_02
+train_with: True
+evaluate_with: False
+predict_with: False
+notes: rough 212 li train inits, x10-5 krs
+model_type: static
+tiled: True
+num_tiles: 16
+flat_input: True
+num_layers: 3
+input_size: (16, 864)
+hidden_lyr_sizes: [32, 128]
+output_lyr_size: 212
+classif_method: c1
+activ_func: linear
+priors: kurtotic
+update_method: {'rW_niters': 30}
+num_imgs: 212
+num_classes: 212
+dataset_train: ds.trace212_212_li_trace212_132_84_tl_16_36_24_32_20.pydb
+batch_size: 1
+epoch_n: 600
+kr: {1: 1e-05, 2: 1e-05, 3: 1e-05, 'o': 1e-05}
+kU: {1: 0.001, 2: 0.001, 3: 0.001, 'o': 0.001}
+kV: {1: 0.05, 2: 0.05, 3: 0.05}
+alph: {1: 1.0, 2: 0.05, 3: 0.05}
+lam: {1: 0.001, 2: 0.001, 3: 0.001, 'o': 0.001}
+ssq: {1: 2, 2: 2, 3: 2, 'o': 2}
+save_checkpoint: {'save_every': 50}
+load_checkpoint: None
+online_diagnostics: True
+plot_train: True
+dataset_eval: ds.trace212_212_li_trace212_132_84_tl_16_36_24_32_20.pydb
+plot_eval: first
+dataset_pred: ds.trace212_212_li_trace212_132_84_tl_16_36_24_32_20.pydb
+plot_pred: first
+
+
+Loaded data: ds.trace212_212_li_trace212_132_84_tl_16_36_24_32_20.pydb
+test: reshaping X into num imgs, num tiles per image, flattened tile
+Train init:
+X shape (incl. test reshape): (212, 16, 864)
+Y shape: (212, 212)
+Diagnostics on
+Epoch: 0
+Jr: 34988935.151912004, Jc: 1161.5189814439484, Accuracy: 0.0047169811320754715
+Training...
+Epoch 1
+eval 1
+Jr: 20886876.88984039, Jc: 1156.965945658905, Accuracy: 0.0047169811320754715
+Epoch time: 0:01:06.516451.
+Est. time remaining: 11:04:03.354149.
+Est. tot time: 11:05:09.870600.
+Epoch 2
+eval 2
+Jr: 17301065.549397793, Jc: 1156.7660408005197, Accuracy: 0.0047169811320754715
+Epoch time: 0:01:01.565259.
+Est. time remaining: 10:13:36.024882.
+Epoch 3
+eval 3
+Jr: 13849933.941005837, Jc: 1156.5773578769827, Accuracy: 0.0047169811320754715
+Epoch time: 0:00:59.678352.
+Est. time remaining: 9:53:47.976144.
+Epoch 4
+eval 4
+Jr: 11225117.356215581, Jc: 1156.3893843484373, Accuracy: 0.0047169811320754715
+Epoch time: 0:00:58.487320.
+Est. time remaining: 9:40:58.442720.
+Epoch 5
+eval 5
+Jr: 9415047.149961546, Jc: 1156.2094161725383, Accuracy: 0.0047169811320754715
+Epoch time: 0:01:00.679535.
+Est. time remaining: 10:01:44.323325.
+Epoch 6
+eval 6
+Jr: 8196093.835719878, Jc: 1156.0233269454961, Accuracy: 0.0047169811320754715
+Epoch time: 0:00:58.741365.
+Est. time remaining: 9:41:32.370810.
+Epoch 7
+eval 7
+Jr: 7317637.347565119, Jc: 1155.8500637724628, Accuracy: 0.0047169811320754715
+Epoch time: 0:00:57.738809.
+Est. time remaining: 9:30:39.113737.
+Epoch 8
+eval 8
+Jr: 6537025.5221097795, Jc: 1155.6676153995782, Accuracy: 0.0047169811320754715
+Epoch time: 0:00:58.677069.
+Est. time remaining: 9:38:56.824848.
+Epoch 9
+eval 9
+Jr: 5981360.425472285, Jc: 1155.485241082331, Accuracy: 0.0047169811320754715
+Epoch time: 0:00:58.656212.
+Est. time remaining: 9:37:45.821292.
+Epoch 10
+eval 10
+Jr: 5464314.247689447, Jc: 1155.3068956576612, Accuracy: 0.0047169811320754715
+Epoch time: 0:00:58.075046.
+Est. time remaining: 9:31:04.277140.
+Epoch 11
+eval 11
+Jr: 5082305.989572413, Jc: 1155.1349138705598, Accuracy: 0.0047169811320754715
+Epoch time: 0:00:56.810317.
+Est. time remaining: 9:17:41.276713.
+Epoch 12
+eval 12
+Jr: 4735235.638185098, Jc: 1154.9605397870355, Accuracy: 0.0047169811320754715
+Epoch time: 0:01:05.448426.
+Est. time remaining: 10:41:23.674488.
+Epoch 13
+eval 13
+Jr: 4417735.425098021, Jc: 1154.782132530719, Accuracy: 0.0047169811320754715
+Epoch time: 0:01:09.322784.
+Est. time remaining: 11:18:12.474208.
+Epoch 14
+eval 14
+Jr: 4178130.9911965625, Jc: 1154.6097417778035, Accuracy: 0.0047169811320754715
+Epoch time: 0:01:04.630442.
+Est. time remaining: 10:31:13.439012.
+Epoch 15
+eval 15
+Jr: 3901405.2937113033, Jc: 1154.4285181751773, Accuracy: 0.0047169811320754715
+Epoch time: 0:01:05.676707.
+Est. time remaining: 10:40:20.873595.
+Epoch 16
+eval 16
+Jr: 3715938.1466167793, Jc: 1154.2612422449301, Accuracy: 0.0047169811320754715
+Epoch time: 0:01:08.932723.
+Est. time remaining: 11:10:56.710232.
+Epoch 17
+eval 17
+Jr: 3526976.1232417594, Jc: 1154.089500277763, Accuracy: 0.0047169811320754715
+Epoch time: 0:01:02.141615.
+Est. time remaining: 10:03:48.561545.
+Epoch 18
+eval 18
+Jr: 3401244.4989733924, Jc: 1153.923260466284, Accuracy: 0.0047169811320754715
+Epoch time: 0:00:58.504913.
+Est. time remaining: 9:27:29.859366.
+Epoch 19
+eval 19
+Jr: 3192390.062793649, Jc: 1153.758240456092, Accuracy: 0.0047169811320754715
+Epoch time: 0:00:55.749698.
+Est. time remaining: 8:59:50.574538.
+Epoch 20
+eval 20
+Jr: 3035500.2058488107, Jc: 1153.5883923501506, Accuracy: 0.0047169811320754715
+Epoch time: 0:00:56.177572.
+Est. time remaining: 9:03:02.991760.
+Epoch 21
+eval 21
+Jr: 2800886.190287758, Jc: 1153.4192021054378, Accuracy: 0.0047169811320754715
+Epoch time: 0:01:02.907009.
+Est. time remaining: 10:07:03.158211.
+Epoch 22
+eval 22
+Jr: 2604626.7421903196, Jc: 1153.2638885660715, Accuracy: 0.0047169811320754715
+Epoch time: 0:01:02.967009.
+Est. time remaining: 10:06:34.931202.
+Epoch 23
+eval 23
+Jr: 2508433.2524956246, Jc: 1153.1005445147334, Accuracy: 0.0047169811320754715
+Epoch time: 0:01:05.416796.
+Est. time remaining: 10:29:05.491292.
+Epoch 24
+eval 24
+Jr: 2328738.533895687, Jc: 1152.9392108839727, Accuracy: 0.0047169811320754715
+Epoch time: 0:01:04.404319.
+Est. time remaining: 10:18:16.887744.
+Epoch 25
+eval 25
+Jr: 2335836.5223426726, Jc: 1152.7793473008323, Accuracy: 0.0047169811320754715
+Epoch time: 0:01:04.816263.
+Est. time remaining: 10:21:09.351225.
+Epoch 26
+eval 26
+Jr: 2310508.4871937325, Jc: 1152.6230003680284, Accuracy: 0.0047169811320754715
+Epoch time: 0:01:05.200698.
+Est. time remaining: 10:23:45.200652.
+Epoch 27
+eval 27
+Jr: 2298116.864726518, Jc: 1152.4674081622206, Accuracy: 0.0047169811320754715
+Epoch time: 0:01:04.954846.
+Est. time remaining: 10:20:19.126758.
+Epoch 28
+eval 28
+Jr: 2268824.2965468946, Jc: 1152.3099689126666, Accuracy: 0.0047169811320754715
+Epoch time: 0:01:04.979850.
+Est. time remaining: 10:19:28.474200.
+Epoch 29
+eval 29
+Jr: 2252753.0872960268, Jc: 1152.1533239959433, Accuracy: 0.0047169811320754715
+Epoch time: 0:01:05.521719.
+Est. time remaining: 10:23:32.901549.
+Epoch 30
+eval 30
+Jr: 2153776.392450489, Jc: 1151.9972527758352, Accuracy: 0.0047169811320754715
+Epoch time: 0:00:58.020195.
+Est. time remaining: 9:11:11.511150.
+Epoch 31
+eval 31
+Jr: 2238399.385525942, Jc: 1151.8358087652812, Accuracy: 0.0047169811320754715
+Epoch time: 0:00:54.100770.
+Est. time remaining: 8:33:03.338130.
+Epoch 32
+eval 32
+Jr: 2181451.5841944213, Jc: 1151.6922624040333, Accuracy: 0.0047169811320754715
+Epoch time: 0:00:54.013479.
+Est. time remaining: 8:31:19.656072.
+Epoch 33
+eval 33
+Jr: 2134245.1159308422, Jc: 1151.5405140551816, Accuracy: 0.0047169811320754715
+Epoch time: 0:00:53.649642.
+Est. time remaining: 8:26:59.347014.
+Epoch 34
+eval 34
+Jr: 2103821.4434798593, Jc: 1151.3906188049216, Accuracy: 0.0047169811320754715
+Epoch time: 0:00:54.353527.
+Est. time remaining: 8:32:44.096282.
+Epoch 35
+eval 35
+Jr: 2071071.027937467, Jc: 1151.244868561246, Accuracy: 0.0047169811320754715
+Epoch time: 0:00:54.123734.
+Est. time remaining: 8:29:39.909710.
+Epoch 36
+eval 36
+Jr: 2034841.7436911068, Jc: 1151.088886005266, Accuracy: 0.0047169811320754715
+Epoch time: 0:00:53.361595.
+Est. time remaining: 8:21:35.939580.
+Epoch 37
+eval 37
+Jr: 2043456.8839280289, Jc: 1150.9463784239858, Accuracy: 0.0047169811320754715
+Epoch time: 0:00:53.886108.
+Est. time remaining: 8:25:37.878804.
+Epoch 38
+eval 38
+Jr: 1980445.3383541403, Jc: 1150.8073113791838, Accuracy: 0.0047169811320754715
+Epoch time: 0:00:53.982596.
+Est. time remaining: 8:25:38.218952.
+Epoch 39
+eval 39
+Jr: 1941861.2270931096, Jc: 1150.6594796292977, Accuracy: 0.0047169811320754715
+Epoch time: 0:00:54.535786.
+Est. time remaining: 8:29:54.575946.
+Epoch 40
+eval 40
+Jr: 1913109.0309554923, Jc: 1150.5222388044447, Accuracy: 0.0047169811320754715
+Epoch time: 0:00:58.410899.
+Est. time remaining: 9:05:10.103440.
+Epoch 41
+eval 41
+Jr: 1870733.8361859724, Jc: 1150.374104667851, Accuracy: 0.0047169811320754715
+Epoch time: 0:00:59.632719.
+Est. time remaining: 9:15:34.689921.
+Epoch 42
+eval 42
+Jr: 1830764.2185473705, Jc: 1150.2335522384599, Accuracy: 0.0047169811320754715
+Epoch time: 0:01:01.153174.
+Est. time remaining: 9:28:43.471092.
+Epoch 43
+eval 43
+Jr: 1819256.905977404, Jc: 1150.0986957573596, Accuracy: 0.0047169811320754715
+Epoch time: 0:00:51.529982.
+Est. time remaining: 7:58:22.199974.
+Epoch 44
+eval 44
+Jr: 1778153.0626385012, Jc: 1149.9607600437303, Accuracy: 0.0047169811320754715
+Epoch time: 0:00:53.293324.
+Est. time remaining: 8:13:51.088144.
+Epoch 45
+eval 45
+Jr: 1730407.520990492, Jc: 1149.8210107852715, Accuracy: 0.0047169811320754715
+Epoch time: 0:00:52.174999.
+Est. time remaining: 8:02:37.124445.
+Epoch 46
+eval 46
+Jr: 1692405.4454003416, Jc: 1149.6909970227887, Accuracy: 0.0047169811320754715
+Epoch time: 0:00:53.313179.
+Est. time remaining: 8:12:15.501166.
+Epoch 47
+eval 47
+Jr: 1661116.5906092105, Jc: 1149.5517144383243, Accuracy: 0.0047169811320754715
+Epoch time: 0:00:53.161438.
+Est. time remaining: 8:09:58.275214.
+Epoch 48
+eval 48
+Jr: 1630318.0992162023, Jc: 1149.4154707849996, Accuracy: 0.0047169811320754715
+Epoch time: 0:00:51.317080.
+Est. time remaining: 7:52:07.028160.
+Epoch 49
+eval 49
+Jr: 1600100.438582735, Jc: 1149.2864264859147, Accuracy: 0.0047169811320754715
+Epoch time: 0:00:51.060109.
+Est. time remaining: 7:48:54.120059.
+Epoch 50
+eval 50
+Jr: 1560739.8826334537, Jc: 1149.1578455582912, Accuracy: 0.0047169811320754715
+Epoch time: 0:00:50.926664.
+Est. time remaining: 7:46:49.665200.
+Epoch 51
+eval 51
+Jr: 1586735.4280657389, Jc: 1149.019097909878, Accuracy: 0.0047169811320754715
+Epoch time: 0:00:50.928288.
+Est. time remaining: 7:45:59.630112.
+Epoch 52
+eval 52
+Jr: 1582409.0448393107, Jc: 1148.89100376731, Accuracy: 0.0047169811320754715
+Epoch time: 0:00:51.224979.
+Est. time remaining: 7:47:51.288492.
+Epoch 53
+eval 53
+Jr: 1544484.7504934173, Jc: 1148.7644775851154, Accuracy: 0.0047169811320754715
+Epoch time: 0:00:57.082581.
+Est. time remaining: 8:40:24.171807.
+Epoch 54
+eval 54
+Jr: 1503737.470032817, Jc: 1148.63841872953, Accuracy: 0.0047169811320754715
+Epoch time: 0:00:57.930055.
+Est. time remaining: 8:47:09.810030.
+Epoch 55
+eval 55
+Jr: 1489403.9731896059, Jc: 1148.5089673775603, Accuracy: 0.0047169811320754715
+Epoch time: 0:01:02.347350.
+Est. time remaining: 9:26:19.305750.
+Epoch 56
+eval 56
+Jr: 1476096.441466986, Jc: 1148.3814212736295, Accuracy: 0.0047169811320754715
+Epoch time: 0:00:55.507670.
+Est. time remaining: 8:23:16.172480.
+Epoch 57
+eval 57
+Jr: 1475176.4842034196, Jc: 1148.2566265667408, Accuracy: 0.0047169811320754715
+Epoch time: 0:00:56.667844.
+Est. time remaining: 8:32:50.639292.
+Epoch 58
+eval 58
+Jr: 1447798.4718010307, Jc: 1148.1378527372656, Accuracy: 0.0047169811320754715
+Epoch time: 0:00:56.838704.
+Est. time remaining: 8:33:26.577568.
+Epoch 59

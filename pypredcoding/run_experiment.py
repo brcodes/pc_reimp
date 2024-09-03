@@ -185,15 +185,25 @@ def log_params(params):
     timestamp = datetime.now().strftime('%y%m%d_%H%M')
     log_dir = 'models/log'
     makedirs(log_dir, exist_ok=True)
-    log_file_path = join(log_dir, f'exp_{timestamp}.txt')
+    log_file_name = f'exp_{timestamp}.txt'
+    log_file_path = join(log_dir, log_file_name)
     with open(log_file_path, 'w') as log_file:
         for key, value in params.items():
             log_file.write(f'{key}: {value}\n')
+    return log_file_name
+
+def print_and_log_params(params):
+    print_params(params)
+    log_file_name = log_params(params)
+    params_logged = True
+    return log_file_name, params_logged
 
 def run_experiment(config_file_path):
     params = load_params(config_file_path)
 
     model_name = model_name_from_params(params)
+    
+    params_logged = False
     
     if params['train_with']:
         
@@ -207,10 +217,10 @@ def run_experiment(config_file_path):
             model.set_model_attributes(model_name_param)
             print(f'Instantiated model for desired final state: {model_name}')
     
-        # Print params
-        print_params(params)
-        # Save params in log
-        log_params(params)
+        # Print and log params (base log for appending)
+        log_file_name, params_logged = print_and_log_params(params)
+        log_file_name_param = {'exp_log_name': log_file_name}
+        model.set_model_attributes(log_file_name_param)
         
         # Data
         X_train, Y_train = load_data(params['dataset_train'])
@@ -227,6 +237,12 @@ def run_experiment(config_file_path):
         
         mod_file_path = join('models', model_name)
         model = load_model(mod_file_path)
+
+        if not params_logged:
+            # Print and log params (base log for appending)
+            log_file_name, params_logged = print_and_log_params(params)
+            log_file_name_param = {'exp_log_name': log_file_name}
+            model.set_model_attributes(log_file_name_param)
         
         # Evaluate will not
         X_eval, Y_eval = load_data(params['dataset_eval'])
@@ -236,6 +252,12 @@ def run_experiment(config_file_path):
         
         mod_file_path = join('models', model_name)
         model = load_model(mod_file_path)
+        
+        if not params_logged:
+            # Print and log params (base log for appending)
+            log_file_name, params_logged = print_and_log_params(params)
+            log_file_name_param = {'exp_log_name': log_file_name}
+            model.set_model_attributes(log_file_name_param)
         
         # Predict will not
         X_pred = load_data(params['dataset_pred'])

@@ -2,7 +2,7 @@ exp_name: Experiment_2024_09_02
 train_with: True
 evaluate_with: False
 predict_with: False
-notes: rough 212 li train inits, x10-5 krs
+notes:  212 train
 model_type: static
 tiled: True
 num_tiles: 16
@@ -11,16 +11,16 @@ num_layers: 3
 input_size: (16, 864)
 hidden_lyr_sizes: [32, 128]
 output_lyr_size: 212
-classif_method: c1
+classif_method: c2
 activ_func: linear
 priors: kurtotic
-update_method: {'rW_niters': 30}
+update_method: {'r_niters_W': 100}
 num_imgs: 212
 num_classes: 212
 dataset_train: ds.trace212_212_li_trace212_132_84_tl_16_36_24_32_20.pydb
 batch_size: 1
-epoch_n: 1
-kr: {1: 1e-05, 2: 1e-05, 3: 1e-05, 'o': 1e-05}
+epoch_n: 30
+kr: {1: 0.0001, 2: 0.0001, 3: 0.0001, 'o': 0.0001}
 kU: {1: 0.001, 2: 0.001, 3: 0.001, 'o': 0.001}
 kV: {1: 0.05, 2: 0.05, 3: 0.05}
 alph: {1: 1.0, 2: 0.05, 3: 0.05}
