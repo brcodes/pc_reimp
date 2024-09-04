@@ -367,10 +367,24 @@ class PredictiveCodingClassifier:
         classif_method = self.classif_method
         classif_cost = self.classif_cost_dict[classif_method]
         
+        '''
+        test
+        '''
+        printlog(f'self.kr: {self.kr}')
+        printlog(f'self.kU: {self.kU}')
+        printlog(f'self.update_method: {self.update_method}')
+        printlog(f'update_method_name: {update_method_name}')
+        printlog(f'update_method_number: {update_method_number}')
+        printlog(f'classif_method: {classif_method}')
+        
+        '''
+        test
+        '''
+        
         evaluate = partial(self.evaluate, update_method_name=update_method_name, update_method_number=update_method_number, classif_method=classif_method, plot=None)
 
         if online_diagnostics:
-            printlog('\n\n')
+            printlog('\n')
             printlog('Diagnostics on')
             printlog('Epoch: 0')
             epoch = 0
@@ -391,7 +405,7 @@ class PredictiveCodingClassifier:
             self.Jc[epoch] = Jc0
             printlog(f'Jr: {Jr0}, Jc: {Jc0}, Accuracy: {accuracy}')
         else:
-            printlog('\n\n')
+            printlog('\n')
             printlog('Diagnostics: Off')
         
         # Training
@@ -440,7 +454,11 @@ class PredictiveCodingClassifier:
         self.save_model(output_dir='models/', output_name=final_name)
         
         # Final diagnostics
+        # Functionize later
+        printlog('\n\n')
         printlog(f'Final diagnostics over {epoch} epochs:')
+        printlog(f'Ep. 0 Jr: {self.Jr[0]}, Jc: {self.Jc[0]}, Accuracy: {self.accuracy[0]}')
+        printlog(f'Ep. {epoch} Jr: {self.Jr[epoch]}, Jc: {self.Jc[epoch]}, Accuracy: {self.accuracy[epoch]}')
         percent_diff_Jr = (self.Jr[0] - self.Jr[epoch]) / self.Jr[0] * 100 if self.Jr[0] != 0 else 0
         percent_diff_Jc = (self.Jc[0] - self.Jc[epoch]) / self.Jc[0] * 100 if self.Jc[0] != 0 else 0
         percent_diff_accuracy = (self.accuracy[0] - self.accuracy[epoch]) / self.accuracy[0] * 100 if self.accuracy[0] != 0 else 0

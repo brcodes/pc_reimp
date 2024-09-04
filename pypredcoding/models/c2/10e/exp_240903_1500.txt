@@ -1,0 +1,151 @@
+exp_name: Experiment_2024_09_03
+train_with: True
+evaluate_with: False
+predict_with: False
+notes:  212 train
+model_type: static
+tiled: True
+num_tiles: 16
+flat_input: True
+num_layers: 3
+input_size: (16, 864)
+hidden_lyr_sizes: [32, 128]
+output_lyr_size: 212
+classif_method: c2
+activ_func: linear
+priors: kurtotic
+update_method: {'rW_niters': 30}
+num_imgs: 212
+num_classes: 212
+dataset_train: ds.trace212_212_li_trace212_132_84_tl_16_36_24_32_20.pydb
+batch_size: 1
+epoch_n: 10
+kr: {1: 1e-05, 2: 1e-05, 3: 1e-05, 'o': 1e-05}
+kU: {1: 0.001, 2: 0.001, 3: 0.001, 'o': 0.001}
+kV: {1: 0.05, 2: 0.05, 3: 0.05}
+alph: {1: 1.0, 2: 0.05, 3: 0.05}
+lam: {1: 0.001, 2: 0.001, 3: 0.001, 'o': 0.001}
+ssq: {1: 2, 2: 2, 3: 2, 'o': 2}
+save_checkpoint: {'save_every': 50}
+load_checkpoint: None
+online_diagnostics: True
+plot_train: True
+dataset_eval: ds.trace212_212_li_trace212_132_84_tl_16_36_24_32_20.pydb
+plot_eval: first
+dataset_pred: ds.trace212_212_li_trace212_132_84_tl_16_36_24_32_20.pydb
+plot_pred: first
+
+
+
+priors: kurtotic init preview:
+r0 shape: (16, 864)
+r0 first 3: [[0. 0. 0. ... 0. 0. 0.]
+ [0. 0. 0. ... 0. 0. 0.]
+ [0. 0. 0. ... 0. 0. 0.]]
+r1 shape: (32,)
+r1 first 3: [-0.29840861  0.52250131  0.29763312]
+U1 first 3x3x3: [[[ 0.23818106  0.62371458 -0.10098374]
+  [ 0.06213784  0.09260924  0.12380346]
+  [-0.22339856  1.78609571  0.37984452]]
+
+ [[ 0.0388905  -0.0427098  -0.82163362]
+  [ 0.56282152  0.04070426 -0.15844213]
+  [ 1.05141562  0.46350327 -0.0966333 ]]
+
+ [[-0.07695325 -0.95961786  0.10851986]
+  [-0.0209398  -0.3499159  -0.37972074]
+  [ 0.05692857  0.27031143  0.45242168]]]
+r2 shape: (128,)
+r2 first 3: [-0.23091495  0.15030022  0.91909221]
+U2 first 3x3: [[ 0.03227916  0.73169105  0.33956712]
+ [ 0.57164043  1.00473323 -0.02763833]
+ [ 0.20612213 -0.46363057  0.64715021]]
+r3 shape: (212,)
+r3 first 3: [ 1.04678377 -0.80184472  0.50842228]
+U3 first 3x3: [[ 0.17917215 -0.71790586  0.00726483]
+ [-0.72846399  0.15625778 -1.04638797]
+ [-0.63928921 -0.04727215 -0.06005794]]
+Uo shape: (212, 212)
+Uo first 3x3: [[ 0.30258482  0.45541057 -1.1933662 ]
+ [ 0.42384498 -0.2721421   2.30036147]
+ [-0.84724705  0.2113908   0.67122743]]
+einsum arg U1: ij,k->ijk
+test: reshaping X into num imgs, num tiles per image, flattened tile
+Train init:
+X shape (incl. test reshape): (212, 16, 864)
+Y shape: (212, 212)
+self.kr: {1: 1e-05, 2: 1e-05, 3: 1e-05, 'o': 1e-05}
+self.kU: {1: 0.001, 2: 0.001, 3: 0.001, 'o': 0.001}
+self.update_method: {'rW_niters': 30}
+update_method_name: rW_niters
+update_method_number: 30
+classif_method: c2
+
+
+Diagnostics on
+Epoch: 0
+Jr: 35011165.38577183, Jc: 5928.944372027766, Accuracy: 0.0047169811320754715
+Training...
+Epoch 1
+eval 1
+Jr: 20706495.41669168, Jc: 4607.35068247527, Accuracy: 0.0047169811320754715
+Epoch time: 0:01:01.431076.
+Est. time remaining: 0:09:12.879684.
+Est. tot time: 0:10:14.310760.
+Epoch 2
+eval 2
+Jr: 17795294.474148475, Jc: 4266.362696075302, Accuracy: 0.0047169811320754715
+Epoch time: 0:01:01.434073.
+Est. time remaining: 0:08:11.472584.
+Epoch 3
+eval 3
+Jr: 13902500.108396696, Jc: 4124.849466621422, Accuracy: 0.0047169811320754715
+Epoch time: 0:01:00.751988.
+Est. time remaining: 0:07:05.263916.
+Epoch 4
+eval 4
+Jr: 11323604.574035892, Jc: 4033.621393399676, Accuracy: 0.0047169811320754715
+Epoch time: 0:00:59.191508.
+Est. time remaining: 0:05:55.149048.
+Epoch 5
+eval 5
+Jr: 9589571.1693584, Jc: 3971.693512363923, Accuracy: 0.0047169811320754715
+Epoch time: 0:00:57.960180.
+Est. time remaining: 0:04:49.800900.
+Epoch 6
+eval 6
+Jr: 8229368.73787715, Jc: 3926.6424658362503, Accuracy: 0.0047169811320754715
+Epoch time: 0:00:58.544779.
+Est. time remaining: 0:03:54.179116.
+Epoch 7
+eval 7
+Jr: 7298140.563326385, Jc: 3894.927140146058, Accuracy: 0.0047169811320754715
+Epoch time: 0:00:58.056633.
+Est. time remaining: 0:02:54.169899.
+Epoch 8
+eval 8
+Jr: 6522521.054210688, Jc: 3870.524350405153, Accuracy: 0.0047169811320754715
+Epoch time: 0:00:58.833339.
+Est. time remaining: 0:01:57.666678.
+Epoch 9
+eval 9
+Jr: 6004721.454607516, Jc: 3852.3838734251317, Accuracy: 0.0047169811320754715
+Epoch time: 0:00:59.659765.
+Est. time remaining: 0:00:59.659765.
+Epoch 10
+eval 10
+Jr: 5538927.438000361, Jc: 3839.606195035367, Accuracy: 0.0047169811320754715
+Epoch time: 0:01:01.058763.
+Est. time remaining: 0:00:00.
+Training complete.
+Tot time: 0:09:56.928132.
+Saving final model...
+
+
+
+Final diagnostics over 10 epochs:
+Ep. 0 Jr: 35011165.38577183, Jc: 5928.944372027766, Accuracy: 0.0047169811320754715
+Ep. 10 Jr: 5538927.438000361, Jc: 3839.606195035367, Accuracy: 0.0047169811320754715
+Percent diff Jr: 84.17953993541923, Jc: 35.239631979846386, Accuracy: 0.0
+Change per epoch Jr: 8.417953993541923, Jc: 3.5239631979846386, Accuracy: 0.0
+Change per min Jr: 8.461273854195154, Jc: 3.54209796027972, Accuracy: 0.0
