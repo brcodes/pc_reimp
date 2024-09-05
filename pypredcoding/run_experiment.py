@@ -265,7 +265,7 @@ def run_experiment(config_file_path):
 
     return None
 
-def main(config_file_path=join('config', 'config_2024_09_03.txt')):
+def main(config_file_path=join('config', 'config_2024_09_05.txt')):
     '''
     change the second part of the path to the config file you want to use
     '''

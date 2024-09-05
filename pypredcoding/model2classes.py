@@ -39,7 +39,7 @@ class PredictiveCodingClassifier:
         tiled: bool: whether to tile the input data
         flat_input: bool: whether to flatten the input data
         num_layers: int: number of layers in the model (discluding input layer '0')
-        input_size: tuple: size of input data, one sample
+        input_shape: tuple: size of input data, one sample
         hidden_lyr_sizes: list: size of hidden layers
         output_lyr_size: int: size of output layer (if c1, must == num_classes)
         classif_method: str or None: 'c1' or 'c2' or None
@@ -105,10 +105,10 @@ class PredictiveCodingClassifier:
         
         # Initiate rs, Us (Vs in recurrent subclass)
         # r0 is going to be different
-        input_size = self.input_size
+        input_shape = self.input_shape
         num_layers = self.num_layers
         n = num_layers
-        self.r[0] = np.zeros(input_size)
+        self.r[0] = np.zeros(input_shape)
         for i in range(1, n + 1):
             if i == n:
                 self.r[i] = self.prior_dist(size=(self.output_lyr_size))
@@ -117,19 +117,19 @@ class PredictiveCodingClassifier:
         
         # Initiate Us
         # U1 is going to be a little bit different
-        U1_size = tuple(list(input_size) + list(self.r[1].shape))
-        self.U[1] = self.prior_dist(size=U1_size)
+        U1_shape = tuple(list(input_shape) + list(self.r[1].shape))
+        self.U[1] = self.prior_dist(size=U1_shape)
         # U2 through Un
         for i in range(2, n + 1):
-            Ui_size = (self.r[i-1].shape[0], self.r[i].shape[0])
-            self.U[i] = self.prior_dist(size=Ui_size)
+            Ui_shape = (self.r[i-1].shape[0], self.r[i].shape[0])
+            self.U[i] = self.prior_dist(size=Ui_shape)
         if self.classif_method == 'c2':
-            Uo_size = (self.num_classes, self.output_lyr_size)
-            self.U['o'] = self.prior_dist(size=Uo_size)
+            Uo_shape = (self.num_classes, self.output_lyr_size)
+            self.U['o'] = self.prior_dist(size=Uo_shape)
             
         # Initiate U1-based operations dims (dimentions flex based on input)
         # Transpose dims
-        ndims_U1 = len(U1_size)
+        ndims_U1 = len(U1_shape)
         range_ndims_U1 = range(ndims_U1)
         last_dim_id_U1 = range_ndims_U1[-1]
         nonlast_dim_ids_U1 = range_ndims_U1[:-1]
@@ -142,7 +142,7 @@ class PredictiveCodingClassifier:
         self.U1T_tdot_dims = list(nonfirst_dim_ids_U1)
         
         # Input dims, all
-        ndims_input = len(input_size)
+        ndims_input = len(input_shape)
         range_ndims_input = range(ndims_input)
         # Bottom-up error and cost dims (either used in update, or cost)
         self.bu_error_tdot_dims = list(range_ndims_input)
@@ -158,9 +158,14 @@ class PredictiveCodingClassifier:
         # Will always be 'i,j->ij' for U2 through Un
         self.einsum_arg_Ui = 'i,j->ij'
         
-        # Hidden layer sizes for priors
-        self.all_hlyr_sizes = self.hidden_lyr_sizes.copy()
-        self.all_hlyr_sizes.append(self.output_lyr_size)
+        # All layer (hidden plus output) sizes for priors, other
+        self.all_lyr_sizes = {i: self.hidden_lyr_sizes[i - 1] for i in range(1,self.hidden_lyr_sizes + 1)}
+        self.all_lyr_sizes[num_layers] = self.output_lyr_size
+        
+        # All U sizes
+        self.U_sizes = {}
+        for Ulyr, U in self.U.items():
+            self.U_sizes[Ulyr] = np.prod(U.shape)
         
         # Initiate Jr, Jc, and accuracy (diagnostics) for storage, print, plot
         epoch_n = self.epoch_n
@@ -263,7 +268,7 @@ class PredictiveCodingClassifier:
         self.r_dists_hard = {}
         n = self.num_layers
         for i in range (1, n + 1):
-            lyr_size = self.all_hlyr_sizes[i - 1]
+            lyr_size = self.all_lyr_sizes[i]
             self.r_dists_hard[lyr_size] = self.prior_dist(size=lyr_size)
     
     def load_hard_prior_dist(self, size):
@@ -278,10 +283,10 @@ class PredictiveCodingClassifier:
         softmax_vector = exp_vector / np.sum(exp_vector)
         return softmax_vector
     
-    def reset_rs(self, all_hlyr_sizes, prior_dist):
+    def reset_rs(self, all_lyr_sizes, prior_dist):
         n = self.num_layers
         for i in range(1, n + 1):
-            self.r[i] = prior_dist(size=all_hlyr_sizes[i - 1])
+            self.r[i] = prior_dist(size=all_lyr_sizes[i])
 
     # Prints and sends to log file
     def print_and_log(self, *args, **kwargs):
@@ -354,8 +359,8 @@ class PredictiveCodingClassifier:
         '''
         
         n = self.num_layers
-        all_hlyr_sizes = self.all_hlyr_sizes
-        reset_rs = partial(self.reset_rs, all_hlyr_sizes=all_hlyr_sizes)
+        all_lyr_sizes = self.all_lyr_sizes
+        reset_rs = partial(self.reset_rs, all_lyr_sizes=all_lyr_sizes)
         
         update_method_name = next(iter(self.update_method))
         update_method_number = self.update_method[update_method_name]
@@ -488,7 +493,7 @@ class PredictiveCodingClassifier:
         '''
         test
         '''
-        reset_rs = partial(self.reset_rs, all_hlyr_sizes=self.all_hlyr_sizes)
+        reset_rs = partial(self.reset_rs, all_lyr_sizes=self.all_lyr_sizes)
         
         update_non_weight_components = partial(self.update_method_no_weight_dict[update_method_name], update_method_number)
         
@@ -947,13 +952,6 @@ class StaticPCC(PredictiveCodingClassifier):
                                                 - (kr_n / ssq_n) * self.g(r_n, self.alph[n])[1]
                                                 
     def U_updates_n_1(self, label):
-
-        '''u1 will need a tensor dot
-        '''
-        
-        '''
-        check if F will work with 3d+ Us
-        '''
         
         kU_1 = self.kU[1]
         ssq_1 = self.ssq[1]
