@@ -158,8 +158,11 @@ class PredictiveCodingClassifier:
         # Will always be 'i,j->ij' for U2 through Un
         self.einsum_arg_Ui = 'i,j->ij'
         
+        # Input size, r0
+        self.input_size = np.prod(input_shape)
+        
         # All layer (hidden plus output) sizes for priors, other
-        self.all_lyr_sizes = {i: self.hidden_lyr_sizes[i - 1] for i in range(1,self.hidden_lyr_sizes + 1)}
+        self.all_lyr_sizes = {i: self.hidden_lyr_sizes[i - 1] for i in range(1,len(self.hidden_lyr_sizes) + 1)}
         self.all_lyr_sizes[num_layers] = self.output_lyr_size
         
         # All U sizes
@@ -314,10 +317,13 @@ class PredictiveCodingClassifier:
             if i > 0:
                 # Check if the array is 3D or 5D
                 if self.U[i].ndim == 3:
+                    printlog(f'U{i} shape: {self.U[i].shape}')
                     printlog(f'U{i} first 3x3x3: {self.U[i][:3, :3, :3]}')
                 elif self.U[i].ndim == 5:
+                    printlog(f'U{i} shape: {self.U[i].shape}')
                     printlog(f'U{i} first 3x3x3x3x3: {self.U[i][:3, :3, :3, :3, :3]}')
                 else:
+                    printlog(f'U{i} shape: {self.U[i].shape}')
                     printlog(f'U{i} first 3x3: {self.U[i][:3, :3]}')
         if self.classif_method == 'c2':
             printlog(f'Uo shape: {self.U["o"].shape}')
@@ -375,12 +381,17 @@ class PredictiveCodingClassifier:
         '''
         test
         '''
+        printlog(f'self.all_lyr_sizes: {self.all_lyr_sizes}')
+        printlog(f'self.U_sizes: {self.U_sizes}')
+        
         printlog(f'self.kr: {self.kr}')
         printlog(f'self.kU: {self.kU}')
         printlog(f'self.update_method: {self.update_method}')
         printlog(f'update_method_name: {update_method_name}')
         printlog(f'update_method_number: {update_method_number}')
         printlog(f'classif_method: {classif_method}')
+        
+        exit()
         
         '''
         test
@@ -683,15 +694,6 @@ class StaticPCC(PredictiveCodingClassifier):
         
     def validate_attributes(self):
         pass
-        
-    def rep_cost_n_1(self):
-        pass
-    
-    def rep_cost_n_2(self):
-        pass
-    
-    def rep_cost_n_gt_eq_3(self):
-        pass
     
     def rep_cost_n_1_no_transform(self):
         '''
@@ -836,7 +838,9 @@ class StaticPCC(PredictiveCodingClassifier):
     def classif_cost_c2(self, label):
         # Format: -label.dot(np.log(softmax(Uo.dot(r_n))))
         o = 'o'
-        return -label.dot(np.log(self.stable_softmax(self.U[o].dot(self.r[self.num_layers])))) + self.h(self.U[o], self.lam[o])[0]
+        U_o = self.U[o]
+
+        return -label.dot(np.log(self.stable_softmax(U_o.dot(self.r[self.num_layers])))) + self.h(U_o, self.lam[o])[0]
     
     def classif_cost_None(self, label):
         return 0
@@ -858,154 +862,6 @@ class StaticPCC(PredictiveCodingClassifier):
     
     def rn_topdown_upd_None(self, label):
         return 0
-    
-    def r_updates_n_1(self, label):
-        '''
-        move to static eventually, as well as update_Component assignment
-        '''
-            
-        kr_1 = self.kr[1]
-        ssq_1 = self.ssq[1]
-        U_1 = self.U[1]
-        r_1 = self.r[1]
-        
-        #U1 operations
-        U1_transpose = np.transpose(U_1, self.U1T_dims)
-        U1_tdot_r1 = np.tensordot(U_1, r_1, axes=([-1],[0]))
-        input_min_U1tdotr1 = self.f(self.r[0] - self.f(U1_tdot_r1)[0])[1]
-        
-        self.r[1] += (kr_1 / ssq_1) * np.tensordot(U1_transpose, input_min_U1tdotr1, axes=(self.U1T_tdot_dims, self.bu_error_tdot_dims)) \
-                                                + self.rn_topdown_upd_dict[self.classif_method](label) \
-                                                - (kr_1 / ssq_1) * self.g(r_1, self.alph[1])[1]
-    
-    def r_updates_n_2(self, label):
-        
-        '''
-        two layer model
-        '''
-        kr_1 = self.kr[1]
-        ssq_1 = self.ssq[1]
-        U_1 = self.U[1]
-        r_1 = self.r[1]
-        
-        kr_2 = self.kr[2]
-        ssq_2 = self.ssq[2]
-        U_2 = self.U[2]
-        r_2 = self.r[2]
-        
-        #U1 operations
-        U1_transpose = np.transpose(U_1, self.U1T_dims)
-        U1_tdot_r1 = np.tensordot(U_1, r_1, axes=([-1],[0]))
-        input_min_U1tdotr1 = self.f(self.r[0] - self.f(U1_tdot_r1)[0])[1]
-        
-        self.r[1] += (kr_1 / ssq_1) * np.tensordot(U1_transpose, input_min_U1tdotr1, axes=(self.U1T_tdot_dims, self.bu_error_tdot_dims)) \
-                                            + (kr_2 * ssq_2) * (self.f(U_2.dot(r_2))[0] - r_1) \
-                                            - (kr_1 / ssq_1) * self.g(r_1, self.alph[1])[1]
-                                            
-        self.r[2] += (kr_2 / ssq_2) * (U_2.T.dot(self.f(self.r[1] - self.f(U_2.dot(r_2))[0])[1])) \
-                                                + self.rn_topdown_upd_dict[self.classif_method](label) \
-                                                - (kr_2 / ssq_2) * self.g(r_2, self.alph[2])[1]
-                                            
-    def r_updates_n_gt_eq_3(self, label):
-        
-        n = self.num_layers
-                                                
-        kr_1 = self.kr[1]
-        ssq_1 = self.ssq[1]
-        U_1 = self.U[1]
-        r_1 = self.r[1]
-        
-        kr_2 = self.kr[2]
-        ssq_2 = self.ssq[2]
-        U_2 = self.U[2]
-        r_2 = self.r[2]
-        
-        #U1 operations
-        U1_transpose = np.transpose(U_1, self.U1T_dims)
-        U1_tdot_r1 = np.tensordot(U_1, r_1, axes=([-1],[0]))
-        input_min_U1tdotr1 = self.f(self.r[0] - self.f(U1_tdot_r1)[0])[1]
-        
-        # Layer 1
-        self.r[1] += (kr_1 / ssq_1) * np.tensordot(U1_transpose, input_min_U1tdotr1, axes=(self.U1T_tdot_dims, self.bu_error_tdot_dims)) \
-                                            + (kr_2 * ssq_2) * (self.f(U_2.dot(r_2))[0] - r_1) \
-                                            - (kr_1 / ssq_1) * self.g(r_1, self.alph[1])[1]
-        # Layers 2 to n-1                                    
-        for i in range(2,n):
-            
-            kr_i = self.kr[i]
-            ssq_i = self.ssq[i]
-            r_i = self.r[i]
-            U_i = self.U[i]
-            
-            self.r[i] += (kr_i / ssq_i) * (U_i.T.dot(self.f(self.r[i-1] - self.f(U_i.dot(r_i))[0])[1])) \
-                                                + (self.kr[i+1] * self.ssq[i+1]) * (self.f(self.U[i+1].dot(self.r[i+1]))[0] - r_i) \
-                                                - (kr_i / ssq_i) * self.g(r_i, self.alph[i])[1]
-    
-        # Layer n
-        kr_n = self.kr[n]
-        ssq_n = self.ssq[n]
-        U_n = self.U[n]
-        r_n = self.r[n]
-
-        self.r[n] += (kr_n / ssq_n) * (U_n.T.dot(self.f(self.r[n-1] - self.f(U_n.dot(r_n))[0])[1])) \
-                                                + self.rn_topdown_upd_dict[self.classif_method](label) \
-                                                - (kr_n / ssq_n) * self.g(r_n, self.alph[n])[1]
-                                                
-    def U_updates_n_1(self, label):
-        
-        kU_1 = self.kU[1]
-        ssq_1 = self.ssq[1]
-        U_1 = self.U[1]
-        r_1 = self.r[1]
-        
-        #U1 operations
-        U1_tdot_r1 = np.tensordot(U_1, r_1, axes=([-1],[0]))
-        input_min_U1tdotr1 = self.f(self.r[0] - self.f(U1_tdot_r1)[0])[1]
-        
-        # Layer 1
-        self.U[1] += (kU_1 / ssq_1) * np.einsum(self.einsum_arg_U1, input_min_U1tdotr1, r_1) \
-                        - (kU_1 / ssq_1) * self.h(U_1, self.lam[1])[1]
-                            
-    def U_updates_n_gt_eq_2(self,label):
-        
-        kU_1 = self.kU[1]
-        ssq_1 = self.ssq[1]
-        U_1 = self.U[1]
-        r_1 = self.r[1]
-        
-        #U1 operations
-        U1_tdot_r1 = np.tensordot(U_1, r_1, axes=([-1],[0]))
-        input_min_U1tdotr1 = self.f(self.r[0] - self.f(U1_tdot_r1)[0])[1]
-        
-        # Layer 1
-        self.U[1] += (kU_1 / ssq_1) * np.einsum(self.einsum_arg_U1, input_min_U1tdotr1, r_1) \
-                        - (kU_1 / ssq_1) * self.h(U_1, self.lam[1])[1]
-        
-        n = self.num_layers
-        
-        #i>1 - n will all be the same
-        for i in range(2,n+1):
-            
-            kU_i = self.kU[i]
-            ssq_i = self.ssq[i]
-            r_i = self.r[i]
-            U_i = self.U[i]
-
-            rimin1_min_Uidotri = self.f(self.r[i-1] - self.f(U_i.dot(r_i))[0])[1]
-            
-            #i
-            self.U[i] += (kU_i / ssq_i) * np.outer(rimin1_min_Uidotri, r_i) \
-                        - (kU_i / ssq_i) * self.h(U_i, self.lam[i])[1]
-    
-    def Uo_update(self, label):
-        # Format: Uo += kU_o / ssq_o * (label - softmax(Uo.dot(r_n)))
-        '''
-        check k/2 vs k/ssqo
-        for every top down rn update, U update, V update, (place where a lr is used)
-        '''
-        o = 'o'
-        r_n = self.r[self.num_layers]
-        self.U[o] += (self.kU[o]/ self.ssq[o]) * np.outer((label - self.stable_softmax(self.U[o].dot(r_n))), r_n)
     
     def r_updates_n_1_no_transform(self, label):
         '''
@@ -1068,15 +924,24 @@ class StaticPCC(PredictiveCodingClassifier):
         U_2 = self.U[2]
         r_2 = self.r[2]
         
+        r1_bu_size_divisor = self.r1_bu_size_divisor
+        r1_td_size_divisor = self.all_lyr_sizes[1]
+        
         #U1 operations
         U1_transpose = np.transpose(U_1, self.U1T_dims)
         U1_tdot_r1 = np.tensordot(U_1, r_1, axes=([-1],[0]))
-        input_min_U1tdotr1 = self.r[0] - self.f(U1_tdot_r1)[0]
+        input_min_U1tdotr1 = self.r[0] - self.f(U1_tdot_r1)[0] * (1 / l1_bu_size_divisor)
+        
+        term_divisor = self.r_upd_term_divisors # always 3, unless rn and NC cost. make it a dict, too.
+        bu_size_divisor = self.r_upd_bu_divisors # always size of ri-1
+        td_size_divisor = self.r_upd_td_divisors # always size of ri
+        
+        
         
         # Layer 1
-        self.r[1] += (kr_1 / ssq_1) * np.tensordot(U1_transpose, input_min_U1tdotr1, axes=(self.U1T_tdot_dims, self.bu_error_tdot_dims)) \
+        self.r[1] += ((kr_1 / ssq_1) * np.tensordot(U1_transpose, input_min_U1tdotr1, axes=(self.U1T_tdot_dims, self.bu_error_tdot_dims)) \
                                             + (kr_2 * ssq_2) * (self.f(U_2.dot(r_2))[0] - r_1) \
-                                            - (kr_1 / ssq_1) * self.g(r_1, self.alph[1])[1]
+                                            - (kr_1 / ssq_1) * self.g(r_1, self.alph[1])[1]) * (1 / term_divisor)
         # Layers 2 to n-1                                    
         for i in range(2,n):
             
@@ -1100,13 +965,6 @@ class StaticPCC(PredictiveCodingClassifier):
                                                 - (kr_n / ssq_n) * self.g(r_n, self.alph[n])[1]
                                                 
     def U_updates_n_1_no_transform(self,label):
-
-        '''u1 will need a tensor dot
-        '''
-        
-        '''
-        check if F will work with 3d+ Us
-        '''
         
         kU_1 = self.kU[1]
         ssq_1 = self.ssq[1]
@@ -1154,13 +1012,15 @@ class StaticPCC(PredictiveCodingClassifier):
                         
     def Uo_update_no_transform(self, label):
         # Format: Uo += kU_o / ssq_o * (label - softmax(Uo.dot(r_n)))
-        '''
-        check k/2 vs k/ssqo
-        for every top down rn update, U update, V update, (place where a lr is used)
-        '''
+        
         o = 'o'
+        kU_o = self.self.kU[o]
+        ssq_o = self.ssq[o]
+        U_o = self.U[o]
         r_n = self.r[self.num_layers]
-        self.U[o] += (self.kU[o]/ self.ssq[o]) * np.outer((label - self.stable_softmax(self.U[o].dot(r_n))), r_n)
+        
+        self.U[o] += (kU_o/ ssq_o) * np.outer((label - self.stable_softmax(U_o.dot(r_n))), r_n) \
+                    - (kU_o/ ssq_o) * self.h(U_o, self.lam[o])[1]
 
     def classif_guess_c1(self, label):
         guess = np.argmax(self.stable_softmax(self.r[self.num_layers]))
