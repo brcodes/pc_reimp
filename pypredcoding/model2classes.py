@@ -123,7 +123,8 @@ class PredictiveCodingClassifier:
         for i in range(2, n + 1):
             Ui_shape = (self.r[i-1].shape[0], self.r[i].shape[0])
             self.U[i] = self.prior_dist(size=Ui_shape)
-        if self.classif_method == 'c2':
+        classif_method = self.classif_method
+        if classif_method == 'c2':
             Uo_shape = (self.num_classes, self.output_lyr_size)
             self.U['o'] = self.prior_dist(size=Uo_shape)
             
@@ -167,9 +168,33 @@ class PredictiveCodingClassifier:
         
         # All U sizes
         self.U_sizes = {}
-        for Ulyr, U in self.U.items():
-            self.U_sizes[Ulyr] = np.prod(U.shape)
+        for i, Ui in self.U.items():
+            self.U_sizes[i] = np.prod(Ui.shape)
         
+        # Size divisors (for norming. 1 if no norm.)
+        if self.cost_norm == 'num_terms':
+            self.r_size_divisors = {i: (self.input_size if i == 0 else self.all_lyr_sizes[i]) for i in range(num_layers + 1)}
+            self.U_size_divisors = {i: self.U_sizes[i] for i in self.U}
+        elif self.cost_norm is None:
+            self.r_size_divisors = {i: 1 for i in range(num_layers + 1)}
+            self.U_size_divisors = {i: 1 for i in self.U}
+            
+        # Term divisors (for norming. 1 if no norm.)
+        if self.cost_norm == 'num_terms':
+            # Bottom up, top down, r prior, U prior
+            self.Jr_term_divisors = {i: (4 if i != self.num_layers else 3) for i in range(1, num_layers + 1)}
+            # Error, or Error and Uo prior
+            self.Jc_term_divisor = 2 if classif_method == 'c2' else (1 if classif_method in ['c1', None] else 0) # 0 will throw error
+            # bottom up, top down, r prior. i-n will have all 3, except in n case with classif method NC.
+            self.r_term_divisors = {i: (2 if i == num_layers and self.classif_method is None else 3) for i in range(1, num_layers + 1)}
+            # Bottom up, prior (or top downa nd prior in Uo case)
+            self.U_term_divisors = {i: 2 for i in self.U}
+        elif self.cost_norm is None:
+            self.Jr_term_divisors= {i: 1 for i in range(1, num_layers + 1)}
+            self.Jc_term_divisor = 1
+            self.r_term_divisors = {i: 1 for i in range(1, num_layers + 1)}
+            self.U_term_divisors = {i: 1 for i in self.U}
+            
         # Initiate Jr, Jc, and accuracy (diagnostics) for storage, print, plot
         epoch_n = self.epoch_n
         self.Jr = [0] * (epoch_n + 1)
