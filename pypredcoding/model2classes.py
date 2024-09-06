@@ -89,35 +89,16 @@ class PredictiveCodingClassifier:
         '''
         for key, value in params.items():
             setattr(self, key, value)
-        
-    def config_from_attributes(self):
-        '''
-        Set up the model from the attributes.
-        '''
-        
-        # Transforms and priors
-        self.f = self.act_fxn_dict[self.activ_func]
-        self.g = self.prior_cost_dict[self.priors]
-        self.h = self.prior_cost_dict[self.priors]
-        
-        self.r = {}
-        self.U = {}
-        
-        # Initiate rs, Us (Vs in recurrent subclass)
-        # r0 is going to be different
-        input_shape = self.input_shape
-        num_layers = self.num_layers
-        n = num_layers
+            
+    def initiate_rs(self, input_shape, n):
         self.r[0] = np.zeros(input_shape)
         for i in range(1, n + 1):
             if i == n:
                 self.r[i] = self.prior_dist(size=(self.output_lyr_size))
             else:
                 self.r[i] = self.prior_dist(size=(self.hidden_lyr_sizes[i - 1]))
-        
-        # Initiate Us
-        # U1 is going to be a little bit different
-        U1_shape = tuple(list(input_shape) + list(self.r[1].shape))
+    
+    def initiate_Us(self, U1_shape, n, classif_method):
         self.U[1] = self.prior_dist(size=U1_shape)
         # U2 through Un
         for i in range(2, n + 1):
@@ -127,7 +108,8 @@ class PredictiveCodingClassifier:
         if classif_method == 'c2':
             Uo_shape = (self.num_classes, self.output_lyr_size)
             self.U['o'] = self.prior_dist(size=Uo_shape)
-            
+    
+    def initiate_U1_dims(self, U1_shape, input_shape):
         # Initiate U1-based operations dims (dimentions flex based on input)
         # Transpose dims
         ndims_U1 = len(U1_shape)
@@ -158,52 +140,90 @@ class PredictiveCodingClassifier:
             raise ValueError('Too many dimensions.')
         # Will always be 'i,j->ij' for U2 through Un
         self.einsum_arg_Ui = 'i,j->ij'
-        
-        # Input size, r0
-        self.input_size = np.prod(input_shape)
-        
-        # All layer (hidden plus output) sizes for priors, other
-        self.all_lyr_sizes = {i: self.hidden_lyr_sizes[i - 1] for i in range(1,len(self.hidden_lyr_sizes) + 1)}
-        self.all_lyr_sizes[num_layers] = self.output_lyr_size
-        
-        # All U sizes
-        self.U_sizes = {}
-        for i, Ui in self.U.items():
-            self.U_sizes[i] = np.prod(Ui.shape)
+    
+    def initiate_norm_divisors(self, n, classif_method):
         
         # Size divisors (for norming. 1 if no norm.)
         if self.cost_norm == 'num_terms':
-            self.r_size_divisors = {i: (self.input_size if i == 0 else self.all_lyr_sizes[i]) for i in range(num_layers + 1)}
+            self.r_size_divisors = {i: (self.input_size if i == 0 else self.all_lyr_sizes[i]) for i in range(n + 1)}
             self.U_size_divisors = {i: self.U_sizes[i] for i in self.U}
         elif self.cost_norm is None:
-            self.r_size_divisors = {i: 1 for i in range(num_layers + 1)}
+            self.r_size_divisors = {i: 1 for i in range(n + 1)}
             self.U_size_divisors = {i: 1 for i in self.U}
             
         # Term divisors (for norming. 1 if no norm.)
         if self.cost_norm == 'num_terms':
             # Bottom up, top down, r prior, U prior
-            self.Jr_term_divisors = {i: (4 if i != self.num_layers else 3) for i in range(1, num_layers + 1)}
+            self.Jr_term_divisors = {i: (4 if i != self.n else 3) for i in range(1, n + 1)}
             # Error, or Error and Uo prior
             self.Jc_term_divisor = 2 if classif_method == 'c2' else (1 if classif_method in ['c1', None] else 0) # 0 will throw error
             # bottom up, top down, r prior. i-n will have all 3, except in n case with classif method NC.
-            self.r_term_divisors = {i: (2 if i == num_layers and self.classif_method is None else 3) for i in range(1, num_layers + 1)}
+            self.r_term_divisors = {i: (2 if i == n and self.classif_method is None else 3) for i in range(1, n + 1)}
             # Bottom up, prior (or top downa nd prior in Uo case)
             self.U_term_divisors = {i: 2 for i in self.U}
         elif self.cost_norm is None:
-            self.Jr_term_divisors= {i: 1 for i in range(1, num_layers + 1)}
+            self.Jr_term_divisors= {i: 1 for i in range(1, n + 1)}
             self.Jc_term_divisor = 1
-            self.r_term_divisors = {i: 1 for i in range(1, num_layers + 1)}
+            self.r_term_divisors = {i: 1 for i in range(1, n + 1)}
             self.U_term_divisors = {i: 1 for i in self.U}
-            
+    
+    def initiate_diagnostic_storage(self):
         # Initiate Jr, Jc, and accuracy (diagnostics) for storage, print, plot
         epoch_n = self.epoch_n
         self.Jr = [0] * (epoch_n + 1)
         self.Jc = [0] * (epoch_n + 1)
         self.accuracy = [0] * (epoch_n + 1)
         
-        # Later: by layer
+        # Later, if desired: by layer
         # self.Jr = {i: [0] * (epoch_n + 1) for i in range(n)}
         # self.Jc = {i: [0] * (epoch_n + 1) for i in range(n)}
+        
+    def config_from_attributes(self):
+        '''
+        Set up the model from the attributes.
+        '''
+        
+        # Transforms and priors
+        self.f = self.act_fxn_dict[self.activ_func]
+        self.g = self.prior_cost_dict[self.priors]
+        self.h = self.prior_cost_dict[self.priors]
+        
+        self.r = {}
+        self.U = {}
+        
+        # Initiate rs, Us (Vs in recurrent subclass)
+        # r0 is going to be different
+        input_shape = self.input_shape
+        num_layers = self.num_layers
+        n = num_layers
+        self.initiate_rs(input_shape, n)
+        
+        # Initiate Us
+        # U1 is going to be a little bit different
+        U1_shape = tuple(list(input_shape) + list(self.r[1].shape))
+        classif_method = self.classif_method
+        self.initiate_Us(U1_shape, n, classif_method)
+        
+        # Initiate U1-based operations dims
+        self.initiate_U1_dims(U1_shape, input_shape)
+        
+        # Set shapes to sizes
+        # Input size, r0
+        self.input_size = np.prod(input_shape)
+        # All layer (hidden plus output) sizes for priors, other
+        self.all_lyr_sizes = {i: self.hidden_lyr_sizes[i - 1] for i in range(1,len(self.hidden_lyr_sizes) + 1)}
+        self.all_lyr_sizes[n] = self.output_lyr_size
+        
+        # All U sizes
+        self.U_sizes = {}
+        for i, Ui in self.U.items():
+            self.U_sizes[i] = np.prod(Ui.shape)
+        
+        # If norm, divide terms by size and number of terms, else div. by 1.
+        self.initiate_norm_divisors(n, classif_method)
+        
+        # Initiate Jr, Jc, and accuracy (diagnostics) for storage, print, plot
+        self.initiate_diagnostic_storage()
         
     # Activation functions
     def linear_transform(self, U_dot_r):
