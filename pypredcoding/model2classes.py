@@ -450,6 +450,8 @@ class PredictiveCodingClassifier:
         test
         '''
         
+        exit()
+        
         evaluate = partial(self.evaluate, update_method_name=update_method_name, update_method_number=update_method_number, classif_method=classif_method, plot=None)
 
         if online_diagnostics:
@@ -988,7 +990,7 @@ class StaticPCC(PredictiveCodingClassifier):
         # Layer 1
         self.r[1] += ((kr_1 / ssq_1) * np.tensordot(U1_transpose, input_min_U1tdotr1, axes=(self.U1T_tdot_dims, self.bu_error_tdot_dims)) \
                                             + (kr_2 * ssq_2) * ((self.f(U_2.dot(r_2))[0] - r_1) * (1 / r_norms[1])) \
-                                            - (kr_1 / ssq_1) * self.g(r_1, self.alph[1])[1]) * (1 / r_term_norms[1])
+                                            - (kr_1 / ssq_1) * self.g(r_1, self.alph[1])[1] * (1 / r_norms[1])) * (1 / r_term_norms[1])
         # Layers 2 to n-1                                    
         for i in range(2,n):
             
@@ -999,7 +1001,7 @@ class StaticPCC(PredictiveCodingClassifier):
             
             self.r[i] += ((kr_i / ssq_i) * (U_i.T.dot((self.r[i-1] - self.f(U_i.dot(r_i))[0]) * (1 / r_norms[i - 1]))) \
                                                 + (self.kr[i+1] * self.ssq[i+1]) * ((self.f(self.U[i+1].dot(self.r[i+1]))[0] - r_i) * (1 / r_norms[i])) \
-                                                - (kr_i / ssq_i) * self.g(r_i, self.alph[i])[1]) * (1 / r_term_norms[i])
+                                                - (kr_i / ssq_i) * self.g(r_i, self.alph[i])[1] * (1 / r_norms[i])) * (1 / r_term_norms[i])
 
         # Layer n
         kr_n = self.kr[n]
@@ -1009,7 +1011,7 @@ class StaticPCC(PredictiveCodingClassifier):
 
         self.r[n] += ((kr_n / ssq_n) * (U_n.T.dot((self.r[n-1] - self.f(U_n.dot(r_n))[0]) * (1 / r_norms[n - 1]))) \
                                                 + self.rn_topdown_upd_dict[self.classif_method](label) * (1 / r_norms[n]) \
-                                                - (kr_n / ssq_n) * self.g(r_n, self.alph[n])[1]) * (1 / r_term_norms[n])
+                                                - (kr_n / ssq_n) * self.g(r_n, self.alph[n])[1] * (1 / r_norms[n])) * (1 / r_term_norms[n])
                                                 
     def U_updates_n_1_no_transform(self,label):
         
@@ -1025,7 +1027,7 @@ class StaticPCC(PredictiveCodingClassifier):
         # Layer 1
         self.U[1] += (kU_1 / ssq_1) * np.einsum(self.einsum_arg_U1, input_min_U1tdotr1, r_1) \
                         - (kU_1 / ssq_1) * self.h(U_1, self.lam[1])[1]
-                            
+    
     def U_updates_n_gt_eq_2_no_transform(self,label):
         
         kU_1 = self.kU[1]
@@ -1033,13 +1035,16 @@ class StaticPCC(PredictiveCodingClassifier):
         U_1 = self.U[1]
         r_1 = self.r[1]
         
+        U_norms = self.U_size_divisors
+        U_term_norms = self.U_term_divisors
+        
         #U1 operations
         U1_tdot_r1 = np.tensordot(U_1, r_1, axes=([-1],[0]))
         input_min_U1tdotr1 = self.r[0] - self.f(U1_tdot_r1)[0]
         
         # Layer 1
-        self.U[1] += (kU_1 / ssq_1) * np.einsum(self.einsum_arg_U1, input_min_U1tdotr1, r_1) \
-                        - (kU_1 / ssq_1) * self.h(U_1, self.lam[1])[1]
+        self.U[1] += ((kU_1 / ssq_1) * (np.einsum(self.einsum_arg_U1, input_min_U1tdotr1, r_1)) * (1 / U_norms[1]) \
+                        - (kU_1 / ssq_1) * self.h(U_1, self.lam[1])[1]) * (1 / U_term_norms[1])
         
         n = self.num_layers
         
@@ -1054,8 +1059,8 @@ class StaticPCC(PredictiveCodingClassifier):
             rimin1_min_Uidotri = self.r[i-1] - self.f(U_i.dot(r_i))[0]
             
             #i
-            self.U[i] += (kU_i / ssq_i) * np.outer(rimin1_min_Uidotri, r_i) \
-                        - (kU_i / ssq_i) * self.h(U_i, self.lam[i])[1]
+            self.U[i] += ((kU_i / ssq_i) * (np.outer(rimin1_min_Uidotri, r_i)) * (1 / U_norms[i]) \
+                        - (kU_i / ssq_i) * self.h(U_i, self.lam[i])[1]) * (1 / U_term_norms[i])
                         
     def Uo_update_no_transform(self, label):
         # Format: Uo += kU_o / ssq_o * (label - softmax(Uo.dot(r_n)))
