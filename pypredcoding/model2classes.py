@@ -90,7 +90,7 @@ class PredictiveCodingClassifier:
         for key, value in params.items():
             setattr(self, key, value)
             
-    def initiate_rs(self, input_shape, n):
+    def config_rs(self, input_shape, n):
         self.r[0] = np.zeros(input_shape)
         for i in range(1, n + 1):
             if i == n:
@@ -98,7 +98,7 @@ class PredictiveCodingClassifier:
             else:
                 self.r[i] = self.prior_dist(size=(self.hidden_lyr_sizes[i - 1]))
     
-    def initiate_Us(self, U1_shape, n, classif_method):
+    def config_Us(self, U1_shape, n, classif_method):
         self.U[1] = self.prior_dist(size=U1_shape)
         # U2 through Un
         for i in range(2, n + 1):
@@ -109,7 +109,7 @@ class PredictiveCodingClassifier:
             Uo_shape = (self.num_classes, self.output_lyr_size)
             self.U['o'] = self.prior_dist(size=Uo_shape)
     
-    def initiate_U1_dims(self, U1_shape, input_shape):
+    def config_U1_dims(self, U1_shape, input_shape):
         # Initiate U1-based operations dims (dimentions flex based on input)
         # Transpose dims
         ndims_U1 = len(U1_shape)
@@ -140,34 +140,46 @@ class PredictiveCodingClassifier:
             raise ValueError('Too many dimensions.')
         # Will always be 'i,j->ij' for U2 through Un
         self.einsum_arg_Ui = 'i,j->ij'
-    
-    def initiate_norm_divisors(self, n, classif_method):
         
+    def config_sizes_from_shapes(self, input_shape, n):
+        # Input size, r0
+        self.input_size = np.prod(input_shape)
+        # All layer (hidden plus output) sizes for priors, other
+        self.all_lyr_sizes = {i: self.hidden_lyr_sizes[i - 1] for i in range(1,len(self.hidden_lyr_sizes) + 1)}
+        self.all_lyr_sizes[n] = self.output_lyr_size
+        
+        # All U sizes
+        self.U_sizes = {}
+        for i, Ui in self.U.items():
+            self.U_sizes[i] = np.prod(Ui.shape)
+    
+    def config_cost_norm_divisors(self, n, classif_method):
+        cost_norm = self.cost_norm
         # Size divisors (for norming. 1 if no norm.)
-        if self.cost_norm == 'num_terms':
+        if cost_norm == 'num_terms':
             self.r_size_divisors = {i: (self.input_size if i == 0 else self.all_lyr_sizes[i]) for i in range(n + 1)}
             self.U_size_divisors = {i: self.U_sizes[i] for i in self.U}
-        elif self.cost_norm is None:
+        elif cost_norm is None:
             self.r_size_divisors = {i: 1 for i in range(n + 1)}
             self.U_size_divisors = {i: 1 for i in self.U}
             
         # Term divisors (for norming. 1 if no norm.)
-        if self.cost_norm == 'num_terms':
+        if cost_norm == 'num_terms':
             # Bottom up, top down, r prior, U prior
-            self.Jr_term_divisors = {i: (4 if i != self.n else 3) for i in range(1, n + 1)}
+            self.Jr_term_divisors = {i: (4 if i != n else 3) for i in range(1, n + 1)}
             # Error, or Error and Uo prior
             self.Jc_term_divisor = 2 if classif_method == 'c2' else (1 if classif_method in ['c1', None] else 0) # 0 will throw error
             # bottom up, top down, r prior. i-n will have all 3, except in n case with classif method NC.
             self.r_term_divisors = {i: (2 if i == n and self.classif_method is None else 3) for i in range(1, n + 1)}
             # Bottom up, prior (or top downa nd prior in Uo case)
             self.U_term_divisors = {i: 2 for i in self.U}
-        elif self.cost_norm is None:
+        elif cost_norm is None:
             self.Jr_term_divisors= {i: 1 for i in range(1, n + 1)}
             self.Jc_term_divisor = 1
             self.r_term_divisors = {i: 1 for i in range(1, n + 1)}
             self.U_term_divisors = {i: 1 for i in self.U}
     
-    def initiate_diagnostic_storage(self):
+    def config_diagnostic_storage(self):
         # Initiate Jr, Jc, and accuracy (diagnostics) for storage, print, plot
         epoch_n = self.epoch_n
         self.Jr = [0] * (epoch_n + 1)
@@ -196,34 +208,25 @@ class PredictiveCodingClassifier:
         input_shape = self.input_shape
         num_layers = self.num_layers
         n = num_layers
-        self.initiate_rs(input_shape, n)
+        self.config_rs(input_shape, n)
         
         # Initiate Us
         # U1 is going to be a little bit different
         U1_shape = tuple(list(input_shape) + list(self.r[1].shape))
         classif_method = self.classif_method
-        self.initiate_Us(U1_shape, n, classif_method)
+        self.config_Us(U1_shape, n, classif_method)
         
         # Initiate U1-based operations dims
-        self.initiate_U1_dims(U1_shape, input_shape)
+        self.config_U1_dims(U1_shape, input_shape)
         
         # Set shapes to sizes
-        # Input size, r0
-        self.input_size = np.prod(input_shape)
-        # All layer (hidden plus output) sizes for priors, other
-        self.all_lyr_sizes = {i: self.hidden_lyr_sizes[i - 1] for i in range(1,len(self.hidden_lyr_sizes) + 1)}
-        self.all_lyr_sizes[n] = self.output_lyr_size
-        
-        # All U sizes
-        self.U_sizes = {}
-        for i, Ui in self.U.items():
-            self.U_sizes[i] = np.prod(Ui.shape)
+        self.config_sizes_from_shapes(input_shape, n)
         
         # If norm, divide terms by size and number of terms, else div. by 1.
-        self.initiate_norm_divisors(n, classif_method)
+        self.config_cost_norm_divisors(n, classif_method)
         
         # Initiate Jr, Jc, and accuracy (diagnostics) for storage, print, plot
-        self.initiate_diagnostic_storage()
+        self.config_diagnostic_storage()
         
     # Activation functions
     def linear_transform(self, U_dot_r):
@@ -429,14 +432,19 @@ class PredictiveCodingClassifier:
         printlog(f'self.all_lyr_sizes: {self.all_lyr_sizes}')
         printlog(f'self.U_sizes: {self.U_sizes}')
         
+        printlog(f'self.r_size_divisors: {self.r_size_divisors}')
+        printlog(f'self.U_size_divisors: {self.U_size_divisors}')
+        printlog(f'self.Jr_term_divisors: {self.Jr_term_divisors}')
+        printlog(f'self.Jc_term_divisor: {self.Jc_term_divisor}')
+        printlog(f'self.r_term_divisors: {self.r_term_divisors}')
+        printlog(f'self.U_term_divisors: {self.U_term_divisors}')
+        
         printlog(f'self.kr: {self.kr}')
         printlog(f'self.kU: {self.kU}')
         printlog(f'self.update_method: {self.update_method}')
         printlog(f'update_method_name: {update_method_name}')
         printlog(f'update_method_number: {update_method_number}')
         printlog(f'classif_method: {classif_method}')
-        
-        exit()
         
         '''
         test
@@ -969,24 +977,18 @@ class StaticPCC(PredictiveCodingClassifier):
         U_2 = self.U[2]
         r_2 = self.r[2]
         
-        r1_bu_size_divisor = self.r1_bu_size_divisor
-        r1_td_size_divisor = self.all_lyr_sizes[1]
+        r_norms = self.r_size_divisors # Make sure to do all
+        r_term_norms = self.r_term_divisors
         
         #U1 operations
         U1_transpose = np.transpose(U_1, self.U1T_dims)
         U1_tdot_r1 = np.tensordot(U_1, r_1, axes=([-1],[0]))
-        input_min_U1tdotr1 = self.r[0] - self.f(U1_tdot_r1)[0] * (1 / l1_bu_size_divisor)
-        
-        term_divisor = self.r_upd_term_divisors # always 3, unless rn and NC cost. make it a dict, too.
-        bu_size_divisor = self.r_upd_bu_divisors # always size of ri-1
-        td_size_divisor = self.r_upd_td_divisors # always size of ri
-        
-        
+        input_min_U1tdotr1 = (self.r[0] - self.f(U1_tdot_r1)[0]) * (1 / r_norms[0])
         
         # Layer 1
         self.r[1] += ((kr_1 / ssq_1) * np.tensordot(U1_transpose, input_min_U1tdotr1, axes=(self.U1T_tdot_dims, self.bu_error_tdot_dims)) \
-                                            + (kr_2 * ssq_2) * (self.f(U_2.dot(r_2))[0] - r_1) \
-                                            - (kr_1 / ssq_1) * self.g(r_1, self.alph[1])[1]) * (1 / term_divisor)
+                                            + (kr_2 * ssq_2) * ((self.f(U_2.dot(r_2))[0] - r_1) * (1 / r_norms[1])) \
+                                            - (kr_1 / ssq_1) * self.g(r_1, self.alph[1])[1]) * (1 / r_term_norms[1])
         # Layers 2 to n-1                                    
         for i in range(2,n):
             
@@ -995,9 +997,9 @@ class StaticPCC(PredictiveCodingClassifier):
             r_i = self.r[i]
             U_i = self.U[i]
             
-            self.r[i] += (kr_i / ssq_i) * (U_i.T.dot(self.r[i-1] - self.f(U_i.dot(r_i))[0])) \
-                                                + (self.kr[i+1] * self.ssq[i+1]) * (self.f(self.U[i+1].dot(self.r[i+1]))[0] - r_i) \
-                                                - (kr_i / ssq_i) * self.g(r_i, self.alph[i])[1]
+            self.r[i] += ((kr_i / ssq_i) * (U_i.T.dot((self.r[i-1] - self.f(U_i.dot(r_i))[0]) * (1 / r_norms[i - 1]))) \
+                                                + (self.kr[i+1] * self.ssq[i+1]) * ((self.f(self.U[i+1].dot(self.r[i+1]))[0] - r_i) * (1 / r_norms[i])) \
+                                                - (kr_i / ssq_i) * self.g(r_i, self.alph[i])[1]) * (1 / r_term_norms[i])
 
         # Layer n
         kr_n = self.kr[n]
@@ -1005,9 +1007,9 @@ class StaticPCC(PredictiveCodingClassifier):
         U_n = self.U[n]
         r_n = self.r[n]
 
-        self.r[n] += (kr_n / ssq_n) * (U_n.T.dot(self.r[n-1] - self.f(U_n.dot(r_n))[0])) \
-                                                + self.rn_topdown_upd_dict[self.classif_method](label) \
-                                                - (kr_n / ssq_n) * self.g(r_n, self.alph[n])[1]
+        self.r[n] += ((kr_n / ssq_n) * (U_n.T.dot((self.r[n-1] - self.f(U_n.dot(r_n))[0]) * (1 / r_norms[n - 1]))) \
+                                                + self.rn_topdown_upd_dict[self.classif_method](label) * (1 / r_norms[n]) \
+                                                - (kr_n / ssq_n) * self.g(r_n, self.alph[n])[1]) * (1 / r_term_norms[n])
                                                 
     def U_updates_n_1_no_transform(self,label):
         
