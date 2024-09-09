@@ -834,6 +834,12 @@ class StaticPCC(PredictiveCodingClassifier):
         ssq_1 = self.ssq[1]
         ssq_2 = self.ssq[2]
         
+        r_norms = self.r_size_divisors
+        r_term_norms = self.r_term_divisors
+        U_norms = self.U_size_divisors
+        Jr_term_norms = self.Jr_term_divisors
+        final_term_norm = 1
+        
         #U1 operations
         U1_tdot_r1 = np.tensordot(U_1, r_1, axes=([-1],[0]))
         
@@ -841,17 +847,19 @@ class StaticPCC(PredictiveCodingClassifier):
         bu_tdot_dims = self.bu_error_tdot_dims
         
         # Bottom up and td
-        bu_v = r_0 - self.f(U1_tdot_r1)[0]
+        bu_v = (r_0 - self.f(U1_tdot_r1)[0]) * (1 / r_norms[0])
         bu_sq = np.tensordot(bu_v, bu_v, axes=(bu_tdot_dims, bu_tdot_dims))
         bu_tot = (1 / ssq_1) * bu_sq
         
-        td_v = r_1 - self.f(U_2.dot(r_2))[0]
+        td_v = (r_1 - self.f(U_2.dot(r_2))[0]) * (1 / r_norms[1])
         td_sq = td_v.dot(td_v)
         td_tot = (1 / ssq_2) * td_sq
         
         # Priors
-        pri_r1 = self.g(np.squeeze(r_1), self.alph[1])[0]
-        pri_U1 = self.h(U_1, self.lam[1])[0]
+        pri_r1 = self.g(np.squeeze(r_1), self.alph[1])[0] * (1 / r_norms[1])
+        pri_U1 = self.h(U_1, self.lam[1])[0] * (1 / U_norms[1])
+        
+        final_term_norm += Jr_term_norms[1]
         
         n = self.num_layers
         # For layers 2 to n-1
@@ -860,42 +868,46 @@ class StaticPCC(PredictiveCodingClassifier):
         pri_ri = 0
         pri_Ui = 0
         for i in range(2,n):
-            bu_v = self.r[i-1] - self.f(self.U[i].dot(self.r[i]))[0]
+            bu_v = (self.r[i-1] - self.f(self.U[i].dot(self.r[i]))[0]) * (1 / r_norms[i - 1])
             bu_sq = bu_v.dot(bu_v)
             bu_tot += (1 / self.ssq[i]) * bu_sq
             
-            td_v = self.r[i] - self.f(self.U[i+1].dot(self.r[i+1]))[0]
+            td_v = (self.r[i] - self.f(self.U[i+1].dot(self.r[i+1]))[0]) * (1 / r_norms[i])
             td_sq = td_v.dot(td_v)
             td_tot += (1 / self.ssq[i+1]) * td_sq
         
-            pri_r = self.g(np.squeeze(self.r[i]), self.alph[i])[0]
-            pri_U = self.h(self.U[i], self.lam[i])[0]
+            pri_r = self.g(np.squeeze(self.r[i]), self.alph[i])[0] * (1 / r_norms[i])
+            pri_U = self.h(self.U[i], self.lam[i])[0] * (1 / U_norms[i])
         
             bu_i += bu_tot
             td_i += td_tot
             pri_ri += pri_r
             pri_Ui += pri_U
             
+            final_term_norm += Jr_term_norms[i]
+            
         # Final layer will only have bu term
-        bu_vn = self.r[n-1] - self.f(self.U[n].dot(self.r[n]))[0]
+        bu_vn = (self.r[n-1] - self.f(self.U[n].dot(self.r[n]))[0]) * (1 / r_norms[n - 1])
         bu_sqn = bu_vn.dot(bu_vn)
         bu_totn = (1 / self.ssq[n]) * bu_sqn
         
-        pri_rn = self.g(np.squeeze(self.r[n]), self.alph[n])[0]
-        pri_Un = self.h(self.U[n], self.lam[n])[0]
+        pri_rn = self.g(np.squeeze(self.r[n]), self.alph[n])[0] * (1 / r_norms[n])
+        pri_Un = self.h(self.U[n], self.lam[n])[0] * (1 / U_norms[n])
         
-        return bu_tot + td_tot + pri_r1 + pri_U1 + bu_i + td_i + pri_ri + pri_Ui + bu_totn + pri_rn + pri_Un
+        final_term_norm += Jr_term_norms[n]
+        
+        return (bu_tot + td_tot + pri_r1 + pri_U1 + bu_i + td_i + pri_ri + pri_Ui + bu_totn + pri_rn + pri_Un) * (1 / final_term_norm)
     
     def classif_cost_c1(self, label):
         # Format: -label.dot(np.log(softmax(r_n)))
-        return -label.dot(np.log(self.stable_softmax(self.r[self.num_layers])))
+        return (-label.dot(np.log(self.stable_softmax(self.r[self.num_layers]))) * (1 / self.num_classes)) * (1 / self.Jc_term_divisor)
     
     def classif_cost_c2(self, label):
         # Format: -label.dot(np.log(softmax(Uo.dot(r_n))))
         o = 'o'
         U_o = self.U[o]
-
-        return -label.dot(np.log(self.stable_softmax(U_o.dot(self.r[self.num_layers])))) + self.h(U_o, self.lam[o])[0]
+        return (-label.dot(np.log(self.stable_softmax(U_o.dot(self.r[self.num_layers])))) * (1 / self.num_classes) \
+                + self.h(U_o, self.lam[o])[0] * (1 / self.U_size_divisors[o])) * (1 / self.Jc_term_divisor)
     
     def classif_cost_None(self, label):
         return 0
@@ -1044,7 +1056,7 @@ class StaticPCC(PredictiveCodingClassifier):
         
         # Layer 1
         self.U[1] += ((kU_1 / ssq_1) * (np.einsum(self.einsum_arg_U1, input_min_U1tdotr1, r_1)) * (1 / U_norms[1]) \
-                        - (kU_1 / ssq_1) * self.h(U_1, self.lam[1])[1]) * (1 / U_term_norms[1])
+                        - (kU_1 / ssq_1) * self.h(U_1, self.lam[1])[1] * (1 / U_norms[1])) * (1 / U_term_norms[1])
         
         n = self.num_layers
         
@@ -1060,7 +1072,7 @@ class StaticPCC(PredictiveCodingClassifier):
             
             #i
             self.U[i] += ((kU_i / ssq_i) * (np.outer(rimin1_min_Uidotri, r_i)) * (1 / U_norms[i]) \
-                        - (kU_i / ssq_i) * self.h(U_i, self.lam[i])[1]) * (1 / U_term_norms[i])
+                        - (kU_i / ssq_i) * self.h(U_i, self.lam[i])[1] * (1 / U_norms[i])) * (1 / U_term_norms[i])
                         
     def Uo_update_no_transform(self, label):
         # Format: Uo += kU_o / ssq_o * (label - softmax(Uo.dot(r_n)))
@@ -1071,8 +1083,11 @@ class StaticPCC(PredictiveCodingClassifier):
         U_o = self.U[o]
         r_n = self.r[self.num_layers]
         
-        self.U[o] += (kU_o/ ssq_o) * np.outer((label - self.stable_softmax(U_o.dot(r_n))), r_n) \
-                    - (kU_o/ ssq_o) * self.h(U_o, self.lam[o])[1]
+        Uo_norm = self.U_size_divisors[o]
+        Uo_term_norm = self.U_term_divisors[o]
+        
+        self.U[o] += ((kU_o/ ssq_o) * np.outer((label - self.stable_softmax(U_o.dot(r_n))), r_n) * (1 / Uo_norm) \
+                    - (kU_o/ ssq_o) * self.h(U_o, self.lam[o])[1] * (1 / Uo_norm)) * (1 / Uo_term_norm)
 
     def classif_guess_c1(self, label):
         guess = np.argmax(self.stable_softmax(self.r[self.num_layers]))
