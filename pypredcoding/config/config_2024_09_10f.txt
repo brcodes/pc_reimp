@@ -1,0 +1,110 @@
+## Config file for PCC (r/s) experiments
+## Parsed downstream by literal_eval (ast)
+## << KEEP EVERYTHING IN THE FORMAT DENOTED BY COMMENTS, OR ERRORS MAY OCCUR >>
+## Parameters are simple python types
+## Parameters relevant for sPCC but not rPCC will be ignored for the latter, and vice versa.
+## You can keep them all in, as long as your model_type is set correctly.
+
+## METADATA AND EXPERIMENT
+# Keep in format TEXT_YEAR_TWODIGMONTH_DAY
+# Will append model and log filenames
+# When you want to access a checkpoint later, you need to use this exact name. 
+# You can note that you are re-training in the notes below- and note the new date of the retraining.
+exp_name='Experiment_2024_09_10'
+train_with=True
+evaluate_with=False
+predict_with= False
+notes=' 212 train - cost and updates normalized by num terms, and balance factor added'
+
+## PCC MODEL
+# << will automatically make this model if not found in models/ and train=True above; else ValueError >>
+# Can be static or recurrent
+model_type='static'
+# Can be tiled or not
+tiled=True
+#tiles per image, if tiled. will ignore else.
+num_tiles=16
+# Flat or not
+flat_input=True
+# Total layers ('0th', ie input does not count. only include hidden plus output)
+num_layers=3
+# If 2D array, all tiles associated with a sigle image and a tile's area, or a flattened image and a preceding singleton
+# If Int, size of flattened single image. Singleton will be added.
+input_shape=(16,864)
+# For a 1-layer model, this will be ignored for output_lyr_size
+# all rs are 1d
+# in a 2-layer model, this will have one number, and the second layer will be output_lyr_size
+hidden_lyr_sizes=[32,128]
+# If classif_method None or 'c2', can be any size; 'c1' must have size == number of classes
+# For a 1-layer model, must be the single layer size
+output_lyr_size=212
+# C1 or C2, see Rogers/Brown work for clarification; can be None, 'c1', 'c2'
+classif_method='c1'
+# Tanh or linear
+activ_func='linear'
+# Gaussian random or sparse kurtotic (kurtotic approximatable as zeros- Li method)
+priors='kurtotic'
+# Li method, r/U,V (W = Weights) updated together for 30 iters per image: {'rW_niters':30}
+# Rogers/Brown proposal #1: r updated for 100 iters per image before U or V update {'r_niters_W':100}
+# Rogers/Brown proposal #2. r updated until change in vector < some stop criterion per image, then U or V  {'r_eq_W':0.05}
+update_method={'r_niters_W': 100}
+# norm the cost and associated update components by number of terms? (incl. term size)
+# Can be None,too. Divide by 1 in that case.
+cost_norm='num_terms'
+
+## TRAINING DATASET
+# << will automatically create this dataset if not found in data/ >>
+# Format ds.NAME_NUMIMGS_PREPRO(li_trace212)_IMGX_IMGY_TILED_NUMTILES_TILEX_TILEY_TILEOFFSETX_TILEOFFSETY.pydb
+num_imgs=212
+num_classes=212
+dataset_train='ds.trace212_212_li_trace212_132_84_tl_16_36_24_32_20.pydb'
+
+## TRAINING HYPERPARAMETERS
+# Stochastic gradient descent is 1, all above is batch gd.
+batch_size=1
+# how many exposures to all of the data (shuffled)
+epoch_n=10
+# learning rates, one per layer plus o needs to be correct if classif_method == 'c2'
+kr={1: 0.0001, 2: 0.0001, 3: 0.0001, 'o': 0.0001}
+# kr={1:0.0001, 2:0.0001, 3:0.0001, 'o':0.0001}
+kU={1:0.001, 2:0.001, 3:0.001, 'o':0.001}
+# rPCC only (will ignore if sPCC)
+kV= {1:0.05, 2:0.05, 3:0.05} 
+# prior distribution parameters, sPCC only. one per layer, incl. Uo case (alpha for r, lambda for U)
+alph= {1:1.0, 2:0.05, 3:0.05} 
+lam= {1:0.001, 2:0.001, 3:0.001, 'o':0.001}
+# layer covariance parameters, sigma squared. (they will all be 2, to increase conformity to derivative math, unless experiments here are desired)
+ssq= {1:2, 2:2, 3:2, 'o':2} 
+
+# save checkpoints? None, save every ('save_every') Int or every 'fraction' (Float, 1/N) of total epochs
+# The only thing that differentiates a 'checkpoint' from a 'model' is abstractly the latter is considered fully trained, while the former is not
+# Under this paradigm, models are saved in models/ and checkpoints are saved in models/checkpoints/
+save_checkpoint= {'save_every':50} 
+# if checkpoints present, load? None, or Int != -1 for checkpoint epoch desired. Int == -1 for latest checkpoint.
+load_checkpoint=None
+# calculates and stores loss and accuracy by epoch, prints by epoch. Must be true for plot_train to print anything but 0s.
+# You'd want to turn this off if, for example, you care about speed, you know the model will train (most likely), and you don't mind doing the accuracy evaluation post-hoc on the full (trained) model.
+# You will not get any loss evaluation, though, online or post-hoc, if you turn this off. 
+online_diagnostics= True 
+# plot loss and accuracy by epoch directly after training (online_diagnostics must ==  True  for this to plot real data)
+# If you're running something on the cluster, it may not work unless you turn this off.
+plot_train= True 
+
+## EVALUATION DATASET
+# << will automatically create this dataset if not found in data/ >>
+dataset_eval= 'ds.trace212_212_li_trace212_132_84_tl_16_36_24_32_20.pydb' 
+
+## EVALUATION HYPERPARAMETERS
+# Plot PE of first image only. None for no plotting, first for first image, etc. (see model.py)
+plot_eval= 'first' 
+
+## PREDICTION DATASET
+dataset_pred= 'ds.trace212_212_li_trace212_132_84_tl_16_36_24_32_20.pydb' 
+
+## PREDICTION HYPERPARAMETERS
+# Plot PE, topmost representation of first image only.
+plot_pred= 'first'
+
+
+
+

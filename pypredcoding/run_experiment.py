@@ -269,7 +269,27 @@ def main(config_file_path=join('config', 'config_2024_09_05.txt')):
     '''
     change the second part of the path to the config file you want to use
     '''
-    run_experiment(config_file_path)
+    config_folder = 'config'
+    if not exists(config_folder):
+        raise ValueError(f"The config folder {config_folder} does not exist.")
+    
+    config_file_base = 'config_2024_09_10'
+    final = 'l'
+    letter = 'a'
+    
+    while letter <= final:
+        config_file_name = f'{config_file_base}{letter}.txt'
+        config_file_path = join(config_folder, config_file_name)
+        
+        if not exists(config_file_path):
+            raise ValueError(f"The config file {config_file_path} does not exist.")
+        
+        print(f'Running experiment with config file: {config_file_path}')
+    
+        run_experiment(config_file_path)
+        
+        # Move to the next letter
+        letter = chr(ord(letter) + 1)
 
 if __name__ == '__main__':
     main()
