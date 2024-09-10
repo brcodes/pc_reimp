@@ -5,8 +5,8 @@ from functools import partial
 from datetime import datetime
 import pickle
 from os import makedirs
-from os.path import join, exists
-
+from os.path import join, exists, dirname, isfile
+import csv
 
 class PredictiveCodingClassifier:
 
@@ -474,11 +474,13 @@ class PredictiveCodingClassifier:
                 update_non_weight_components(label=label)
                 Jr0 += rep_cost()
                 Jc0 += classif_cost(label)
-                if cost_norm is not None:
-                    if Jr0 != 0:
-                        self.balance_term = Jc0 / Jr0 
-                        printlog(f'balance term: {self.balance_term}')
             accuracy += evaluate(X, Y)
+            printlog(f'Jr: {Jr0}, Jc: {Jc0}, Accuracy: {accuracy}')
+            if cost_norm is not None:
+                if Jc0 != 0:
+                    self.balance_term = Jr0 / Jc0 
+                    Jr0 /= self.balance_term
+                    printlog(f'balance term 0: {self.balance_term}')
             self.accuracy[epoch] = accuracy
             self.Jr[epoch] = Jr0
             self.Jc[epoch] = Jc0
@@ -488,7 +490,7 @@ class PredictiveCodingClassifier:
             printlog('Diagnostics: Off')
         
         # Training
-        epoch_n = self.epoch_n
+        epoch_n = self.epoch_n 
         printlog('Training...')
         t_start_train = datetime.now()
         for e in range(epoch_n):
@@ -511,10 +513,6 @@ class PredictiveCodingClassifier:
                 if online_diagnostics:
                     Jre += rep_cost()
                     Jce += classif_cost(label)
-                    if cost_norm is not None:
-                        if Jre != 0:
-                            self.balance_term = Jce / Jre
-                            printlog(f'balance term {epoch}: {self.balance_term}')
             if online_diagnostics:
                 printlog(f'eval {epoch}')
                 accuracy += evaluate(X, Y)
@@ -522,6 +520,10 @@ class PredictiveCodingClassifier:
             self.Jr[epoch] = Jre
             self.Jc[epoch] = Jce
             printlog(f'Jr: {Jre}, Jc: {Jce}, Accuracy: {accuracy}')
+            # if cost_norm is not None:
+            #     if Jce != 0:
+            #         self.balance_term = Jre / Jce
+            #         printlog(f'balance term {epoch}: {self.balance_term}')
             t_end_epoch = datetime.now()
             printlog(f'Epoch time: {t_end_epoch - t_start_epoch}.')
             printlog(f'Est. time remaining: {(t_end_epoch - t_start_epoch) * (epoch_n - epoch)}.')
@@ -558,7 +560,7 @@ class PredictiveCodingClassifier:
         # Add a row to models/experiments.csv
         # Add a row to models/experiments.csv
         csv_file_path = 'models/experiments.csv'
-        csv_columns = ["classif_method", "update_method_name", "kr", "kU", "epochs", "Jr 0", "Jr Final", "Jr % Change", "Jc 0", "Jc Final", "Jc % Change", "Acc 0", "Tot Time", "Acc Final", "Acc % Change"]
+        csv_columns = ["classif_method", "update_method_name", "kr", "kU", "epochs", "Jr 0", "Jr Final", "Jr % Change", "Jc 0", "Jc Final", "Jc % Change", "Tot Time", "Acc 0", "Acc Final", "Acc % Change"]
         csv_data = [
             classif_method,
             update_method_name,
@@ -571,17 +573,17 @@ class PredictiveCodingClassifier:
             self.Jc[0],
             self.Jc[epoch],
             percent_diff_Jc,
-            self.accuracy[0],
             tot_time,
+            self.accuracy[0],
             self.accuracy[epoch],
             percent_diff_accuracy
         ]
 
         # Ensure the directory exists
-        os.makedirs(os.path.dirname(csv_file_path), exist_ok=True)
+        makedirs(dirname(csv_file_path), exist_ok=True)
 
         # Write to the CSV file
-        file_exists = os.path.isfile(csv_file_path)
+        file_exists = isfile(csv_file_path)
         with open(csv_file_path, mode='a', newline='') as file:
             writer = csv.writer(file)
             if not file_exists:
@@ -1110,6 +1112,7 @@ class StaticPCC(PredictiveCodingClassifier):
         
         U_norms = self.U_size_divisors
         U_term_norms = self.U_term_divisors
+        balance_term = self.balance_term
         
         #U1 operations
         U1_tdot_r1 = np.tensordot(U_1, r_1, axes=([-1],[0]))
@@ -1139,7 +1142,7 @@ class StaticPCC(PredictiveCodingClassifier):
         # Format: Uo += kU_o / ssq_o * (label - softmax(Uo.dot(r_n)))
         
         o = 'o'
-        kU_o = self.self.kU[o]
+        kU_o = self.kU[o]
         ssq_o = self.ssq[o]
         U_o = self.U[o]
         r_n = self.r[self.num_layers]
