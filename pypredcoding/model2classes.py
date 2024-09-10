@@ -450,7 +450,6 @@ class PredictiveCodingClassifier:
         test
         '''
         
-        exit()
         
         evaluate = partial(self.evaluate, update_method_name=update_method_name, update_method_number=update_method_number, classif_method=classif_method, plot=None)
 
@@ -542,6 +541,39 @@ class PredictiveCodingClassifier:
         change_per_min_Jc = percent_diff_Jc / tot_time.total_seconds() * 60
         change_per_min_accuracy = percent_diff_accuracy / tot_time.total_seconds() * 60
         printlog(f'Change per min Jr: {change_per_min_Jr}, Jc: {change_per_min_Jc}, Accuracy: {change_per_min_accuracy}')
+        
+        # Add a row to models/experiments.csv
+        # Add a row to models/experiments.csv
+        csv_file_path = 'models/experiments.csv'
+        csv_columns = ["classif_method", "update_method_name", "kr", "kU", "epochs", "Jr 0", "Jr Final", "Jr % Change", "Jc 0", "Jc Final", "Jc % Change", "Acc 0", "Tot Time", "Acc Final", "Acc % Change"]
+        csv_data = [
+            classif_method,
+            update_method_name,
+            self.kr[1],
+            self.kU[1],
+            epoch,
+            self.Jr[0],
+            self.Jr[epoch],
+            percent_diff_Jr,
+            self.Jc[0],
+            self.Jc[epoch],
+            percent_diff_Jc,
+            self.accuracy[0],
+            tot_time,
+            self.accuracy[epoch],
+            percent_diff_accuracy
+        ]
+
+        # Ensure the directory exists
+        os.makedirs(os.path.dirname(csv_file_path), exist_ok=True)
+
+        # Write to the CSV file
+        file_exists = os.path.isfile(csv_file_path)
+        with open(csv_file_path, mode='a', newline='') as file:
+            writer = csv.writer(file)
+            if not file_exists:
+                writer.writerow(csv_columns)  # Write the header only if the file does not exist
+            writer.writerow(csv_data)
         
         if plot:
             pass
@@ -825,6 +857,8 @@ class StaticPCC(PredictiveCodingClassifier):
         '''
         move to static eventually, as well as update_Component assignment
         '''
+        
+        printlog = self.print_and_log
             
         r_0 = self.r[0]
         r_1 = self.r[1]
@@ -838,7 +872,7 @@ class StaticPCC(PredictiveCodingClassifier):
         r_term_norms = self.r_term_divisors
         U_norms = self.U_size_divisors
         Jr_term_norms = self.Jr_term_divisors
-        final_term_norm = 1
+        final_term_norm = 0
         
         #U1 operations
         U1_tdot_r1 = np.tensordot(U_1, r_1, axes=([-1],[0]))
@@ -846,16 +880,28 @@ class StaticPCC(PredictiveCodingClassifier):
         # 1st layer axes necessary for dot product (2D or 4D)
         bu_tdot_dims = self.bu_error_tdot_dims
         
+        bu_diff = r_0 - self.f(U1_tdot_r1)[0]
+        # printlog(f'bu_diff.shape: {bu_diff.shape}')
+        # printlog(f'r_norms[0]: {r_norms[0]}')
+        
         # Bottom up and td
-        bu_v = (r_0 - self.f(U1_tdot_r1)[0]) * (1 / r_norms[0])
+        bu_v = (bu_diff) * (1 / r_norms[0])
         bu_sq = np.tensordot(bu_v, bu_v, axes=(bu_tdot_dims, bu_tdot_dims))
         bu_tot = (1 / ssq_1) * bu_sq
         
-        td_v = (r_1 - self.f(U_2.dot(r_2))[0]) * (1 / r_norms[1])
+        td_diff = r_1 - self.f(U_2.dot(r_2))[0]
+        # printlog(f'td_diff.shape: {td_diff.shape}')
+        # printlog(f'r_norms[1]: {r_norms[1]}')
+        
+        td_v = (td_diff) * (1 / r_norms[1])
         td_sq = td_v.dot(td_v)
         td_tot = (1 / ssq_2) * td_sq
         
         # Priors
+        # printlog(f'prior.r.shape: {self.g(np.squeeze(r_1), self.alph[1])[0]}')
+        # printlog(f'r_norms[1]: {r_norms[1]}')
+        # printlog(f'prior.U.shape: {self.h(U_1, self.lam[1])[0]}')
+        # printlog(f'U_norms[1]: {U_norms[1]}')
         pri_r1 = self.g(np.squeeze(r_1), self.alph[1])[0] * (1 / r_norms[1])
         pri_U1 = self.h(U_1, self.lam[1])[0] * (1 / U_norms[1])
         
