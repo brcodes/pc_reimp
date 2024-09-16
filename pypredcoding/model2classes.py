@@ -538,6 +538,9 @@ class PredictiveCodingClassifier:
         final_name = self.generate_output_name(self.mod_name, epoch)
         self.save_model(output_dir='models/', output_name=final_name)
         
+        self.save_diagnostics(output_dir='models/', output_name=final_name)
+        
+        
         # Final diagnostics
         # Functionize later
         printlog('\n\n')
@@ -732,6 +735,13 @@ class PredictiveCodingClassifier:
         output_path = join(output_dir, output_name)
         with open(output_path, 'wb') as f:
             pickle.dump(self, f)
+            
+    def save_diagnostics(self, output_dir, output_name):
+        makedirs(output_dir, exist_ok=True)
+        output_name = 'diag.' + output_name
+        output_path = join(output_dir, output_name)
+        with open(output_path, 'wb') as f:
+            pickle.dump({'Jr': self.Jr, 'Jc': self.Jc, 'accuracy':self.accuracy}, f)
             
             
             
