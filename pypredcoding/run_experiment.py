@@ -274,22 +274,38 @@ def main():
         raise ValueError(f"The config folder {config_folder} does not exist.")
     
     config_file_base = 'config_2024_09_10'
-    letter = 'g'
-    final = 'l'
     
-    while letter <= final:
-        config_file_name = f'{config_file_base}{letter}.txt'
+    letter = None
+    
+    if letter is not None:
+        
+        final = 'l'
+        
+        while letter <= final:
+            config_file_name = f'{config_file_base}{letter}.txt'
+            config_file_path = join(config_folder, config_file_name)
+            
+            if not exists(config_file_path):
+                raise ValueError(f"The config file {config_file_path} does not exist.")
+            
+            print(f'Running experiment with config file: {config_file_path}')
+        
+            run_experiment(config_file_path)
+            
+            # Move to the next letter
+            letter = chr(ord(letter) + 1)
+            
+    else:
+        
+        config_file_name = config_file_base + '.txt'
         config_file_path = join(config_folder, config_file_name)
         
         if not exists(config_file_path):
-            raise ValueError(f"The config file {config_file_path} does not exist.")
-        
+                raise ValueError(f"The config file {config_file_path} does not exist.")
+            
         print(f'Running experiment with config file: {config_file_path}')
     
         run_experiment(config_file_path)
-        
-        # Move to the next letter
-        letter = chr(ord(letter) + 1)
 
 if __name__ == '__main__':
     main()
