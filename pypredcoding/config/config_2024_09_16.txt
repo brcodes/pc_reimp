@@ -10,11 +10,11 @@
 # Will append model and log filenames
 # When you want to access a checkpoint later, you need to use this exact name. 
 # You can note that you are re-training in the notes below- and note the new date of the retraining.
-exp_name='Experiment_2024_09_03'
+exp_name='Experiment_2024_09_16'
 train_with=True
 evaluate_with=False
 predict_with= False
-notes=' 212 train'
+notes=' 212 train - unscaled, 100 ep, big r1'
 
 ## PCC MODEL
 # << will automatically make this model if not found in models/ and train=True above; else ValueError >>
@@ -28,12 +28,13 @@ num_tiles=16
 flat_input=True
 # Total layers ('0th', ie input does not count. only include hidden plus output)
 num_layers=3
-# If 2D array, all tiles associated with a sigle image and a tile's area
-# If Int, size of flattened single image
+# If 2D array, all tiles associated with a sigle image and a tile's area, or a flattened image and a preceding singleton
+# If Int, size of flattened single image. Singleton will be added.
 input_size=(16,864)
 # For a 1-layer model, this will be ignored for output_lyr_size
+# all rs are 1d
 # in a 2-layer model, this will have one number, and the second layer will be output_lyr_size
-hidden_lyr_sizes=[32,128]
+hidden_lyr_sizes=[512,128]
 # If classif_method None or 'c2', can be any size; 'c1' must have size == number of classes
 # For a 1-layer model, must be the single layer size
 output_lyr_size=212
@@ -46,7 +47,10 @@ priors='kurtotic'
 # Li method, r/U,V (W = Weights) updated together for 30 iters per image: {'rW_niters':30}
 # Rogers/Brown proposal #1: r updated for 100 iters per image before U or V update {'r_niters_W':100}
 # Rogers/Brown proposal #2. r updated until change in vector < some stop criterion per image, then U or V  {'r_eq_W':0.05}
-update_method={'r_eq_W':0.05}
+update_method={'r_niters_W':100}
+# norm the cost and associated update components by number of terms? (incl. term size)
+# Can be None,too. Divide by 1 in that case.
+cost_norm='num_terms'
 
 ## TRAINING DATASET
 # << will automatically create this dataset if not found in data/ >>
@@ -59,10 +63,11 @@ dataset_train='ds.trace212_212_li_trace212_132_84_tl_16_36_24_32_20.pydb'
 # Stochastic gradient descent is 1, all above is batch gd.
 batch_size=1
 # how many exposures to all of the data (shuffled)
-epoch_n=10
+epoch_n=100
 # learning rates, one per layer plus o needs to be correct if classif_method == 'c2'
 # kr={1:0.00001, 2:0.00001, 3:0.00001, 'o':0.00001}
 kr={1:0.0001, 2:0.0001, 3:0.0001, 'o':0.0001}
+# kU={1:0.01, 2:0.01, 3:0.01, 'o':0.01}
 kU={1:0.001, 2:0.001, 3:0.001, 'o':0.001}
 # rPCC only (will ignore if sPCC)
 kV= {1:0.05, 2:0.05, 3:0.05} 
@@ -99,9 +104,7 @@ dataset_pred= 'ds.trace212_212_li_trace212_132_84_tl_16_36_24_32_20.pydb'
 
 ## PREDICTION HYPERPARAMETERS
 # Plot PE, topmost representation of first image only.
-plot_pred= 'first' 
-
-## Dataset creation or loading
+plot_pred= 'first'
 
 
 

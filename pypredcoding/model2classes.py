@@ -5,7 +5,8 @@ from functools import partial
 from datetime import datetime
 import pickle
 from os import makedirs
-from os.path import join, exists
+from os.path import join, exists, dirname, isfile
+import csv
 
 
 class PredictiveCodingClassifier:
@@ -453,6 +454,8 @@ class PredictiveCodingClassifier:
         final_name = self.generate_output_name(self.mod_name, epoch)
         self.save_model(output_dir='models/', output_name=final_name)
         
+        self.save_diagnostics(output_dir='models/', output_name=final_name)
+        
         # Final diagnostics
         # Functionize later
         printlog('\n\n')
@@ -471,6 +474,39 @@ class PredictiveCodingClassifier:
         change_per_min_Jc = percent_diff_Jc / tot_time.total_seconds() * 60
         change_per_min_accuracy = percent_diff_accuracy / tot_time.total_seconds() * 60
         printlog(f'Change per min Jr: {change_per_min_Jr}, Jc: {change_per_min_Jc}, Accuracy: {change_per_min_accuracy}')
+        
+        # Add a row to models/experiments.csv
+        csv_file_path = 'models/experiments.csv'
+        csv_columns = ["classif_method", "update_method_name", "kr", "kU", "epochs", "Jr 0", "Jr Final", "Jr % Change", "Jc 0", "Jc Final", "Jc % Change", "Tot Time", "Acc 0", "Acc Final", "Acc % Change"]
+        csv_data = [
+            classif_method,
+            update_method_name,
+            self.kr[1],
+            self.kU[1],
+            epoch,
+            self.Jr[0],
+            self.Jr[epoch],
+            percent_diff_Jr,
+            self.Jc[0],
+            self.Jc[epoch],
+            percent_diff_Jc,
+            tot_time,
+            self.accuracy[0],
+            self.accuracy[epoch],
+            percent_diff_accuracy
+        ]
+
+        # Ensure the directory exists
+        makedirs(dirname(csv_file_path), exist_ok=True)
+
+        # Write to the CSV file
+        file_exists = isfile(csv_file_path)
+        with open(csv_file_path, mode='a', newline='') as file:
+            writer = csv.writer(file)
+            if not file_exists:
+                writer.writerow(csv_columns)  # Write the header only if the file does not exist
+            writer.writerow(csv_data)
+        
         
         if plot:
             pass
@@ -614,6 +650,13 @@ class PredictiveCodingClassifier:
         output_path = join(output_dir, output_name)
         with open(output_path, 'wb') as f:
             pickle.dump(self, f)
+            
+    def save_diagnostics(self, output_dir, output_name):
+        makedirs(output_dir, exist_ok=True)
+        output_name = 'diag.' + output_name
+        output_path = join(output_dir, output_name)
+        with open(output_path, 'wb') as f:
+            pickle.dump({'Jr': self.Jr, 'Jc': self.Jc, 'accuracy':self.accuracy}, f)
             
             
             

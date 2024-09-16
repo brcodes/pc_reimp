@@ -10,7 +10,7 @@
 # Will append model and log filenames
 # When you want to access a checkpoint later, you need to use this exact name. 
 # You can note that you are re-training in the notes below- and note the new date of the retraining.
-exp_name='notscaledbigr1_e'
+exp_name='notscaledbigr1_a'
 train_with=True
 evaluate_with=False
 predict_with= False
@@ -30,7 +30,7 @@ flat_input=True
 num_layers=3
 # If 2D array, all tiles associated with a sigle image and a tile's area, or a flattened image and a preceding singleton
 # If Int, size of flattened single image. Singleton will be added.
-input_shape=(16,864)
+input_size=(16,864)
 # For a 1-layer model, this will be ignored for output_lyr_size
 # all rs are 1d
 # in a 2-layer model, this will have one number, and the second layer will be output_lyr_size
@@ -39,7 +39,7 @@ hidden_lyr_sizes=[512,128]
 # For a 1-layer model, must be the single layer size
 output_lyr_size=212
 # C1 or C2, see Rogers/Brown work for clarification; can be None, 'c1', 'c2'
-classif_method='c2'
+classif_method='c1'
 # Tanh or linear
 activ_func='linear'
 # Gaussian random or sparse kurtotic (kurtotic approximatable as zeros- Li method)
@@ -47,7 +47,7 @@ priors='kurtotic'
 # Li method, r/U,V (W = Weights) updated together for 30 iters per image: {'rW_niters':30}
 # Rogers/Brown proposal #1: r updated for 100 iters per image before U or V update {'r_niters_W':100}
 # Rogers/Brown proposal #2. r updated until change in vector < some stop criterion per image, then U or V  {'r_eq_W':0.05}
-update_method={'r_niters_W': 100}
+update_method={'rW_niters': 30}
 # norm the cost and associated update components by number of terms? (incl. term size)
 # Can be None,too. Divide by 1 in that case.
 cost_norm='num_terms'
