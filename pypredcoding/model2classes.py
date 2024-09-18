@@ -8,6 +8,9 @@ from os import makedirs
 from os.path import join, exists, dirname, isfile
 import csv
 
+def create_zeros(size):
+    return np.zeros(size)
+
 class PredictiveCodingClassifier:
 
     def __init__(self):
@@ -19,6 +22,9 @@ class PredictiveCodingClassifier:
                                 'kurtotic': self.kurtotic_prior_costs}
         self.prior_dist_dict = {'gaussian': partial(np.random.normal, loc=0, scale=1),
                                 'kurtotic': partial(np.random.laplace, loc=0.0, scale=0.5)}
+        
+        # self.prior_dist_dict = {'gaussian': partial(np.random.normal, loc=0, scale=1),
+        #                         'kurtotic': create_zeros}
         
         '''
         shell class for sPCC and rPCC subclasses
@@ -328,7 +334,7 @@ class PredictiveCodingClassifier:
     def load_hard_prior_dist(self, size):
         return self.r_dists_hard[size]
     
-    def stable_softmax(self, vector, k=1):
+    def stable_softmax(self, vector, k=3):
         # Subtract the maximum value from the vector for numerical stability
         shift_vector = vector - np.max(vector)
         # Compute the exponentials of the shifted vector
