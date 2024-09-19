@@ -8,6 +8,8 @@ from os import makedirs
 from os.path import join, exists, dirname, isfile
 import csv
 
+def create_zeros(size):
+    return np.zeros(size)
 
 class PredictiveCodingClassifier:
 
@@ -18,8 +20,13 @@ class PredictiveCodingClassifier:
                                 'tanh': self.tanh_transform}
         self.prior_cost_dict = {'gaussian': self.gaussian_prior_costs, 
                                 'kurtotic': self.kurtotic_prior_costs}
-        self.prior_dist_dict = {'gaussian': partial(np.random.normal, loc=0, scale=1),
-                                'kurtotic': partial(np.random.laplace, loc=0.0, scale=0.5)}
+        # self.prior_dist_dict = {'gaussian': partial(np.random.normal, loc=0, scale=1),
+        #                         'kurtotic': partial(np.random.laplace, loc=0.0, scale=0.5)}
+        
+        self.r_prior_dist_dict = {'gaussian': partial(np.random.normal, loc=0, scale=1),
+                                'kurtotic': create_zeros}
+        
+        # U_prior set below in self.U_prior_dist
         
         '''
         shell class for sPCC and rPCC subclasses
@@ -112,21 +119,21 @@ class PredictiveCodingClassifier:
         self.r[0] = np.zeros(input_size)
         for i in range(1, n + 1):
             if i == n:
-                self.r[i] = self.prior_dist(size=(self.output_lyr_size))
+                self.r[i] = self.r_prior_dist(size=(self.output_lyr_size))
             else:
-                self.r[i] = self.prior_dist(size=(self.hidden_lyr_sizes[i - 1]))
+                self.r[i] = self.r_prior_dist(size=(self.hidden_lyr_sizes[i - 1]))
         
         # Initiate Us
         # U1 is going to be a little bit different
         U1_size = tuple(list(input_size) + list(self.r[1].shape))
-        self.U[1] = self.prior_dist(size=U1_size)
+        self.U[1] = self.U_prior_dist(size=U1_size)
         # U2 through Un
         for i in range(2, n + 1):
             Ui_size = (self.r[i-1].shape[0], self.r[i].shape[0])
-            self.U[i] = self.prior_dist(size=Ui_size)
+            self.U[i] = self.U_prior_dist(size=Ui_size)
         if self.classif_method == 'c2':
             Uo_size = (self.num_classes, self.output_lyr_size)
-            self.U['o'] = self.prior_dist(size=Uo_size)
+            self.U['o'] = self.U_prior_dist(size=Uo_size)
             
         # Initiate U1-based operations dims (dimentions flex based on input)
         # Transpose dims
@@ -254,8 +261,11 @@ class PredictiveCodingClassifier:
             
             return None
 
-    def prior_dist(self, size):
-        return self.prior_dist_dict[self.priors](size=size)
+    def r_prior_dist(self, size):
+        return self.r_prior_dist_dict[self.priors](size=size)
+    
+    def U_prior_dist(self, size):
+        return np.random.rand(*size) - 0.5
     
     def hard_set_prior_dist(self):
         '''
@@ -265,7 +275,7 @@ class PredictiveCodingClassifier:
         n = self.num_layers
         for i in range (1, n + 1):
             lyr_size = self.all_hlyr_sizes[i - 1]
-            self.r_dists_hard[lyr_size] = self.prior_dist(size=lyr_size)
+            self.r_dists_hard[lyr_size] = self.r_prior_dist(size=lyr_size)
     
     def load_hard_prior_dist(self, size):
         return self.r_dists_hard[size]
@@ -361,7 +371,7 @@ class PredictiveCodingClassifier:
         self.hard_set_prior_dist()
         prior_dist = self.load_hard_prior_dist
 
-        # Else: prior_dist = self.prior_dist
+        # Else: prior_dist = self.r_prior_dist
         '''
         test
         '''
@@ -532,7 +542,7 @@ class PredictiveCodingClassifier:
         '''
 
         prior_dist = self.load_hard_prior_dist
-        # Else: prior_dist = self.prior_dist
+        # Else: prior_dist = self.r_prior_dist
         '''
         test
         '''

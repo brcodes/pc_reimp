@@ -70,7 +70,7 @@ kU={1:0.001, 2:0.001, 3:0.001, 'o':0.001}
 # rPCC only (will ignore if sPCC)
 kV= {1:0.05, 2:0.05, 3:0.05} 
 # prior distribution parameters, sPCC only. one per layer, incl. Uo case (alpha for r, lambda for U)
-alph= {1:5.0, 2:5.0, 3:1.0} 
+alph= {1:1.0, 2:0.05, 3:0.05} 
 lam= {1:0.001, 2:0.001, 3:0.001, 'o':0.001}
 # layer covariance parameters, sigma squared. (they will all be 2, to increase conformity to derivative math, unless experiments here are desired)
 ssq= {0:1, 1:10, 2:10, 3:2, 'o':2} 
