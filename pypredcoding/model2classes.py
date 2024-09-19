@@ -331,6 +331,7 @@ class PredictiveCodingClassifier:
             printlog(f'r{i} first 3: {self.r[i][:3]}')
             if i > 0:
                 # Check if the array is 3D or 5D
+                print(f'U{i} shape: {self.U[i].shape}')
                 if self.U[i].ndim == 3:
                     printlog(f'U{i} first 3x3x3: {self.U[i][:3, :3, :3]}')
                 elif self.U[i].ndim == 5:
@@ -461,6 +462,13 @@ class PredictiveCodingClassifier:
             self.accuracy[epoch] = accuracy
             self.Jr[epoch] = Jre
             self.Jc[epoch] = Jce
+            
+            # For every 10 epochs, save mid-training diagnostics
+            if epoch % 5 == 0:
+                # Save mid-training diagnostics
+                online_name = self.generate_output_name(self.mod_name, epoch)
+                self.save_diagnostics(output_dir='models/', output_name=online_name)
+            
             printlog(f'Jr: {Jre}, Jc: {Jce}, Accuracy: {accuracy}')
             t_end_epoch = datetime.now()
             printlog(f'Epoch time: {t_end_epoch - t_start_epoch}.')
@@ -475,7 +483,7 @@ class PredictiveCodingClassifier:
         # Save final model
         final_name = self.generate_output_name(self.mod_name, epoch)
         self.save_model(output_dir='models/', output_name=final_name)
-        
+        # Save final diagnostics
         self.save_diagnostics(output_dir='models/', output_name=final_name)
         
         # Final diagnostics
