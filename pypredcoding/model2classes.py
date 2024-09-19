@@ -812,8 +812,8 @@ class StaticPCC(PredictiveCodingClassifier):
         U_1 = self.U[1]
         r_2 = self.r[2]
         U_2 = self.U[2]
+        ssq_0 = self.ssq[0]
         ssq_1 = self.ssq[1]
-        ssq_2 = self.ssq[2]
         
         #U1 operations
         U1_tdot_r1 = np.tensordot(U_1, r_1, axes=([-1],[0]))
@@ -824,11 +824,11 @@ class StaticPCC(PredictiveCodingClassifier):
         # Bottom up and td
         bu_v = r_0 - self.f(U1_tdot_r1)[0]
         bu_sq = np.tensordot(bu_v, bu_v, axes=(bu_tdot_dims, bu_tdot_dims))
-        bu_tot = (1 / ssq_1) * bu_sq
+        bu_tot = (1 / ssq_0) * bu_sq
         
         td_v = r_1 - self.f(U_2.dot(r_2))[0]
         td_sq = td_v.dot(td_v)
-        td_tot = (1 / ssq_2) * td_sq
+        td_tot = (1 / ssq_1) * td_sq
         
         # Priors
         pri_r1 = self.g(np.squeeze(r_1), self.alph[1])[0]
@@ -843,11 +843,11 @@ class StaticPCC(PredictiveCodingClassifier):
         for i in range(2,n):
             bu_v = self.r[i-1] - self.f(self.U[i].dot(self.r[i]))[0]
             bu_sq = bu_v.dot(bu_v)
-            bu_tot += (1 / self.ssq[i]) * bu_sq
+            bu_tot += (1 / self.ssq[i-1]) * bu_sq
             
             td_v = self.r[i] - self.f(self.U[i+1].dot(self.r[i+1]))[0]
             td_sq = td_v.dot(td_v)
-            td_tot += (1 / self.ssq[i+1]) * td_sq
+            td_tot += (1 / self.ssq[i]) * td_sq
         
             pri_r = self.g(np.squeeze(self.r[i]), self.alph[i])[0]
             pri_U = self.h(self.U[i], self.lam[i])[0]
@@ -860,7 +860,7 @@ class StaticPCC(PredictiveCodingClassifier):
         # Final layer will only have bu term
         bu_vn = self.r[n-1] - self.f(self.U[n].dot(self.r[n]))[0]
         bu_sqn = bu_vn.dot(bu_vn)
-        bu_totn = (1 / self.ssq[n]) * bu_sqn
+        bu_totn = (1 / self.ssq[n - 1]) * bu_sqn
         
         pri_rn = self.g(np.squeeze(self.r[n]), self.alph[n])[0]
         pri_Un = self.h(self.U[n], self.lam[n])[0]
@@ -882,10 +882,10 @@ class StaticPCC(PredictiveCodingClassifier):
     def rn_topdown_upd_c1(self, label):
         '''
         redo for recurrent =will all be the same except rn_bar'''
-
+        n = self.num_layers
         o = 'o'
-        # Format: k_o / ssq_o * (label - softmax(r_n))
-        c1 = (self.kr[o]/ self.ssq[o]) * (label - self.stable_softmax(self.r[self.num_layers]))
+        # Format: k_o / ssq_n * (label - softmax(r_n))
+        c1 = (self.kr[o] / self.ssq[n]) * (label - self.stable_softmax(self.r[n]))
         return c1
 
     def rn_topdown_upd_c2(self, label):
@@ -1102,14 +1102,14 @@ class StaticPCC(PredictiveCodingClassifier):
     def r_updates_n_gt_eq_3_no_transform(self, label):
         
         n = self.num_layers
-                                                
+        
+        ssq_0 = self.ssq[0]
+
         kr_1 = self.kr[1]
         ssq_1 = self.ssq[1]
         U_1 = self.U[1]
         r_1 = self.r[1]
-        
-        kr_2 = self.kr[2]
-        ssq_2 = self.ssq[2]
+
         U_2 = self.U[2]
         r_2 = self.r[2]
         
@@ -1119,30 +1119,34 @@ class StaticPCC(PredictiveCodingClassifier):
         input_min_U1tdotr1 = self.r[0] - self.f(U1_tdot_r1)[0]
         
         # Layer 1
-        self.r[1] += (kr_1 / ssq_1) * np.tensordot(U1_transpose, input_min_U1tdotr1, axes=(self.U1T_tdot_dims, self.bu_error_tdot_dims)) \
-                                            + (kr_2 * ssq_2) * (self.f(U_2.dot(r_2))[0] - r_1) \
-                                            - (kr_1 / ssq_1) * self.g(r_1, self.alph[1])[1]
+        self.r[1] += (kr_1 / ssq_0) * np.tensordot(U1_transpose, input_min_U1tdotr1, axes=(self.U1T_tdot_dims, self.bu_error_tdot_dims)) \
+                                            + (kr_1 / ssq_1) * (self.f(U_2.dot(r_2))[0] - r_1) \
+                                            - (kr_1) * self.g(r_1, self.alph[1])[1]
         # Layers 2 to n-1                                    
         for i in range(2,n):
+            
+            ssq_imin1 = self.ssq[i-1]
             
             kr_i = self.kr[i]
             ssq_i = self.ssq[i]
             r_i = self.r[i]
             U_i = self.U[i]
             
-            self.r[i] += (kr_i / ssq_i) * (U_i.T.dot(self.r[i-1] - self.f(U_i.dot(r_i))[0])) \
-                                                + (self.kr[i+1] * self.ssq[i+1]) * (self.f(self.U[i+1].dot(self.r[i+1]))[0] - r_i) \
-                                                - (kr_i / ssq_i) * self.g(r_i, self.alph[i])[1]
+            self.r[i] += (kr_i / ssq_imin1) * (U_i.T.dot(self.r[i-1] - self.f(U_i.dot(r_i))[0])) \
+                                                + (kr_i / ssq_i ) * (self.f(self.U[i+1].dot(self.r[i+1]))[0] - r_i) \
+                                                - (kr_i) * self.g(r_i, self.alph[i])[1]
 
         # Layer n
+        ssq_nmin1 = self.ssq[n-1]
+        
         kr_n = self.kr[n]
         ssq_n = self.ssq[n]
         U_n = self.U[n]
         r_n = self.r[n]
 
-        self.r[n] += (kr_n / ssq_n) * (U_n.T.dot(self.r[n-1] - self.f(U_n.dot(r_n))[0])) \
+        self.r[n] += (kr_n / ssq_nmin1) * (U_n.T.dot(self.r[n-1] - self.f(U_n.dot(r_n))[0])) \
                                                 + self.rn_topdown_upd_dict[self.classif_method](label) \
-                                                - (kr_n / ssq_n) * self.g(r_n, self.alph[n])[1]
+                                                - (kr_n) * self.g(r_n, self.alph[n])[1]
                                                 
     def U_updates_n_1_no_transform(self,label):
 
@@ -1168,8 +1172,9 @@ class StaticPCC(PredictiveCodingClassifier):
                             
     def U_updates_n_gt_eq_2_no_transform(self,label):
         
+        ssq_0 = self.ssq[0]
+        
         kU_1 = self.kU[1]
-        ssq_1 = self.ssq[1]
         U_1 = self.U[1]
         r_1 = self.r[1]
         
@@ -1178,24 +1183,25 @@ class StaticPCC(PredictiveCodingClassifier):
         input_min_U1tdotr1 = self.r[0] - self.f(U1_tdot_r1)[0]
         
         # Layer 1
-        self.U[1] += (kU_1 / ssq_1) * np.einsum(self.einsum_arg_U1, input_min_U1tdotr1, r_1) \
-                        - (kU_1 / ssq_1) * self.h(U_1, self.lam[1])[1]
+        self.U[1] += (kU_1 / ssq_0) * np.einsum(self.einsum_arg_U1, input_min_U1tdotr1, r_1) \
+                        - kU_1 * self.h(U_1, self.lam[1])[1]
         
         n = self.num_layers
         
         #i>1 - n will all be the same
         for i in range(2,n+1):
             
+            ssq_imin1 = self.ssq[i-1]
+            
             kU_i = self.kU[i]
-            ssq_i = self.ssq[i]
             r_i = self.r[i]
             U_i = self.U[i]
             
             rimin1_min_Uidotri = self.r[i-1] - self.f(U_i.dot(r_i))[0]
             
             #i
-            self.U[i] += (kU_i / ssq_i) * np.outer(rimin1_min_Uidotri, r_i) \
-                        - (kU_i / ssq_i) * self.h(U_i, self.lam[i])[1]
+            self.U[i] += (kU_i / ssq_imin1) * np.outer(rimin1_min_Uidotri, r_i) \
+                        - kU_i * self.h(U_i, self.lam[i])[1]
                         
     def Uo_update_no_transform(self, label):
         # Format: Uo += kU_o / ssq_o * (label - softmax(Uo.dot(r_n)))
