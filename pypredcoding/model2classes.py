@@ -236,7 +236,7 @@ class PredictiveCodingClassifier:
             np.seterr(over='raise', invalid='raise')
             
             g_or_h = alph_or_lam * np.log(1 + np.square(r_or_U)).sum()
-            gprime_or_hprime = 2 * alph_or_lam * r_or_U / (1 + np.square(r_or_U))
+            gprime_or_hprime = (alph_or_lam * r_or_U) / (1 + np.square(r_or_U))
             
             # Reset NumPy error handling to default
             np.seterr(over='warn', invalid='warn')
@@ -270,14 +270,26 @@ class PredictiveCodingClassifier:
     def load_hard_prior_dist(self, size):
         return self.r_dists_hard[size]
     
-    def stable_softmax(self, vector, k=1):
-        # Subtract the maximum value from the vector for numerical stability
-        shift_vector = vector - np.max(vector)
-        # Compute the exponentials of the shifted vector
-        exp_vector = np.exp(k * shift_vector)
+    '''
+    test
+    not actually stable - conformity to Li softmax (normal, no k)
+    '''
+    def stable_softmax(self, vector):
+
+        # Compute the exponentials of the vector
+        exp_vector = np.exp(vector)
         # Compute the softmax values
         softmax_vector = exp_vector / np.sum(exp_vector)
         return softmax_vector
+    
+    # def stable_softmax(self, vector, k=1):
+    #     # Subtract the maximum value from the vector for numerical stability
+    #     shift_vector = vector - np.max(vector)
+    #     # Compute the exponentials of the shifted vector
+    #     exp_vector = np.exp(k * shift_vector)
+    #     # Compute the softmax values
+    #     softmax_vector = exp_vector / np.sum(exp_vector)
+    #     return softmax_vector
     
     def reset_rs(self, all_hlyr_sizes, prior_dist):
         n = self.num_layers
