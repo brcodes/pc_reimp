@@ -887,8 +887,12 @@ class StaticPCC(PredictiveCodingClassifier):
         ssq_0 = self.ssq[0]
         ssq_1 = self.ssq[1]
         
+        '''
+        Li style: test
+        '''
+        
         #U1 operations
-        U1_tdot_r1 = np.tensordot(U_1, r_1, axes=([-1],[0]))
+        U1_tdot_r1 = np.einsum('ijk,ik->ij', U_1, r_1)
         
         # 1st layer axes necessary for dot product (2D or 4D)
         bu_tdot_dims = self.bu_error_tdot_dims
@@ -898,7 +902,9 @@ class StaticPCC(PredictiveCodingClassifier):
         bu_sq = np.tensordot(bu_v, bu_v, axes=(bu_tdot_dims, bu_tdot_dims))
         bu_tot = (1 / ssq_0) * bu_sq
         
-        td_v = r_1 - self.f(U_2.dot(r_2))[0]
+        U2_dot_r2 = self.f(U_2.dot(r_2))[0]
+        
+        td_v = r_1.reshape(U2_dot_r2.shape) - U2_dot_r2
         td_sq = td_v.dot(td_v)
         td_tot = (1 / ssq_1) * td_sq
         
@@ -913,7 +919,8 @@ class StaticPCC(PredictiveCodingClassifier):
         pri_ri = 0
         pri_Ui = 0
         for i in range(2,n):
-            bu_v = self.r[i-1] - self.f(self.U[i].dot(self.r[i]))[0]
+            fUi_dot_ri = self.f(self.U[i].dot(self.r[i]))[0]
+            bu_v = self.r[i-1].reshape(fUi_dot_ri.shape) - fUi_dot_ri
             bu_sq = bu_v.dot(bu_v)
             bu_tot += (1 / self.ssq[i-1]) * bu_sq
             
@@ -928,6 +935,10 @@ class StaticPCC(PredictiveCodingClassifier):
             td_i += td_tot
             pri_ri += pri_r
             pri_Ui += pri_U
+            
+        '''
+        test
+        '''
             
         # Final layer will only have bu term
         bu_vn = self.r[n-1] - self.f(self.U[n].dot(self.r[n]))[0]
@@ -1270,12 +1281,19 @@ class StaticPCC(PredictiveCodingClassifier):
         U_1 = self.U[1]
         r_1 = self.r[1]
         
+        '''
+        Li style: test
+        '''
+        
         #U1 operations
-        U1_tdot_r1 = np.tensordot(U_1, r_1, axes=([-1],[0]))
+        U1_tdot_r1 = np.einsum('ijk,ik->ij', U_1, r_1)
+        
         input_min_U1tdotr1 = self.r[0] - self.f(U1_tdot_r1)[0]
         
+        einsum_arg_U1 = 'ij,ik->ijk'
+        
         # Layer 1
-        self.U[1] += (kU_1 / ssq_0) * np.einsum(self.einsum_arg_U1, input_min_U1tdotr1, r_1) \
+        self.U[1] += (kU_1 / ssq_0) * np.einsum(einsum_arg_U1, input_min_U1tdotr1, r_1) \
                         - kU_1 * self.h(U_1, self.lam[1])[1]
         
         n = self.num_layers
@@ -1289,7 +1307,9 @@ class StaticPCC(PredictiveCodingClassifier):
             r_i = self.r[i]
             U_i = self.U[i]
             
-            rimin1_min_Uidotri = self.r[i-1] - self.f(U_i.dot(r_i))[0]
+            fUi_dot_ri = self.f(U_i.dot(r_i))[0]
+            
+            rimin1_min_Uidotri = self.r[i-1].reshape(fUi_dot_ri.shape) - fUi_dot_ri
             
             #i
             self.U[i] += (kU_i / ssq_imin1) * np.outer(rimin1_min_Uidotri, r_i) \
