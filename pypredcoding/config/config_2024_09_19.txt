@@ -40,7 +40,7 @@ hidden_lyr_sizes=[32,128]
 # For a 1-layer model, must be the single layer size
 output_lyr_size=212
 # C1 or C2, see Rogers/Brown work for clarification; can be None, 'c1', 'c2'
-classif_method='c1'
+classif_method='c2'
 # Tanh or linear
 activ_func='linear'
 # Gaussian random or sparse kurtotic (kurtotic approximatable as zeros- Li method)
@@ -61,7 +61,7 @@ dataset_train='ds.trace212_212_li_trace212_132_84_tl_16_36_24_32_20.pydb'
 # Stochastic gradient descent is 1, all above is batch gd.
 batch_size=1
 # how many exposures to all of the data (shuffled)
-epoch_n=250
+epoch_n=10
 # learning rates, one per layer plus o needs to be correct if classif_method == 'c2'
 kr={1:0.001, 2:0.001, 3:0.001, 'o':0.001}
 # kU={1:0.01, 2:0.01, 3:0.01, 'o':0.01}

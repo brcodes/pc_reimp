@@ -463,11 +463,11 @@ class PredictiveCodingClassifier:
             self.Jr[epoch] = Jre
             self.Jc[epoch] = Jce
             
-            # For every 10 epochs, save mid-training diagnostics
-            if epoch % 5 == 0:
-                # Save mid-training diagnostics
-                online_name = self.generate_output_name(self.mod_name, epoch)
-                self.save_diagnostics(output_dir='models/', output_name=online_name)
+            # # For every 10 epochs, save mid-training diagnostics
+            # if epoch % 5 == 0:
+            #     # Save mid-training diagnostics
+            #     online_name = self.generate_output_name(self.mod_name, epoch)
+            #     self.save_diagnostics(output_dir='models/', output_name=online_name)
             
             printlog(f'Jr: {Jre}, Jc: {Jce}, Accuracy: {accuracy}')
             t_end_epoch = datetime.now()
@@ -919,9 +919,10 @@ class StaticPCC(PredictiveCodingClassifier):
         return c1
 
     def rn_topdown_upd_c2(self, label):
-        # Format: k_o / ssq_o * (label - softmax(Uo.dot(r_n)))
+        # Format: k_o / ssq_n * (label - softmax(Uo.dot(r_n)))
+        n = self.num_layers
         o = 'o'
-        c2 = (self.kr[o]/ self.ssq[o]) * (label - self.stable_softmax(self.U[o].dot(self.r[self.num_layers])))
+        c2 = (self.kr[o]/ self.ssq[n]) * (label - self.stable_softmax(self.U[o].dot(self.r[n])))
         return c2
     
     def rn_topdown_upd_None(self, label):
