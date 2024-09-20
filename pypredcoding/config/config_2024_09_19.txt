@@ -10,12 +10,11 @@
 # Will append model and log filenames
 # When you want to access a checkpoint later, you need to use this exact name. 
 # You can note that you are re-training in the notes below- and note the new date of the retraining.
-exp_name='li_params_prior_dists'
+exp_name='li_params_prior_dists_r1U2'
 train_with=True
 evaluate_with=False
 predict_with= False
-notes='2024_09_19 param equiv., prior dists'
-# notes='2024_09_19_r1 16,32 U2 512,128, param equiv., prior dists'
+notes='2024_09_19 r1 16,32 U2 512,128, param equiv., prior dists'
 
 ## PCC MODEL
 # << will automatically make this model if not found in models/ and train=True above; else ValueError >>
@@ -35,7 +34,18 @@ input_size=(16,864)
 # For a 1-layer model, this will be ignored for output_lyr_size
 # all rs are 1d
 # in a 2-layer model, this will have one number, and the second layer will be output_lyr_size
+#
+#
+#''' 
+#Li style: test
+#'''
+#
+# if tiled, and expand_r1, num tiles * hidden_lyr_sizes[0] == actual r1 array size.
 hidden_lyr_sizes=[32,128]
+expand_r1=True
+#
+#''' Li style: test
+#
 # If classif_method None or 'c2', can be any size; 'c1' must have size == number of classes
 # For a 1-layer model, must be the single layer size
 output_lyr_size=212

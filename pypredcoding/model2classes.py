@@ -111,29 +111,64 @@ class PredictiveCodingClassifier:
         self.r = {}
         self.U = {}
         
+        
+        '''
+        Li style: test
+        '''
+        
         # Initiate rs, Us (Vs in recurrent subclass)
         # r0 is going to be different
+        tiled = self.tiled
         input_size = self.input_size
         num_layers = self.num_layers
         n = num_layers
+        
         self.r[0] = np.zeros(input_size)
         for i in range(1, n + 1):
-            if i == n:
+            
+            if i == 1:
+                if tiled:
+                    self.r[i] = self.r_prior_dist(size=(self.num_tiles, self.hidden_lyr_sizes[i - 1]))
+                else:
+                    self.r[i] = self.r_prior_dist(size=(self.hidden_lyr_sizes[i - 1]))
+                    
+            elif i == n:
                 self.r[i] = self.r_prior_dist(size=(self.output_lyr_size))
             else:
                 self.r[i] = self.r_prior_dist(size=(self.hidden_lyr_sizes[i - 1]))
         
         # Initiate Us
         # U1 is going to be a little bit different
-        U1_size = tuple(list(input_size) + list(self.r[1].shape))
+        if tiled:
+            input_size_list = list(input_size)
+            input_size_list.append(self.r[1].shape[1])
+            U1_size = tuple(input_size_list)
+        else:
+            U1_size = tuple(list(input_size) + list(self.r[1].shape))
+        
+        print(f'U1_size: {U1_size}')
+        
         self.U[1] = self.U_prior_dist(size=U1_size)
         # U2 through Un
         for i in range(2, n + 1):
-            Ui_size = (self.r[i-1].shape[0], self.r[i].shape[0])
+            
+            if i == 2:
+                
+                if tiled:
+                    Ui_size = (self.r[i-1].shape[0] * self.r[i-1].shape[1], self.r[i].shape[0])
+                else:
+                    Ui_size = (self.r[i-1].shape[0], self.r[i].shape[0])
+                    
+            else:
+                Ui_size = (self.r[i-1].shape[0], self.r[i].shape[0])
+            
+            print(f'U{i}_size: {Ui_size}')
+            
             self.U[i] = self.U_prior_dist(size=Ui_size)
         if self.classif_method == 'c2':
             Uo_size = (self.num_classes, self.output_lyr_size)
             self.U['o'] = self.U_prior_dist(size=Uo_size)
+        
             
         # Initiate U1-based operations dims (dimentions flex based on input)
         # Transpose dims
@@ -169,6 +204,13 @@ class PredictiveCodingClassifier:
         # Hidden layer sizes for priors
         self.all_hlyr_sizes = self.hidden_lyr_sizes.copy()
         self.all_hlyr_sizes.append(self.output_lyr_size)
+        if tiled:
+            self.all_hlyr_sizes[0] = (self.num_tiles, self.all_hlyr_sizes[0])
+            
+        
+        '''
+        Li style: test
+        '''
         
         # Initiate Jr, Jc, and accuracy (diagnostics) for storage, print, plot
         epoch_n = self.epoch_n
@@ -1146,13 +1188,27 @@ class StaticPCC(PredictiveCodingClassifier):
         
         #U1 operations
         U1_transpose = np.transpose(U_1, self.U1T_dims)
-        U1_tdot_r1 = np.tensordot(U_1, r_1, axes=([-1],[0]))
+        
+        '''
+        Li style: test
+        '''
+        # Expanded r1
+        # Perform einsum operation
+        U1_tdot_r1 = np.einsum('ijk,ik->ij', U_1, r_1)
+        ## Unexpanded r1
+        #U1_tdot_r1 = np.tensordot(U_1, r_1, axes=([-1],[0]))
+        
         input_min_U1tdotr1 = self.r[0] - self.f(U1_tdot_r1)[0]
         
+        
+        U1T_tdot_buerror = np.einsum('ijk,jk->ji', U1_transpose, input_min_U1tdotr1)
+        
         # Layer 1
-        self.r[1] += (kr_1 / ssq_0) * np.tensordot(U1_transpose, input_min_U1tdotr1, axes=(self.U1T_tdot_dims, self.bu_error_tdot_dims)) \
-                                            + (kr_1 / ssq_1) * (self.f(U_2.dot(r_2))[0] - r_1) \
+        self.r[1] += (kr_1 / ssq_0) * U1T_tdot_buerror \
+                                            + (kr_1 / ssq_1) * (self.f(U_2.dot(r_2))[0].reshape(r_1.shape) - r_1) \
                                             - (kr_1) * self.g(r_1, self.alph[1])[1]
+        
+        
         # Layers 2 to n-1                                    
         for i in range(2,n):
             
@@ -1163,7 +1219,9 @@ class StaticPCC(PredictiveCodingClassifier):
             r_i = self.r[i]
             U_i = self.U[i]
             
-            self.r[i] += (kr_i / ssq_imin1) * (U_i.T.dot(self.r[i-1] - self.f(U_i.dot(r_i))[0])) \
+            fUi_dot_ri = self.f(U_i.dot(r_i))[0]
+            
+            self.r[i] += (kr_i / ssq_imin1) * (U_i.T.dot(self.r[i-1].reshape(fUi_dot_ri.shape) - fUi_dot_ri)) \
                                                 + (kr_i / ssq_i ) * (self.f(self.U[i+1].dot(self.r[i+1]))[0] - r_i) \
                                                 - (kr_i) * self.g(r_i, self.alph[i])[1]
 
@@ -1171,14 +1229,17 @@ class StaticPCC(PredictiveCodingClassifier):
         ssq_nmin1 = self.ssq[n-1]
         
         kr_n = self.kr[n]
-        ssq_n = self.ssq[n]
         U_n = self.U[n]
         r_n = self.r[n]
 
         self.r[n] += (kr_n / ssq_nmin1) * (U_n.T.dot(self.r[n-1] - self.f(U_n.dot(r_n))[0])) \
                                                 + self.rn_topdown_upd_dict[self.classif_method](label) \
                                                 - (kr_n) * self.g(r_n, self.alph[n])[1]
-                                                
+        
+        '''
+        test
+        '''    
+
     def U_updates_n_1_no_transform(self,label):
 
         '''u1 will need a tensor dot
