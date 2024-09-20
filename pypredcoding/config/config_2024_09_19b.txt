@@ -10,7 +10,7 @@
 # Will append model and log filenames
 # When you want to access a checkpoint later, you need to use this exact name. 
 # You can note that you are re-training in the notes below- and note the new date of the retraining.
-exp_name='li_params_prior_dists_r1U2'
+exp_name='li_params_priors_r1_U2b'
 train_with=True
 evaluate_with=False
 predict_with= False
@@ -57,7 +57,7 @@ priors='kurtotic'
 # Li method, r/U,V (W = Weights) updated together for 30 iters per image: {'rW_niters':30}
 # Rogers/Brown proposal #1: r updated for 100 iters per image before U or V update {'r_niters_W':100}
 # Rogers/Brown proposal #2. r updated until change in vector < some stop criterion per image, then U or V  {'r_eq_W':0.05}
-update_method={'rW_niters':30}
+update_method={'r_niters_W': 100}
 
 ## TRAINING DATASET
 # << will automatically create this dataset if not found in data/ >>

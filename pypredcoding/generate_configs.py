@@ -39,23 +39,21 @@ def generate_configs(base_config_path, param_dict, base_config_name):
         write_config(lines, new_params, base_config_name, suffix)
 
 if __name__ == "__main__":
-    base_config_date = '2024_09_16'
+    base_config_date = '2024_09_19'
     base_config_name = 'config_' + base_config_date
-    exp_name_base = 'notscaledbigr1_'
-    
     base_config_path = 'config/' + base_config_name  + '.txt'
-    kr_dict1 = kr={1:0.00001, 2:0.00001, 3:0.00001, 'o':0.00001}
-    kr_dict2 = kr={1:0.0001, 2:0.0001, 3:0.0001, 'o':0.0001}
-    # kU_dict1 = kU={1:0.001, 2:0.001, 3:0.001, 'o':0.001}
-    # kU_dict2 = kU={1:0.01, 2:0.01, 3:0.01, 'o':0.01}
-    rW_30 = {'rW_niters': 30}
-    r_eq_W = {'r_eq_W': 0.05}
-    r100W = {'r_niters_W': 100}
+    
+    num_experiments = 4
+    
+    classif_method = ['c1', 'c1', 'c1', 'c2']
+    update_method = [{'rW_niters':30},{'r_niters_W':100},{'r_eq_W':0.05},{'rW_niters':30}]
+    
+    exp_name_base = 'li_params_priors_r1_U2'
     
     param_dict = {
-        'update_method': [ rW_30, rW_30, rW_30, r_eq_W, r100W],
-        'kr': [kr_dict2, kr_dict1, kr_dict2, kr_dict2, kr_dict2],
-        'classif_method': ['c1', 'c2', 'c2', 'c2', 'c2'],
-        'exp_name': [exp_name_base + letter for letter in string.ascii_lowercase[:5]]
+        'classif_method': classif_method,
+        'update_method': update_method,
+        'exp_name': [exp_name_base + letter for letter in string.ascii_lowercase[:num_experiments]]
     }
+    
     generate_configs(base_config_path, param_dict, base_config_name)

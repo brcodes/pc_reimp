@@ -273,7 +273,7 @@ def main():
     if not exists(config_folder):
         raise ValueError(f"The config folder {config_folder} does not exist.")
     
-    config_file_base = 'config_2024_09_16'
+    config_file_base = 'config_2024_09_19'
     
     letter = 'd'
     

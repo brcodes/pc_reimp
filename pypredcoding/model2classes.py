@@ -505,11 +505,11 @@ class PredictiveCodingClassifier:
             self.Jr[epoch] = Jre
             self.Jc[epoch] = Jce
             
-            # # For every 10 epochs, save mid-training diagnostics
-            # if epoch % 5 == 0:
-            #     # Save mid-training diagnostics
-            #     online_name = self.generate_output_name(self.mod_name, epoch)
-            #     self.save_diagnostics(output_dir='models/', output_name=online_name)
+            # For every 10 epochs, save mid-training diagnostics
+            if epoch % 5 == 0:
+                # Save mid-training diagnostics
+                online_name = self.generate_output_name(self.mod_name, epoch)
+                self.save_diagnostics(output_dir='models/', output_name=online_name)
             
             printlog(f'Jr: {Jre}, Jc: {Jce}, Accuracy: {accuracy}')
             t_end_epoch = datetime.now()
@@ -919,8 +919,13 @@ class StaticPCC(PredictiveCodingClassifier):
         pri_ri = 0
         pri_Ui = 0
         for i in range(2,n):
-            fUi_dot_ri = self.f(self.U[i].dot(self.r[i]))[0]
-            bu_v = self.r[i-1].reshape(fUi_dot_ri.shape) - fUi_dot_ri
+            
+            if i == 2:
+                fUi_dot_ri = self.f(self.U[i].dot(self.r[i]))[0]
+                bu_v = self.r[i-1].reshape(fUi_dot_ri.shape) - fUi_dot_ri
+            else:
+                bu_v = self.r[i-1] - self.f(self.U[i].dot(self.r[i]))[0]
+                
             bu_sq = bu_v.dot(bu_v)
             bu_tot += (1 / self.ssq[i-1]) * bu_sq
             
@@ -1212,10 +1217,8 @@ class StaticPCC(PredictiveCodingClassifier):
         input_min_U1tdotr1 = self.r[0] - self.f(U1_tdot_r1)[0]
         
         
-        U1T_tdot_buerror = np.einsum('ijk,jk->ji', U1_transpose, input_min_U1tdotr1)
-        
         # Layer 1
-        self.r[1] += (kr_1 / ssq_0) * U1T_tdot_buerror \
+        self.r[1] += (kr_1 / ssq_0) * np.einsum('ijk,jk->ji', U1_transpose, input_min_U1tdotr1) \
                                             + (kr_1 / ssq_1) * (self.f(U_2.dot(r_2))[0].reshape(r_1.shape) - r_1) \
                                             - (kr_1) * self.g(r_1, self.alph[1])[1]
         
@@ -1230,9 +1233,15 @@ class StaticPCC(PredictiveCodingClassifier):
             r_i = self.r[i]
             U_i = self.U[i]
             
-            fUi_dot_ri = self.f(U_i.dot(r_i))[0]
             
-            self.r[i] += (kr_i / ssq_imin1) * (U_i.T.dot(self.r[i-1].reshape(fUi_dot_ri.shape) - fUi_dot_ri)) \
+            if i == 2:
+                fUi_dot_ri = self.f(U_i.dot(r_i))[0]
+                bu_term = self.r[i-1].reshape(fUi_dot_ri.shape) - fUi_dot_ri
+            else:
+                bu_term = self.r[i-1] - self.f(U_i.dot(r_i))[0]
+                
+            
+            self.r[i] += (kr_i / ssq_imin1) * (U_i.T.dot(bu_term)) \
                                                 + (kr_i / ssq_i ) * (self.f(self.U[i+1].dot(self.r[i+1]))[0] - r_i) \
                                                 - (kr_i) * self.g(r_i, self.alph[i])[1]
 
@@ -1307,9 +1316,11 @@ class StaticPCC(PredictiveCodingClassifier):
             r_i = self.r[i]
             U_i = self.U[i]
             
-            fUi_dot_ri = self.f(U_i.dot(r_i))[0]
-            
-            rimin1_min_Uidotri = self.r[i-1].reshape(fUi_dot_ri.shape) - fUi_dot_ri
+            if i == 2:
+                fUi_dot_ri = self.f(U_i.dot(r_i))[0]
+                rimin1_min_Uidotri = self.r[i-1].reshape(fUi_dot_ri.shape) - fUi_dot_ri
+            else:
+                rimin1_min_Uidotri = self.r[i-1] - self.f(U_i.dot(r_i))[0]
             
             #i
             self.U[i] += (kU_i / ssq_imin1) * np.outer(rimin1_min_Uidotri, r_i) \
