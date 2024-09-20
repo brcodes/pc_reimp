@@ -40,7 +40,7 @@ hidden_lyr_sizes=[32,128]
 # For a 1-layer model, must be the single layer size
 output_lyr_size=212
 # C1 or C2, see Rogers/Brown work for clarification; can be None, 'c1', 'c2'
-classif_method='c2'
+classif_method='c1'
 # Tanh or linear
 activ_func='linear'
 # Gaussian random or sparse kurtotic (kurtotic approximatable as zeros- Li method)
