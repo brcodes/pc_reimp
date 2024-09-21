@@ -10,12 +10,12 @@ filename_marker = ''
 
 # # Which diagnostics to plot
 # # Grab most recent in folder
-which = 'most_recent'
+# which = 'most_recent'
 # # Grab only those from today
 # which = 'today'
 # # Grab only those with a certain filename component
-# which = 'filename_marker'
-# filename_marker += 'softmax_k='
+which = 'filename_marker'
+filename_marker += 'r1_U2'
 # Grab all
 # which = 'all'
 
@@ -57,9 +57,10 @@ for filename in files:
         diags['accuracy'] = [acc * 100 for acc in diags['accuracy']]
 
         # Calculate percent changes
-        percent_change_Jr = ((diags['Jr'][-1] - diags['Jr'][0]) / diags['Jr'][0]) * 100
-        percent_change_Jc = ((diags['Jc'][-1] - diags['Jc'][0]) / diags['Jc'][0]) * 100
-        percent_change_accuracy = ((diags['accuracy'][-1] - diags['accuracy'][0]) / diags['accuracy'][0]) * 100
+        epsilon = 1e-6
+        percent_change_Jr = ((diags['Jr'][-1] - diags['Jr'][0]) / (diags['Jr'][0] + epsilon)) * 100
+        percent_change_Jc = ((diags['Jc'][-1] - diags['Jc'][0]) / (diags['Jc'][0] + epsilon)) * 100
+        percent_change_accuracy = ((diags['accuracy'][-1] - diags['accuracy'][0]) / (diags['accuracy'][0] + epsilon)) * 100
 
         fig, ax1 = plt.subplots()
 

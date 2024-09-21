@@ -10,11 +10,11 @@
 # Will append model and log filenames
 # When you want to access a checkpoint later, you need to use this exact name. 
 # You can note that you are re-training in the notes below- and note the new date of the retraining.
-exp_name='li_params_priors_r1_U2d'
+exp_name='li_params_priors_r1_U2_r100Wexplorea'
 train_with=True
 evaluate_with=False
 predict_with= False
-notes='2024_09_19 r1 16,32 U2 512,128, param equiv., prior dists'
+notes='2024_09_20 r1 16,32 U2 512,128, param equiv., prior dists - r100W success exploration'
 
 ## PCC MODEL
 # << will automatically make this model if not found in models/ and train=True above; else ValueError >>
@@ -49,7 +49,7 @@ hidden_lyr_sizes=[32,128]
 # For a 1-layer model, must be the single layer size
 output_lyr_size=212
 # C1 or C2, see Rogers/Brown work for clarification; can be None, 'c1', 'c2'
-classif_method='c2'
+classif_method='c1'
 # Tanh or linear
 activ_func='linear'
 # Gaussian random or sparse kurtotic (kurtotic approximatable as zeros- Li method)
@@ -57,7 +57,7 @@ priors='kurtotic'
 # Li method, r/U,V (W = Weights) updated together for 30 iters per image: {'rW_niters':30}
 # Rogers/Brown proposal #1: r updated for 100 iters per image before U or V update {'r_niters_W':100}
 # Rogers/Brown proposal #2. r updated until change in vector < some stop criterion per image, then U or V  {'r_eq_W':0.05}
-update_method={'rW_niters': 30}
+update_method={'r_niters_W':100}
 
 ## TRAINING DATASET
 # << will automatically create this dataset if not found in data/ >>
@@ -70,7 +70,7 @@ dataset_train='ds.trace212_212_li_trace212_132_84_tl_16_36_24_32_20.pydb'
 # Stochastic gradient descent is 1, all above is batch gd.
 batch_size=1
 # how many exposures to all of the data (shuffled)
-epoch_n=500
+epoch_n=2000
 # learning rates, one per layer plus o needs to be correct if classif_method == 'c2'
 kr={1:0.001, 2:0.001, 3:0.001, 'o':0.001}
 # kU={1:0.01, 2:0.01, 3:0.01, 'o':0.01}

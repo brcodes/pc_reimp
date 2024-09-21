@@ -373,7 +373,7 @@ class PredictiveCodingClassifier:
             printlog(f'r{i} first 3: {self.r[i][:3]}')
             if i > 0:
                 # Check if the array is 3D or 5D
-                print(f'U{i} shape: {self.U[i].shape}')
+                printlog(f'U{i} shape: {self.U[i].shape}')
                 if self.U[i].ndim == 3:
                     printlog(f'U{i} first 3x3x3: {self.U[i][:3, :3, :3]}')
                 elif self.U[i].ndim == 5:

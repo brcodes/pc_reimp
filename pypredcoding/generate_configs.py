@@ -39,20 +39,19 @@ def generate_configs(base_config_path, param_dict, base_config_name):
         write_config(lines, new_params, base_config_name, suffix)
 
 if __name__ == "__main__":
-    base_config_date = '2024_09_19'
+    base_config_date = '2024_09_20'
     base_config_name = 'config_' + base_config_date
     base_config_path = 'config/' + base_config_name  + '.txt'
     
-    num_experiments = 4
+    num_experiments = 2
     
-    classif_method = ['c1', 'c1', 'c1', 'c2']
-    update_method = [{'rW_niters':30},{'r_niters_W':100},{'r_eq_W':0.05},{'rW_niters':30}]
+    # Three update method types {'r_niters_W':100},{'r_eq_W':0.05},{'rW_niters':30}
     
-    exp_name_base = 'li_params_priors_r1_U2'
+    classif_method = ['c1', 'c2']
+    exp_name_base = 'li_params_priors_r1_U2_r100Wexplore'
     
     param_dict = {
         'classif_method': classif_method,
-        'update_method': update_method,
         'exp_name': [exp_name_base + letter for letter in string.ascii_lowercase[:num_experiments]]
     }
     
