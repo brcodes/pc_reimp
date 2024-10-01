@@ -1,5 +1,5 @@
 from ast import literal_eval
-from model2classes import PredictiveCodingClassifier, StaticPCC, RecurrentPCC
+from model import PredictiveCodingClassifier, StaticPCC, RecurrentPCC
 # from data import load_data
 from os.path import join, exists
 from os import listdir, makedirs
@@ -273,16 +273,17 @@ def main():
     if not exists(config_folder):
         raise ValueError(f"The config folder {config_folder} does not exist.")
     
-    config_file_base = 'config_2024_09_19'
+    config_file_base = 'config_2024_09_20'
     
-    letter = None
+    multi = False
     
-    if letter is not None:
+    if multi:
         
-        final = 'a'
+        first = 'a'
+        final = 'b'
         
-        while letter <= final:
-            config_file_name = f'{config_file_base}{letter}.txt'
+        while first <= final:
+            config_file_name = f'{config_file_base}{first}.txt'
             config_file_path = join(config_folder, config_file_name)
             
             if not exists(config_file_path):
@@ -293,7 +294,7 @@ def main():
             run_experiment(config_file_path)
             
             # Move to the next letter
-            letter = chr(ord(letter) + 1)
+            first = chr(ord(first) + 1)
             
     else:
         

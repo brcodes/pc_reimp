@@ -14,10 +14,11 @@ filename_marker = ''
 # # Grab only those from today
 # which = 'today'
 # # Grab only those with a certain filename component
-which = 'filename_marker'
-filename_marker += 'r1_U2'
+# which = 'filename_marker'
+# filename_marker += 'explorea'
 # Grab all
 # which = 'all'
+which = 'all_in_order'
 
 # Get the list of files in the directory
 files = listdir(diags_dir)
@@ -36,8 +37,13 @@ elif which == 'filename_marker':
 elif which == 'all':
     print('grabbing all files in {diags_dir}')
     pass  # No filtering needed
+elif which == 'all_in_order':
+    print(f'grabbing all files in {diags_dir} ordered by date modified')
+    files = sorted(files, key=lambda x: getctime(join(diags_dir, x)))
 
 print(files)
+
+
 
 # Iterate through the filtered files
 for filename in files:
@@ -51,10 +57,20 @@ for filename in files:
         
         print(f'loaded diag file: {filename}')
         
-        epochs = range(len(diags['Jr']))
+        # Split the filename by _ and take the last, then split by . and take the first. This is epoch_n
+        epoch_n = int(filename.split('_')[-1].split('.')[0])
         
+        # clip diags at epoch_n
+        diags['Jr'] = diags['Jr'][:epoch_n]
+        diags['Jc'] = diags['Jc'][:epoch_n]
+        diags['accuracy'] = diags['accuracy'][:epoch_n]
+            
+        epochs = range(len(diags['Jr']))
+            
         # Turn each accuracy into an actual percent
         diags['accuracy'] = [acc * 100 for acc in diags['accuracy']]
+        
+        
 
         # Calculate percent changes
         epsilon = 1e-6

@@ -39,17 +39,39 @@ def generate_configs(base_config_path, param_dict, base_config_name):
         write_config(lines, new_params, base_config_name, suffix)
 
 if __name__ == "__main__":
+
+
+    '''
+    user sets: vvv
+    '''
+    # Base config you want to search over
     base_config_date = '2024_09_20'
-    base_config_name = 'config_' + base_config_date
-    base_config_path = 'config/' + base_config_name  + '.txt'
-    
+
+    # Number of experiments (new configs from a to z to generate, based on base config)
     num_experiments = 2
     
-    # Three update method types {'r_niters_W':100},{'r_eq_W':0.05},{'rW_niters':30}
-    
+    # Variables to set for those experiments, must be in list form. then will follow the literal eval sequence.
     classif_method = ['c1', 'c2']
+
+    # Do not put in list form. this takes the general filename appendage for your search, and will auto.
+    #-matically put a, b etc at the end of it, to differentiate runs. This becomes the model.exp_name parameter.
     exp_name_base = 'li_params_priors_r1_U2_r100Wexplore'
     
+    '''
+    user sets: ^^^
+    '''
+
+    base_config_name = 'config_' + base_config_date
+    base_config_path = 'config/' + base_config_name  + '.txt'
+
+
+    '''
+    user sets: vvv
+    
+    Add: 'variable_name' : variable_named_list_from_above (what you are searching over)
+    Do not change: 'exp_name' code
+    '''
+
     param_dict = {
         'classif_method': classif_method,
         'exp_name': [exp_name_base + letter for letter in string.ascii_lowercase[:num_experiments]]

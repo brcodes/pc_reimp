@@ -4,76 +4,90 @@ from functools import partial
 
 from datetime import datetime
 import pickle
-from os import path
-        
+from os import makedirs
+from os.path import join, exists, dirname, isfile
+import csv
+
+def create_zeros(size):
+    return np.zeros(size)
+
 class PredictiveCodingClassifier:
 
     def __init__(self):
         
-        '''
-        I think not unique to any subclass, so I'll put it here.
-        '''
         # Choices for transformation functions, priors
         self.act_fxn_dict = {'linear': self.linear_transform,
                                 'tanh': self.tanh_transform}
         self.prior_cost_dict = {'gaussian': self.gaussian_prior_costs, 
                                 'kurtotic': self.kurtotic_prior_costs}
-        self.prior_dist_dict = {'gaussian': partial(np.random.normal, loc=0, scale=1),
-                                'kurtotic': partial(np.random.laplace, loc=0.0, scale=0.5)}
-    
+        # self.prior_dist_dict = {'gaussian': partial(np.random.normal, loc=0, scale=1),
+        #                         'kurtotic': partial(np.random.laplace, loc=0.0, scale=0.5)}
+        
+        self.r_prior_dist_dict = {'gaussian': partial(np.random.normal, loc=0, scale=1),
+                                'kurtotic': create_zeros}
+        
+        # U_prior set below in self.U_prior_dist
+        
         '''
-        change rpcc learning rates to kr ku kv, etc.
-        npt alpha beta gamma
+        shell class for sPCC and rPCC subclasses
+        inheritance: some general methods, and all attributes
+        
+        "self."
+        
+        # metadata and experiment (this is grabbed by run_experiment, but saved here as a flag)
+        mod_name: str: name of chosen model if eval, pred or end-state model if train
+        exp_name: str: name of experiment
+        train_with: bool: whether to train the model (in here, has or has not init a training)
+        evaluate_with: bool: whether to evaluate the model (in here, has or has not init an evaluation)
+        predict_with: bool: whether to predict with the model (in here, has or has not init a prediction)
+        notes: str: any notes about the experiment
+        
+        # model
+        model_type: str: 'static' or 'recurrent'
+        tiled: bool: whether to tile the input data
+        flat_input: bool: whether to flatten the input data
+        num_layers: int: number of layers in the model (discluding input layer '0')
+        input_size: tuple: size of input data, one sample
+        hidden_lyr_sizes: list: size of hidden layers
+        output_lyr_size: int: size of output layer (if c1, must == num_classes)
+        classif_method: str or None: 'c1' or 'c2' or None
+        activ_func: str: 'linear' or 'tanh'
+        priors: str: 'gaussian' or 'kurtotic'
+        update_method: dict: {'rW_niters':#} or {'r_niters_W':#} or {'r_eq_W':#} # is int for iters, float for eq
+        
+        # dataset train
+        num_imgs: int: number of images in dataset
+        num_classes: int: number of classes in dataset
+        dataset_train: str: name of dataset to grab from data/
+        
+        # training
+        batch_size: int: number of samples in each batch
+        epoch_n: int: number of epochs to train
+        kr: dict: learning rates for each layer, r component
+        kU: dict: learning rates for each layer, U component
+        kV: dict: learning rates for each layer, V component
+        alph: dict: prior parameter for each layer, r component
+        lam: dict: prior parameter for each layer, U component
+        ssq: dict: layer var/covar parameter for each layer
+        
+        # training data
+        save_checkpoint: dict or None: {'save_every':#} or {'fraction':#} # is int, num or denom
+        load_checkpoint: int or None: number of checkpoint to load. -1 for most recent. None for no load
+        online_diagnostics: bool: whether to save and print diagnostics during training (loss, accuracy)
+        plot_train: bool: whether to plot training diagnostics. online_diagnostics must be True
+        
+        # dataset evaluation
+        dataset_eval: str: name of dataset to grab from data/
+        
+        # evaluation data
+        plot_eval: str or None: 'first' for first image, etc. (see model.py)
+        
+        # dataset prediction
+        dataset_pred: str: name of dataset to grab from data/
+        
+        # prediction data
+        plot_pred: str or None: 'first' for first image, etc. (see model.py)
         '''
-        # None/wrapped None inits are to be received from assignment
-        # Rough types are given
-        # Model
-        self.model_type = 'None'
-        self.tiled = None
-        self.flat_input = None
-        # Experiment
-        self.train_with = None
-        self.evaluate_with = None
-        self.predict_with = None
-        # Size
-        self.num_layers = None
-        self.input_size = (None)
-        self.hidden_lyr_sizes = [None]
-        self.output_lyr_size = None
-        # Model components, V's specific to recurrent subclass
-        self.r = {}
-        self.U = {}
-        # Training
-        self.dataset_train = 'None'
-        self.classif_method = 'None'
-        self.activ_func = 'None'
-        self.priors = 'None'
-        self.update_method = {None:None}
-        self.batch_size = None
-        self.epoch_n = None
-        self.save_checkpoint = None
-        self.load_checkpoint = None
-        self.online_diagnostics = None
-        self.plot_train = None
-        # Learning rates
-        self.kr = {None:None}
-        self.kU = {None:None}
-        # Layer variances (just a divisor for learning rates, functionally)
-        # All ssqs should be 2 (fulfills gradient coefficient in some cases), could experiment with other (dynamic?) values later
-        self.ssq = {None:None}
-        # Prior parameters
-        self.alph = {None:None}
-        self.lam = {None:None}
-        # Evaluation
-        self.dataset_eval = 'None'
-        self.plot_eval = 'None'
-        # Prediction
-        self.dataset_pred = 'None'
-        self.plot_pred = 'None'
-        # Diagnostics (Je (tot cost, energy) = Jr (representation cost) + Jc (classification cost))
-        self.Jr = {}
-        self.Jc = {}
-        self.accuracy = []
         
     def set_model_attributes(self, params):
         '''
@@ -83,66 +97,131 @@ class PredictiveCodingClassifier:
         '''
         for key, value in params.items():
             setattr(self, key, value)
-        self.config_from_attributes()
         
     def config_from_attributes(self):
         '''
-        Configure the PCC based on the set attributes.
+        Set up the model from the attributes.
         '''
+        
         # Transforms and priors
         self.f = self.act_fxn_dict[self.activ_func]
         self.g = self.prior_cost_dict[self.priors]
         self.h = self.prior_cost_dict[self.priors]
-
-        # Initiate rs
-        # Layer 1 until n will be the same
-        # r0 is the input, assigned in subclass
-        for lyr in range(1,self.num_layers+1):
-            if lyr == self.num_layers:
-                self.r[lyr] = self.prior_dist(size=(self.output_lyr_size))
-            else:
-                self.r[lyr] = self.prior_dist(size=(self.hidden_lyr_sizes[lyr-1]))
-            print(f'r{lyr} size: {self.r[lyr].shape}')   
-            
-        # Initiate Us
-        # Layer 2 until n will be the same
-        # U1 relates r0 to r1, assigned in subclass
-        for lyr in range(2,self.num_layers+1):
-            # Ui>1 is going to be 2D, and the size is the same as (the r of the previous layer, r of current layer)
-            Ui_gt_1_size = (self.r[lyr-1].shape[0], self.r[lyr].shape[0])
-            self.U[lyr] = self.prior_dist(size=Ui_gt_1_size)
-            print(f'U{lyr} size: {self.U[lyr].shape}')
         
-        # Uo is an output weight matrix that learns to relate r_n to the label, size of (num_classes, topmost_r)
+        self.r = {}
+        self.U = {}
+        
+        
+        '''
+        Li style: test
+        '''
+        
+        # Initiate rs, Us (Vs in recurrent subclass)
+        # r0 is going to be different
+        tiled = self.tiled
+        input_size = self.input_size
+        num_layers = self.num_layers
+        n = num_layers
+        
+        self.r[0] = np.zeros(input_size)
+        for i in range(1, n + 1):
+            
+            if i == 1:
+                if tiled:
+                    self.r[i] = self.r_prior_dist(size=(self.num_tiles, self.hidden_lyr_sizes[i - 1]))
+                else:
+                    self.r[i] = self.r_prior_dist(size=(self.hidden_lyr_sizes[i - 1]))
+                    
+            elif i == n:
+                self.r[i] = self.r_prior_dist(size=(self.output_lyr_size))
+            else:
+                self.r[i] = self.r_prior_dist(size=(self.hidden_lyr_sizes[i - 1]))
+        
+        # Initiate Us
+        # U1 is going to be a little bit different
+        if tiled:
+            input_size_list = list(input_size)
+            input_size_list.append(self.r[1].shape[1])
+            U1_size = tuple(input_size_list)
+        else:
+            U1_size = tuple(list(input_size) + list(self.r[1].shape))
+        
+        print(f'U1_size: {U1_size}')
+        
+        self.U[1] = self.U_prior_dist(size=U1_size)
+        # U2 through Un
+        for i in range(2, n + 1):
+            
+            if i == 2:
+                
+                if tiled:
+                    Ui_size = (self.r[i-1].shape[0] * self.r[i-1].shape[1], self.r[i].shape[0])
+                else:
+                    Ui_size = (self.r[i-1].shape[0], self.r[i].shape[0])
+                    
+            else:
+                Ui_size = (self.r[i-1].shape[0], self.r[i].shape[0])
+            
+            print(f'U{i}_size: {Ui_size}')
+            
+            self.U[i] = self.U_prior_dist(size=Ui_size)
         if self.classif_method == 'c2':
             Uo_size = (self.num_classes, self.output_lyr_size)
-            self.U['o'] = self.prior_dist(size=Uo_size)
-            print(f'Uo size: {self.U["o"].shape}')
-            
-        # Initiate Jr, Jc and accuracy (diagnostics) storage for print/log, plot
-        self.Jr = {i: [0] * (self.epoch_n + 1) for i in range(self.num_layers)}
-        self.Jc = {i: [0] * (self.epoch_n + 1) for i in range(self.num_layers)}
-        self.accuracy = [0] * (self.epoch_n + 1)
+            self.U['o'] = self.U_prior_dist(size=Uo_size)
         
-    # r, U or V prior functions
-    def gaussian_prior_costs(self, r_or_U=None, alph_or_lam=None):
-        """
-        Takes an argument pair of either r & alpha, or U & lambda, and returns
-        a tuple of (g(r), g'(r)), or (h(U), h'(U)), respectively. Gaussian prior.
-        """
-        g_or_h = alph_or_lam * np.square(r_or_U).sum()
-        gprime_or_hprime = 2 * alph_or_lam * r_or_U
-        return (g_or_h, gprime_or_hprime)
-
-    def kurtotic_prior_costs(self, r_or_U=None, alph_or_lam=None):
-        """
-        Takes an argument pair of either r & alpha, or U & lambda, and returns
-        a tuple of (g(r), g'(r)), or (h(U), h'(U)), respectively. Sparse kurtotic prior.
-        """
-        g_or_h = alph_or_lam * np.log(1 + np.square(r_or_U)).sum()
-        gprime_or_hprime = 2 * alph_or_lam * r_or_U / (1 + np.square(r_or_U))
-        return (g_or_h, gprime_or_hprime)
-
+            
+        # Initiate U1-based operations dims (dimentions flex based on input)
+        # Transpose dims
+        ndims_U1 = len(U1_size)
+        range_ndims_U1 = range(ndims_U1)
+        last_dim_id_U1 = range_ndims_U1[-1]
+        nonlast_dim_ids_U1 = range_ndims_U1[:-1]
+        transpose_dims_U1 = tuple([last_dim_id_U1] + list(nonlast_dim_ids_U1))
+        self.U1T_dims = transpose_dims_U1
+        
+        # Tensordot dims
+        # U1T, last n-1
+        nonfirst_dim_ids_U1 = range_ndims_U1[1:]
+        self.U1T_tdot_dims = list(nonfirst_dim_ids_U1)
+        
+        # Input dims, all
+        ndims_input = len(input_size)
+        range_ndims_input = range(ndims_input)
+        # Bottom-up error and cost dims (either used in update, or cost)
+        self.bu_error_tdot_dims = list(range_ndims_input)
+        
+        # Einsum dims
+        self.einsum_arg_U1 = ''
+        dim_str = 'ijklmnopqrstuvwxyz'
+        for dim in range(ndims_input):
+            self.einsum_arg_U1 += dim_str[dim]
+        self.einsum_arg_U1 += ',' + dim_str[ndims_input] + '->' + dim_str[:ndims_input + 1]
+        if ndims_input > len(dim_str):
+            raise ValueError('Too many dimensions.')
+        # Will always be 'i,j->ij' for U2 through Un
+        self.einsum_arg_Ui = 'i,j->ij'
+        
+        # Hidden layer sizes for priors
+        self.all_hlyr_sizes = self.hidden_lyr_sizes.copy()
+        self.all_hlyr_sizes.append(self.output_lyr_size)
+        if tiled:
+            self.all_hlyr_sizes[0] = (self.num_tiles, self.all_hlyr_sizes[0])
+            
+        
+        '''
+        Li style: test
+        '''
+        
+        # Initiate Jr, Jc, and accuracy (diagnostics) for storage, print, plot
+        epoch_n = self.epoch_n
+        self.Jr = [0] * (epoch_n + 1)
+        self.Jc = [0] * (epoch_n + 1)
+        self.accuracy = [0] * (epoch_n + 1)
+        
+        # Later: by layer
+        # self.Jr = {i: [0] * (epoch_n + 1) for i in range(n)}
+        # self.Jc = {i: [0] * (epoch_n + 1) for i in range(n)}
+        
     # Activation functions
     def linear_transform(self, U_dot_r):
         """
@@ -170,47 +249,383 @@ class PredictiveCodingClassifier:
         f = np.tanh(U_dot_r)
         F = np.diag(1 - f.flatten()**2)
         return (f, F)
-
-    def prior_dist(self, size):
-        return self.prior_dist_dict[self.priors](size=size)
     
-    def softmax(self, vector, k=1):
+    # r, U or V prior functions
+    def gaussian_prior_costs(self, r_or_U=None, alph_or_lam=None):
         """
-        Compute the softmax function of a vector.
-        Parameters:
-        - vector: numpy array or list
-            The input vector.
-        - k: float, optional (default=1)
-            The scaling factor for the softmax function.
-        Returns:
-        - softmax_vector: numpy array
-            The softmax of the input vector.
+        Takes an argument pair of either r & alpha, or U & lambda, and returns
+        a tuple of (g(r), g'(r)), or (h(U), h'(U)), respectively. Gaussian prior.
         """
-        exp_vector = np.exp(k * vector)
+        g_or_h = alph_or_lam * np.square(r_or_U).sum()
+        gprime_or_hprime = 2 * alph_or_lam * r_or_U
+        return (g_or_h, gprime_or_hprime)
+
+    # def kurtotic_prior_costs(self, r_or_U=None, alph_or_lam=None):
+    #     """
+    #     Takes an argument pair of either r & alpha, or U & lambda, and returns
+    #     a tuple of (g(r), g'(r)), or (h(U), h'(U)), respectively. Sparse kurtotic prior.
+    #     """
+        
+    #     g_or_h = alph_or_lam * np.log(1 + np.square(r_or_U)).sum()
+    #     gprime_or_hprime = 2 * alph_or_lam * r_or_U / (1 + np.square(r_or_U))
+    #     return (g_or_h, gprime_or_hprime)
+    
+    '''
+    test
+    '''
+    def kurtotic_prior_costs(self, r_or_U=None, alph_or_lam=None):
+        """
+        Takes an argument pair of either r & alpha, or U & lambda, and returns
+        a tuple of (g(r), g'(r)), or (h(U), h'(U)), respectively. Sparse kurtotic prior.
+        """
+        printlog = self.print_and_log
+        
+        try:
+            # Set NumPy to raise exceptions on overflow and invalid operations
+            np.seterr(over='raise', invalid='raise')
+            
+            g_or_h = alph_or_lam * np.log(1 + np.square(r_or_U)).sum()
+            gprime_or_hprime = (alph_or_lam * r_or_U) / (1 + np.square(r_or_U))
+            
+            # Reset NumPy error handling to default
+            np.seterr(over='warn', invalid='warn')
+            
+            return (g_or_h, gprime_or_hprime)
+        
+        except FloatingPointError as e:
+            printlog(f"FloatingPointError: {e}")
+            
+            if r_or_U is not None:
+                if r_or_U.ndim == 1:  # r_or_U is a vector
+                    printlog("First five elements of r:", r_or_U[:5])
+                elif r_or_U.ndim == 2:  # r_or_U is a matrix
+                    printlog("First 5x5 elements of U:\n", r_or_U[:5, :5])
+            
+            return None
+
+    def r_prior_dist(self, size):
+        return self.r_prior_dist_dict[self.priors](size=size)
+    
+    def U_prior_dist(self, size):
+        return np.random.rand(*size) - 0.5
+    
+    def hard_set_prior_dist(self):
+        '''
+        so a new one isn't made every tiem'''
+        
+        self.r_dists_hard = {}
+        n = self.num_layers
+        for i in range (1, n + 1):
+            lyr_size = self.all_hlyr_sizes[i - 1]
+            self.r_dists_hard[lyr_size] = self.r_prior_dist(size=lyr_size)
+    
+    def load_hard_prior_dist(self, size):
+        return self.r_dists_hard[size]
+    
+    '''
+    test
+    not actually stable - conformity to Li softmax (normal, no k)
+    '''
+    def stable_softmax(self, vector):
+
+        # Compute the exponentials of the vector
+        exp_vector = np.exp(vector)
+        # Compute the softmax values
         softmax_vector = exp_vector / np.sum(exp_vector)
         return softmax_vector
     
-    def rn_topdown_term_None(self, label):
-        return 0
+    # def stable_softmax(self, vector, k=1):
+    #     # Subtract the maximum value from the vector for numerical stability
+    #     shift_vector = vector - np.max(vector)
+    #     # Compute the exponentials of the shifted vector
+    #     exp_vector = np.exp(k * shift_vector)
+    #     # Compute the softmax values
+    #     softmax_vector = exp_vector / np.sum(exp_vector)
+    #     return softmax_vector
+    
+    def reset_rs(self, all_hlyr_sizes, prior_dist):
+        n = self.num_layers
+        for i in range(1, n + 1):
+            self.r[i] = prior_dist(size=all_hlyr_sizes[i - 1])
+
+    # Prints and sends to log file
+    def print_and_log(self, *args, **kwargs):
+        # Print to the terminal
+        print(*args, **kwargs)
+        # Print to the file
+        exp_log_path = join('models/log',self.exp_log_name)
+        if not exists(exp_log_path):
+            raise FileNotFoundError(f"Log file {exp_log_path} not found.")
+        with open(exp_log_path, "a") as f:
+            print(*args, **kwargs, file=f)
+    
+    def train(self, X, Y, save_checkpoint=None, online_diagnostics=False, plot=False):
         
-    def classif_cost_None(self, label):
-        return 0
+        printlog = self.print_and_log
+        
+        '''
+        clean up
+        '''
+        printlog('\n\n')
+        printlog(f'priors: {self.priors} init preview:')
+        for i in range(0, self.num_layers + 1):
+            printlog(f'r{i} shape: {self.r[i].shape}')
+            printlog(f'r{i} first 3: {self.r[i][:3]}')
+            if i > 0:
+                # Check if the array is 3D or 5D
+                printlog(f'U{i} shape: {self.U[i].shape}')
+                if self.U[i].ndim == 3:
+                    printlog(f'U{i} first 3x3x3: {self.U[i][:3, :3, :3]}')
+                elif self.U[i].ndim == 5:
+                    printlog(f'U{i} first 3x3x3x3x3: {self.U[i][:3, :3, :3, :3, :3]}')
+                else:
+                    printlog(f'U{i} first 3x3: {self.U[i][:3, :3]}')
+        if self.classif_method == 'c2':
+            printlog(f'Uo shape: {self.U["o"].shape}')
+            printlog(f'Uo first 3x3: {self.U["o"][:3, :3]}')
+        printlog(f'einsum arg U1: {self.einsum_arg_U1}')
+            
+        '''
+        clean up
+        '''
+        
+        num_imgs = self.num_imgs
+        num_tiles = self.num_tiles
+        '''
+        test: re-shape 3392,864 (num imgs * tiles per image, flattened tile) to 212, 16, 864 (num imgs, tiles per image, flattened tile)
+        This will be completed by data.py in the future
+        '''
+        printlog('test: reshaping X into num imgs, num tiles per image, flattened tile')
+        X = X.reshape(num_imgs, num_tiles, -1)
+
+        '''
+        test
+        '''
+        printlog('Train init:')
+        printlog('X shape (incl. test reshape):', X.shape)
+        printlog('Y shape:', Y.shape)
+        
+        
+        '''
+        test
+        pre-initiate all distributions
+        for speed
+        '''
+        self.hard_set_prior_dist()
+        prior_dist = self.load_hard_prior_dist
+
+        # Else: prior_dist = self.r_prior_dist
+        '''
+        test
+        '''
+        
+        n = self.num_layers
+        all_hlyr_sizes = self.all_hlyr_sizes
+        reset_rs = partial(self.reset_rs, all_hlyr_sizes=all_hlyr_sizes)
+        
+        update_method_name = next(iter(self.update_method))
+        update_method_number = self.update_method[update_method_name]
+        update_all_components = partial(self.update_method_dict[update_method_name], update_method_number)
+        update_non_weight_components = partial(self.update_method_no_weight_dict[update_method_name], update_method_number)
+        
+        rep_cost = self.rep_cost
+        
+        classif_method = self.classif_method
+        classif_cost = self.classif_cost_dict[classif_method]
+        
+        '''
+        test
+        '''
+        printlog(f'self.kr: {self.kr}')
+        printlog(f'self.kU: {self.kU}')
+        printlog(f'self.update_method: {self.update_method}')
+        printlog(f'update_method_name: {update_method_name}')
+        printlog(f'update_method_number: {update_method_number}')
+        printlog(f'classif_method: {classif_method}')
+        
+        '''
+        test
+        '''
+        
+        evaluate = partial(self.evaluate, update_method_name=update_method_name, update_method_number=update_method_number, classif_method=classif_method, plot=None)
+
+        if online_diagnostics:
+            printlog('\n')
+            printlog('Diagnostics on')
+            printlog('Epoch: 0')
+            epoch = 0
+            Jr0 = 0
+            Jc0 = 0
+            accuracy = 0
+            for img in range(num_imgs):
+                input = X[img]
+                label = Y[img]
+                self.r[0] = input
+                reset_rs(prior_dist=prior_dist)
+                update_non_weight_components(label=label)
+                Jr0 += rep_cost()
+                Jc0 += classif_cost(label)
+            accuracy += evaluate(X, Y)
+            self.accuracy[epoch] = accuracy
+            self.Jr[epoch] = Jr0
+            self.Jc[epoch] = Jc0
+            printlog(f'Jr: {Jr0}, Jc: {Jc0}, Accuracy: {accuracy}')
+        else:
+            printlog('\n')
+            printlog('Diagnostics: Off')
+        
+        # Training
+        epoch_n = self.epoch_n
+        printlog('Training...')
+        t_start_train = datetime.now()
+        for e in range(epoch_n):
+            epoch = e + 1
+            printlog(f'Epoch {epoch}')
+            t_start_epoch = datetime.now()
+            Jre = 0
+            Jce = 0
+            accuracy = 0
+            # Shuffle X, Y
+            shuffle_indices = np.random.permutation(num_imgs)
+            X_shuff = X[shuffle_indices]
+            Y_shuff = Y[shuffle_indices]
+            for img in range(num_imgs):
+                input = X_shuff[img]
+                label = Y_shuff[img]
+                self.r[0] = input
+                reset_rs(prior_dist=prior_dist)
+                update_all_components(label=label)
+                if online_diagnostics:
+                    Jre += rep_cost()
+                    Jce += classif_cost(label)
+            if online_diagnostics:
+                printlog(f'eval {epoch}')
+                accuracy += evaluate(X, Y)
+            self.accuracy[epoch] = accuracy
+            self.Jr[epoch] = Jre
+            self.Jc[epoch] = Jce
+            
+            # For every 10 epochs, save mid-training diagnostics
+            if epoch % 5 == 0:
+                # Save mid-training diagnostics
+                online_name = self.generate_output_name(self.mod_name, epoch)
+                self.save_diagnostics(output_dir='models/', output_name=online_name)
+            
+            printlog(f'Jr: {Jre}, Jc: {Jce}, Accuracy: {accuracy}')
+            t_end_epoch = datetime.now()
+            printlog(f'Epoch time: {t_end_epoch - t_start_epoch}.')
+            printlog(f'Est. time remaining: {(t_end_epoch - t_start_epoch) * (epoch_n - epoch)}.')
+            if epoch == 1:
+                printlog(f'Est. tot time: {(t_end_epoch - t_start_epoch) * epoch_n}.')
+            
+        printlog('Training complete.')
+        tot_time = t_end_epoch - t_start_train
+        printlog(f'Tot time: {tot_time}.')
+        printlog('Saving final model...')
+        # Save final model
+        final_name = self.generate_output_name(self.mod_name, epoch)
+        self.save_model(output_dir='models/', output_name=final_name)
+        # Save final diagnostics
+        self.save_diagnostics(output_dir='models/', output_name=final_name)
+        
+        # Final diagnostics
+        # Functionize later
+        printlog('\n\n')
+        printlog(f'Final diagnostics over {epoch} epochs:')
+        printlog(f'Ep. 0 Jr: {self.Jr[0]}, Jc: {self.Jc[0]}, Accuracy: {self.accuracy[0]}')
+        printlog(f'Ep. {epoch} Jr: {self.Jr[epoch]}, Jc: {self.Jc[epoch]}, Accuracy: {self.accuracy[epoch]}')
+        percent_diff_Jr = (self.Jr[0] - self.Jr[epoch]) / self.Jr[0] * 100 if self.Jr[0] != 0 else 0
+        percent_diff_Jc = (self.Jc[0] - self.Jc[epoch]) / self.Jc[0] * 100 if self.Jc[0] != 0 else 0
+        percent_diff_accuracy = (self.accuracy[0] - self.accuracy[epoch]) / self.accuracy[0] * 100 if self.accuracy[0] != 0 else 0
+        printlog(f'Percent diff Jr: {percent_diff_Jr}, Jc: {percent_diff_Jc}, Accuracy: {percent_diff_accuracy}')
+        change_per_epoch_Jr = percent_diff_Jr / epoch
+        change_per_epoch_Jc = percent_diff_Jc / epoch
+        change_per_epoch_accuracy = percent_diff_accuracy / epoch
+        printlog(f'Change per epoch Jr: {change_per_epoch_Jr}, Jc: {change_per_epoch_Jc}, Accuracy: {change_per_epoch_accuracy}')
+        change_per_min_Jr = percent_diff_Jr / tot_time.total_seconds() * 60
+        change_per_min_Jc = percent_diff_Jc / tot_time.total_seconds() * 60
+        change_per_min_accuracy = percent_diff_accuracy / tot_time.total_seconds() * 60
+        printlog(f'Change per min Jr: {change_per_min_Jr}, Jc: {change_per_min_Jc}, Accuracy: {change_per_min_accuracy}')
+        
+        # Add a row to models/experiments.csv
+        csv_file_path = 'models/experiments.csv'
+        csv_columns = ["classif_method", "update_method_name", "kr", "kU", "epochs", "Jr 0", "Jr Final", "Jr % Change", "Jc 0", "Jc Final", "Jc % Change", "Tot Time", "Acc 0", "Acc Final", "Acc % Change"]
+        csv_data = [
+            classif_method,
+            update_method_name,
+            self.kr[1],
+            self.kU[1],
+            epoch,
+            self.Jr[0],
+            self.Jr[epoch],
+            percent_diff_Jr,
+            self.Jc[0],
+            self.Jc[epoch],
+            percent_diff_Jc,
+            tot_time,
+            self.accuracy[0],
+            self.accuracy[epoch],
+            percent_diff_accuracy
+        ]
+
+        # Ensure the directory exists
+        makedirs(dirname(csv_file_path), exist_ok=True)
+
+        # Write to the CSV file
+        file_exists = isfile(csv_file_path)
+        with open(csv_file_path, mode='a', newline='') as file:
+            writer = csv.writer(file)
+            if not file_exists:
+                writer.writerow(csv_columns)  # Write the header only if the file does not exist
+            writer.writerow(csv_data)
+        
+        
+        if plot:
+            pass
+
+    def evaluate(self, X, Y, update_method_name, update_method_number, classif_method, plot=None):
+        
+        '''
+        training test
+        pre-initiate all distributions
+        for speed
+        '''
+
+        prior_dist = self.load_hard_prior_dist
+        # Else: prior_dist = self.r_prior_dist
+        '''
+        test
+        '''
+        reset_rs = partial(self.reset_rs, all_hlyr_sizes=self.all_hlyr_sizes)
+        
+        update_non_weight_components = partial(self.update_method_no_weight_dict[update_method_name], update_method_number)
+        
+        guess_func = self.classif_guess_dict[classif_method]
+        
+        n = self.num_layers
+        num_imgs = self.num_imgs
+        accuracy = 0
+        for img in range(num_imgs):
+            input = X[img]
+            label = Y[img]
+            self.r[0] = input
+            reset_rs(prior_dist=prior_dist)
+            update_non_weight_components(label=label)
+            guess = guess_func(label)
+            accuracy += guess
+        accuracy /= num_imgs
     
-    def classif_guess_None(self, label):
-        return 0
+        return accuracy
     
-    '''
-    make a V_updates for the recurrent subclass
-    it will take label but do nothing with it
-    
-    '''
-    
-    
+    def predict(self, X, plot=None):
+
+        return None
+
+        
     def update_method_rWniters(self, niters, label, component_updates):
         '''
         Li def: 30
         '''
-        
         r_updates = component_updates[0]
         # Can be U/Uo or U/Uo,V
         weight_updates = component_updates[1:]
@@ -240,20 +655,7 @@ class PredictiveCodingClassifier:
             weight_updates[w](label)
 
     def update_method_r_eq_W(self, stop_criterion, label, component_updates):
-        '''
-        Rogers/Brown def: 0.05
-        '''
-        
-        '''
-        i diffs, or just one?
-        '''
-        '''
-        r is a dictionary e.g.
-        
-        r[1] 32
-        r[2] 128
-        r[3] 212'''
-        
+
         r_updates = component_updates[0]
         # Can be U/Uo or U/Uo,V
         weight_updates = component_updates[1:]
@@ -261,14 +663,15 @@ class PredictiveCodingClassifier:
         range_num_weight_updates = range(num_weight_updates)
         
         num_layers = self.num_layers
-        initial_norms = [np.linalg.norm(self.r[i]) for i in range(1, num_layers + 1)]
-        diffs = [float('inf')] * num_layers  # Initialize diffs to a large number
+        n = num_layers
+        initial_norms = [np.linalg.norm(self.r[i]) for i in range(1, n + 1)]
+        diffs = [float('inf')] * n  # Initialize diffs to a large number
         
         while any(diff > stop_criterion for diff in diffs):
-            prev_r = {i: self.r[i].copy() for i in range(1, num_layers + 1)}  # Copy all vectors to avoid reference issues
+            prev_r = {i: self.r[i].copy() for i in range(1, n + 1)}  # Copy all vectors to avoid reference issues
             r_updates(label)
             
-            for i in range(1, num_layers + 1):
+            for i in range(1, n + 1):
                 post_r = self.r[i]
                 diff_norm = np.linalg.norm(post_r - prev_r[i])
                 diffs[i-1] = (diff_norm / initial_norms[i-1]) * 100  # Calculate the percentage change
@@ -294,328 +697,86 @@ class PredictiveCodingClassifier:
         r_updates = component_updates[0]
         
         num_layers = self.num_layers
-        initial_norms = [np.linalg.norm(self.r[i]) for i in range(1, num_layers + 1)]
-        diffs = [float('inf')] * num_layers  # Initialize diffs to a large number
+        n = num_layers
+        initial_norms = [np.linalg.norm(self.r[i]) for i in range(1, n + 1)]
+        diffs = [float('inf')] * n # Initialize diffs to a large number
         
         while any(diff > stop_criterion for diff in diffs):
-            prev_r = {i: self.r[i].copy() for i in range(1, num_layers + 1)}  # Copy all vectors to avoid reference issues
+            prev_r = {i: self.r[i].copy() for i in range(1, n + 1)}  # Copy all vectors to avoid reference issues
             r_updates(label)
             
-            for i in range(1, num_layers + 1):
+            for i in range(1, n + 1):
                 post_r = self.r[i]
                 diff_norm = np.linalg.norm(post_r - prev_r[i])
                 diffs[i-1] = (diff_norm / initial_norms[i-1]) * 100  # Calculate the percentage change
+                
+    def generate_output_name(self, base_name, epoch):
+        # Split the base name at the last underscore
+        parts = base_name.rsplit('_', 1)
+        # Insert the epoch number before the .pydb extension
+        new_name = f"{parts[0]}_{epoch}.pydb"
+        return new_name
     
-    def save_results(self, output_dir):
-        
-        output_path = path.join(output_dir, self.name)
-        
+    def save_model(self, output_dir, output_name):
+        makedirs(output_dir, exist_ok=True)
+        output_path = join(output_dir, output_name)
         with open(output_path, 'wb') as f:
             pickle.dump(self, f)
             
-    def train(self, X, Y, save_checkpoint=None, online_diagnostics=False, plot=False):
-        '''
-        Trains the model using input images and labels, with options for checkpointing and plotting.
-
-        Parameters:
-            X (np.array): Input images, shape=(num_imgs, numxpxls * numypxls) [non-tiled] or 
-                          (num_imgs * numtlsperimg, numtlxpxls * numtlypxls) [tiled].
-            Y (np.array): Labels, shape=(num_imgs, num_classes).
-            save_checkpoint (None or dict, optional): Controls checkpoint saving behavior. None to save only the final model. 
-                                            Dict can have keys 'save_every' with int value N to save every N epochs, 
-                                             or 'fraction' with float value 1/N to save every 1/N * Tot epochs.
-            online_diagnostics (bool, optional): If True, store and print diagnostics at each epoch. Must be on for plot.
-            plot (bool, optional): If True, plot loss and accuracy after training. online_diagnostics must be on.
-
-        Notes:
-            - Epoch 0 (initialized, untrained) model is always saved. (models/checkpoints/)
-            - Final model is always saved. (models/)
-            - Saving any model also saves a log.
-        '''
-        # Params
-        epoch_n = self.epoch_n
-        num_imgs = self.num_imgs
-        num_tiles = self.num_tiles
-        
-        print(f'num epochs: {epoch_n}')
-        print(f'num images: {num_imgs}')
-        print(f'num tiles: {num_tiles}')
-        num_layers = self.num_layers
-        
-        all_lyr_sizes = self.hidden_lyr_sizes.copy()
-        all_lyr_sizes.append(self.output_lyr_size)
-
-        
-        print(f'All layer sizes: {all_lyr_sizes}')
-        
-        # if kurtotic, don't redo a laplacian each time, but once here
-        if self.priors == 'kurtotic':
-            self.r_dists = {}
-            for lyr in range(1, num_layers + 1):
-                lyr_size = all_lyr_sizes[lyr - 1]
-                self.r_dists[lyr_size] = self.prior_dist(size=lyr_size)
-            
-            def premade_prior_dist(r_dists, size):
-                return r_dists[size]
-                    
-            prior_dist = partial(premade_prior_dist, self.r_dists)
-            
-        else:
-            prior_dist = self.prior_dist
-        
-        # Parse update method
-        # e.g. self.update_method = {'rW_niters' (update method name): 30 (update method number)}
-        # See config for more.
-        update_method_name = next(iter(self.update_method))
-        update_method_number = self.update_method[update_method_name]
-        update_all_components = partial(self.update_method_dict[update_method_name], update_method_number)
-        
-        # Representation cost
-        rep_cost = self.rep_cost
-        # Classification
-        classif_method = self.classif_method
-        classif_cost = self.classif_cost_dict[classif_method]
-        # Accuracy
-        evaluate = partial(self.evaluate, update_method_name=update_method_name, update_method_number=update_method_number, classif_method=classif_method, plot=None)
-        
-        # In the future, set up tiled X to be num imgs, tiles tiles tiles. (2d or 4d)
-        '''
-        for now, just use num imgs * num tiles per img...'''
-        
-        if self.flat_input:
-            print('reshaping X into num imgs, num tiles per image, flattened tile')
-            X = X.reshape(num_imgs, num_tiles, -1)
-            print('X shape:', X.shape)
-            print('Y shape:', Y.shape)
-        
-        
-        # Rep cost, other diagnostics at "Epoch 0" (initialized, untrained)
-        if online_diagnostics:
-            print('Diagnostics: On')
-            print('Epoch 0')
-            # Epoch 0
-            epoch = 0
-            Jr0 = 0
-            Jc0 = 0
-            for i in range(num_imgs):
-                input = X[i]
-                self.r[0] = input
-                label = Y[i]
-                # Calculate loss and accuracy
-                '''
-                test, remove self later'''
-                Jr = rep_cost()
-                Jc = classif_cost(label)
-                
-                Jr0 += Jr
-                Jc0 += Jc
-            accuracy = evaluate(X, Y)
-            self.accuracy[epoch] = accuracy
-            self.Jr[epoch] = Jr0
-            self.Jc[epoch] = Jc0
-            print(f'Jr: {Jr0}, Jc: {Jc0}, Accuracy: {accuracy}')
-        else:
-            print('Diagnostics: Off')
-            
-        # Training
-        print('Training...')
-        for e in range(epoch_n):
-            epoch = e + 1
-            print(f'Epoch {epoch}')
-            t_start_epoch = datetime.now()
-            Jre = 0
-            Jce = 0
-            accuracy = 0
-            # Shuffle X, Y
-            shuffle_indices = np.random.permutation(num_imgs)
-            X_shuff = X[shuffle_indices]
-            Y_shuff = Y[shuffle_indices]
-            
-            for i in range(num_imgs):
-                input = X_shuff[i]
-                self.r[0] = input
-                # Initiate rs
-                # Layer 1 until n will be the same
-                # r0 is the input
-                for lyr in range(1,num_layers+1):
-                    self.r[lyr] = prior_dist(size=(all_lyr_sizes[lyr-1]))
-                label = Y_shuff[i]
-                
-                # Update components
-                # e.g. r, U/Uo, V
-                update_all_components(label=label)
-                
-                '''
-                don't worry about checkpointing now
-                '''
-                if online_diagnostics:
-                    # Calculate loss and accuracy
-                    Jr = rep_cost()
-                    Jc = classif_cost(label)
-                    
-                    Jre += Jr
-                    Jce += Jc
+    def save_diagnostics(self, output_dir, output_name):
+        makedirs(output_dir, exist_ok=True)
+        output_name = 'diag.' + output_name
+        output_path = join(output_dir, output_name)
+        with open(output_path, 'wb') as f:
+            pickle.dump({'Jr': self.Jr, 'Jc': self.Jc, 'accuracy':self.accuracy}, f)
             
             
-            self.Jr[epoch] = Jre
-            self.Jc[epoch] = Jce
-            if online_diagnostics:
-                accuracy = evaluate(X, Y)
-                self.accuracy[epoch] = accuracy
-            print(f'Jr: {Jre}, Jc: {Jce}, Accuracy: {accuracy}')
-            t_end_epoch = datetime.now()
-            print(f'Epoch time: {t_end_epoch - t_start_epoch}')
             
-        print('Training complete.')
-        print('Saving final model...')
-        # Save final model
-        final_name = self.generate_output_name(self.mod_name, epoch)
-        self.save_results(output_dir='models/', output_name=final_name)
-        
-        if plot:
-            pass
-
-    def evaluate(self, X, Y, update_method_name, update_method_number, classif_method, plot=None):
-        '''
-        Evaluates the model's classification accuracy using input images and labels.
-
-        Parameters:
-            X (np.array): Input images to be evaluated by the model.
-            Y (np.array): True labels for the input images.
-            plot (None or Str, optional): Assigns prediction error (pe) plotting behavior. None to save no PE data and plot nothing. 
-                                Str can be 'first' to plot model response to first image, f'rand{N}' to plot responses to N random 
-                                images, or 'all' for those of all images.
-        '''
-        update_non_weight_components = partial(self.update_method_non_weight_dict[update_method_name], update_method_number)
-        guess_func = self.classif_guess_dict[classif_method]
-        
-        # Make sure priors are reset correctly and efficiently
-        num_layers = self.num_layers
-        
-        all_lyr_sizes = self.hidden_lyr_sizes.copy()
-        all_lyr_sizes.append(self.output_lyr_size)
-        
-        # if kurtotic, don't redo a laplacian each time, but once here
-        if self.priors == 'kurtotic':
-            self.r_dists = {}
-            for lyr in range(1, num_layers + 1):
-                lyr_size = all_lyr_sizes[lyr - 1]
-                self.r_dists[lyr_size] = self.prior_dist(size=lyr_size)
-            
-            def premade_prior_dist(r_dists, size):
-                return r_dists[size]
-                    
-            prior_dist = partial(premade_prior_dist, self.r_dists)
-            
-        else:
-            prior_dist = self.prior_dist
-        
-        num_imgs = self.num_imgs
-        num_tiles = self.num_tiles
-        
-        # In the future, set up tiled X to be num imgs, tiles tiles tiles. (2d or 4d)
-        '''
-        for now, just use num imgs * num tiles per img...'''
-        
-        if X.shape[0] != num_imgs and self.flat_input:
-            print('reshaping X into num imgs, num tiles per image, flattened tile')
-            X = X.reshape(num_imgs, num_tiles, -1)
-            print('X shape:', X.shape)
-            print('Y shape:', Y.shape)
-        
-        
-        
-        accuracy = 0
-        for i in range(num_imgs):
-            input = X[i]
-            self.r[0] = input
-            
-            for lyr in range(1,num_layers+1):
-                self.r[lyr] = prior_dist(size=(all_lyr_sizes[lyr-1]))
-            
-            label = Y[i]
-            
-            # Update non-weight components (r)
-            update_non_weight_components(label=label)
-            
-            guess = guess_func(label)
-            accuracy += guess
-        
-        return accuracy
-    
-    def predict(self, X, plot=None):
-        '''
-        Predicts the class of input images and optionally plots the topmost representation
-
-        Parameters:
-            X (np.array): Input images for prediction.
-            plot (None or Str, optional): Assigns topmost representation and prediction error (pe) plotting behavior. None to plot nothing. 
-                                Str can be 'first' to plot model response to first image, f'rand{N}' to plot responses to N random 
-                                images, or 'all' for those of all images.
-        '''
-        
-        return class_predictions
-
-
 class StaticPCC(PredictiveCodingClassifier):
-    
+
     def __init__(self, base_instance: PredictiveCodingClassifier):
         
         # This is a safeguard for now, as PCC doesn't actually have any init logic but setting attrs.
         # Initialize the base class
         super().__init__()
-        
-        """
-        SPCC can take:
-        1/2D input (flat_image_area,) or (1,flat_image_area): flattened
-        2D input (imageypxls, imagexpxls): unflattened
-        
-        unflattened preserves spatial information, especially important in image processing
-        and more biologically realistic, as we see entire '2D' fields on surfaces
-        if flat works, though, great. it'll be faster, and speaks to the power of the PC model.
-    
-        """
+
         # Copy attributes from the base instance
         self.__dict__.update(base_instance.__dict__)
-        
-        '''
-        test
-        '''
-        
-        if self.num_layers == 1:
-            self.r_updates = self.r_updates_n_1_no_transform
-            self.U_updates = self.U_updates_n_1_no_transform
-            self.rep_cost = self.rep_cost_n_1_no_transform
-        elif self.num_layers == 2:
-            self.r_updates = self.r_updates_n_2_no_transform
-            self.U_updates = self.U_updates_n_gt_eq_2_no_transform
-            self.rep_cost = self.rep_cost_n_2_no_transform
-        elif self.num_layers >= 3:
-            self.r_updates = self.r_updates_n_gt_eq_3_no_transform
-            self.U_updates = self.U_updates_n_gt_eq_2_no_transform
-            self.rep_cost = self.rep_cost_n_gt_eq_3_no_transform
+
+        # Component updates: r, U, Uo, and cost calculato
+        num_layers = self.num_layers
+        n = num_layers
+        if n == 1:
+            self.r_updates = self.r_updates_n_1
+            self.U_updates = self.U_updates_n_1
+            self.rep_cost = self.rep_cost_n_1
+        elif n == 2:
+            self.r_updates = self.r_updates_n_2
+            self.U_updates = self.U_updates_n_gt_eq_2
+            self.rep_cost = self.rep_cost_n_2
+        elif n >= 3:
+            self.r_updates = self.r_updates_n_gt_eq_3
+            self.U_updates = self.U_updates_n_gt_eq_2
+            self.rep_cost = self.rep_cost_n_gt_eq_3
         else:
             raise ValueError("Number of layers must be at least 1.")
-            
         self.component_updates = [self.r_updates, self.U_updates]
-        if self.classif_method == 'c2':
-            self.component_updates.append(self.Uo_update_no_transform)
-        '''
-        test
-        '''
-            
+        classif_method = self.classif_method
+        if classif_method == 'c2':
+            self.component_updates.append(self.Uo_update)
+
+        
         self.update_method_dict = {'rW_niters': partial(self.update_method_rWniters, component_updates=self.component_updates),
                                     'r_niters_W': partial(self.update_method_r_niters_W, component_updates=self.component_updates),
                                     'r_eq_W': partial(self.update_method_r_eq_W, component_updates=self.component_updates)}
         
-        self.update_method_non_weight_dict = {'rW_niters': partial(self.update_method_r_niters, component_updates=self.component_updates),
+        self.update_method_no_weight_dict = {'rW_niters': partial(self.update_method_r_niters, component_updates=self.component_updates),
                                     'r_niters_W': partial(self.update_method_r_niters, component_updates=self.component_updates),
                                     'r_eq_W': partial(self.update_method_r_eq, component_updates=self.component_updates)}
         
-        # Subclass needs topdown and cost None terms to exist before assignment
-        self.rn_topdown_term_dict = {'c1': self.rn_topdown_term_c1,
-                                    'c2': self.rn_topdown_term_c2,
-                                    None: self.rn_topdown_term_None}
+        self.rn_topdown_upd_dict = {'c1': self.rn_topdown_upd_c1,
+                                    'c2': self.rn_topdown_upd_c2,
+                                    None: self.rn_topdown_upd_None}
         
         self.classif_cost_dict = {'c1': self.classif_cost_c1,
                                 'c2': self.classif_cost_c2,
@@ -624,389 +785,11 @@ class StaticPCC(PredictiveCodingClassifier):
         self.classif_guess_dict = {'c1': self.classif_guess_c1,
                                 'c2': self.classif_guess_c2,
                                 None: self.classif_guess_None}
-            
+        
+    def validate_attributes(self):
+        pass
+    
     def rep_cost_n_1(self):
-
-        pass
-    
-    def rep_cost_n_2(self):
-        pass
-    
-    def rep_cost_n_gt_eq_3(self):
-        pass
-    
-    def classif_cost_c1(self, label):
-        # Format: -label.dot(np.log(softmax(r_n)))
-        return -label.dot(np.log(self.softmax(self.r[self.num_layers])))
-    
-    def classif_cost_c2(self, label):
-        # Format: -label.dot(np.log(softmax(Uo.dot(r_n))))
-        o = 'o'
-        return -label.dot(np.log(self.softmax(self.U[o].dot(self.r[self.num_layers])))) + self.h(self.U[o], self.lam[o])[0]
-    
-    def classif_guess_c1(self, label):
-        guess = np.argmax(self.softmax(self.r[self.num_layers]))
-        if guess == np.argmax(label):
-            return 1
-        else:
-            return 0
-    
-    def classif_guess_c2(self, label):
-        guess = np.argmax(self.softmax(self.U["o"].dot(self.r[self.num_layers])))
-        if guess == np.argmax(label):
-            return 1
-        else:
-            return 0
-    
-    def rn_topdown_term_c1(self, label):
-        '''
-        redo for recurrent =will all be the same except rn_bar'''
-        '''
-        see if ssqo or 2 in denom
-        '''
-        o = 'o'
-        # Format: k_o / ssq_o * (label - softmax(r_n))
-        c1 = (self.kr[o]/ self.ssq[o]) * (label - self.softmax(self.r[self.num_layers]))
-        return c1
-
-    def rn_topdown_term_c2(self, label):
-        # Format: k_o / ssq_o * (label - softmax(Uo.dot(r_n)))
-        o = 'o'
-        c2 = (self.kr[o]/ self.ssq[o]) * (label - self.softmax(self.U[o].dot(self.r[self.num_layers])))
-        return c2
-    
-    
-    def set_U1_operation_dims(self, U1_size, input_size):
-        # Transpose dims
-        ndims_U1 = len(U1_size)
-        range_ndims_U1 = range(ndims_U1)
-        last_dim_id_U1 = range_ndims_U1[-1]
-        nonlast_dim_ids_U1 = range_ndims_U1[:-1]
-        transpose_dims_U1 = tuple([last_dim_id_U1] + list(nonlast_dim_ids_U1))
-        self.U1_transpose_dims = transpose_dims_U1
-        
-        # Tensordot dims
-        # U1T, last n-1
-        nonfirst_dim_ids_U1 = range_ndims_U1[1:]
-        self.U1T_tdot_dims = list(nonfirst_dim_ids_U1)
-        
-        # Input dims, all
-        ndims_input = len(input_size)
-        range_ndims_input = range(ndims_input)
-        self.input_min_U1tdotr1_tdot_dims = list(range_ndims_input)
-
-    def set_bu_cost_dims(self, input_size):
-        ndims_input = len(input_size)
-        range_ndims_input = range(ndims_input)
-        self.bu_cost_tdot_dims = list(range_ndims_input)
-    
-    def r_updates_n_1(self, label):
-        '''
-        move to static eventually, as well as update_Component assignment
-        '''
-            
-        kr_1 = self.kr[1]
-        ssq_1 = self.ssq[1]
-        U_1 = self.U[1]
-        r_1 = self.r[1]
-        
-        #U1 operations
-        U1_transpose = np.transpose(U_1, self.U1_transpose_dims)
-        U1_tdot_r1 = np.tensordot(U_1, r_1, axes=([-1],[0]))
-        input_min_U1tdotr1 = self.f(self.r[0] - self.f(U1_tdot_r1)[0])[1]
-        
-        self.r[1] += (kr_1 / ssq_1) * np.tensordot(U1_transpose, input_min_U1tdotr1, axes=(self.U1T_tdot_dims, self.input_min_U1tdotr1_tdot_dims)) \
-                                                + self.rn_topdown_term_dict[self.classif_method](label) \
-                                                - (kr_1 / ssq_1) * self.g(r_1, self.alph[1])[1]
-    
-    def r_updates_n_2(self, label):
-        
-        '''
-        two layer model
-        '''
-        kr_1 = self.kr[1]
-        ssq_1 = self.ssq[1]
-        U_1 = self.U[1]
-        r_1 = self.r[1]
-        
-        kr_2 = self.kr[2]
-        ssq_2 = self.ssq[2]
-        U_2 = self.U[2]
-        r_2 = self.r[2]
-        
-        #U1 operations
-        U1_transpose = np.transpose(U_1, self.U1_transpose_dims)
-        U1_tdot_r1 = np.tensordot(U_1, r_1, axes=([-1],[0]))
-        input_min_U1tdotr1 = self.f(self.r[0] - self.f(U1_tdot_r1)[0])[1]
-        
-        self.r[1] += (kr_1 / ssq_1) * np.tensordot(U1_transpose, input_min_U1tdotr1, axes=(self.U1T_tdot_dims, self.input_min_U1tdotr1_tdot_dims)) \
-                                            + (kr_2 * ssq_2) * (self.f(U_2.dot(r_2))[0] - r_1) \
-                                            - (kr_1 / ssq_1) * self.g(r_1, self.alph[1])[1]
-                                            
-        self.r[2] += (kr_2 / ssq_2) * (U_2.T.dot(self.f(self.r[1] - self.f(U_2.dot(r_2))[0])[1])) \
-                                                + self.rn_topdown_term_dict[self.classif_method](label) \
-                                                - (kr_2 / ssq_2) * self.g(r_2, self.alph[2])[1]
-                                            
-    def r_updates_n_gt_eq_3(self, label):
-        
-        n = self.num_layers
-                                                
-        kr_1 = self.kr[1]
-        ssq_1 = self.ssq[1]
-        U_1 = self.U[1]
-        r_1 = self.r[1]
-        
-        kr_2 = self.kr[2]
-        ssq_2 = self.ssq[2]
-        U_2 = self.U[2]
-        r_2 = self.r[2]
-        
-        #U1 operations
-        U1_transpose = np.transpose(U_1, self.U1_transpose_dims)
-        U1_tdot_r1 = np.tensordot(U_1, r_1, axes=([-1],[0]))
-        input_min_U1tdotr1 = self.f(self.r[0] - self.f(U1_tdot_r1)[0])[1]
-        
-        # Layer 1
-        self.r[1] += (kr_1 / ssq_1) * np.tensordot(U1_transpose, input_min_U1tdotr1, axes=(self.U1T_tdot_dims, self.input_min_U1tdotr1_tdot_dims)) \
-                                            + (kr_2 * ssq_2) * (self.f(U_2.dot(r_2))[0] - r_1) \
-                                            - (kr_1 / ssq_1) * self.g(r_1, self.alph[1])[1]
-        # Layers 2 to n-1                                    
-        for i in range(2,n):
-            
-            kr_i = self.kr[i]
-            ssq_i = self.ssq[i]
-            r_i = self.r[i]
-            U_i = self.U[i]
-            
-            self.r[i] += (kr_i / ssq_i) * (U_i.T.dot(self.f(self.r[i-1] - self.f(U_i.dot(r_i))[0])[1])) \
-                                                + (self.kr[i+1] * self.ssq[i+1]) * (self.f(self.U[i+1].dot(self.r[i+1]))[0] - r_i) \
-                                                - (kr_i / ssq_i) * self.g(r_i, self.alph[i])[1]
-    
-        # Layer n
-        kr_n = self.kr[n]
-        ssq_n = self.ssq[n]
-        U_n = self.U[n]
-        r_n = self.r[n]
-
-        self.r[n] += (kr_n / ssq_n) * (U_n.T.dot(self.f(self.r[n-1] - self.f(U_n.dot(r_n))[0])[1])) \
-                                                + self.rn_topdown_term_dict[self.classif_method](label) \
-                                                - (kr_n / ssq_n) * self.g(r_n, self.alph[n])[1]
-                                                
-    def U_updates_n_1(self, label):
-
-        '''u1 will need a tensor dot
-        '''
-        
-        '''
-        check if F will work with 3d+ Us
-        '''
-        
-        kU_1 = self.kU[1]
-        ssq_1 = self.ssq[1]
-        U_1 = self.U[1]
-        r_1 = self.r[1]
-        
-        #U1 operations
-        U1_tdot_r1 = np.tensordot(U_1, r_1, axes=([-1],[0]))
-        input_min_U1tdotr1 = self.f(self.r[0] - self.f(U1_tdot_r1)[0])[1]
-        
-        # Layer 1
-        self.U[1] += (kU_1 / ssq_1) * np.outer(input_min_U1tdotr1, r_1) \
-                        - (kU_1 / ssq_1) * self.h(U_1, self.lam[1])[1]
-                            
-    def U_updates_n_gt_eq_2(self,label):
-        
-        kU_1 = self.kU[1]
-        ssq_1 = self.ssq[1]
-        U_1 = self.U[1]
-        r_1 = self.r[1]
-        
-        #U1 operations
-        U1_tdot_r1 = np.tensordot(U_1, r_1, axes=([-1],[0]))
-        input_min_U1tdotr1 = self.f(self.r[0] - self.f(U1_tdot_r1)[0])[1]
-        
-        # Layer 1
-        self.U[1] += (kU_1 / ssq_1) * np.outer(input_min_U1tdotr1, r_1) \
-                        - (kU_1 / ssq_1) * self.h(U_1, self.lam[1])[1]
-        
-        n = self.num_layers
-        
-        #i>1 - n will all be the same
-        for i in range(1,n+1):
-            
-            kU_i = self.kU[i]
-            ssq_i = self.ssq[i]
-            r_i = self.r[i]
-            U_i = self.U[i]
-            
-            #i
-            self.U[i] += (kU_i / ssq_i) * np.outer((self.f(self.r[i-1] - self.f(U_i.dot(r_i))[0])[1]), r_i) \
-                        - (kU_i / ssq_i) * self.h(U_i, self.lam[i])[1]
-    
-    def Uo_update(self, label):
-        # Format: Uo += kU_o / ssq_o * (label - softmax(Uo.dot(r_n)))
-        '''
-        check k/2 vs k/ssqo
-        for every top down rn update, U update, V update, (place where a lr is used)
-        '''
-        o = 'o'
-        r_n = self.r[self.num_layers]
-        self.U[o] += (self.kU[o]/ self.ssq[o]) * np.outer((label - self.softmax(self.U[o].dot(r_n))), r_n)
-    
-    def r_updates_n_1_no_transform(self, label):
-        '''
-        move to static eventually, as well as update_Component assignment
-        '''
-            
-        kr_1 = self.kr[1]
-        ssq_1 = self.ssq[1]
-        U_1 = self.U[1]
-        r_1 = self.r[1]
-        
-        #U1 operations
-        U1_transpose = np.transpose(U_1, self.U1_transpose_dims)
-        U1_tdot_r1 = np.tensordot(U_1, r_1, axes=([-1],[0]))
-        input_min_U1tdotr1 = self.r[0] - self.f(U1_tdot_r1)[0]
-        
-        self.r[1] += (kr_1 / ssq_1) * np.tensordot(U1_transpose, input_min_U1tdotr1, axes=(self.U1T_tdot_dims, self.input_min_U1tdotr1_tdot_dims)) \
-                                                + self.rn_topdown_term_dict[self.classif_method](label) \
-                                                - (kr_1 / ssq_1) * self.g(r_1, self.alph[1])[1]
-
-    def r_updates_n_2_no_transform(self, label):
-        
-        '''
-        two layer model
-        '''
-        kr_1 = self.kr[1]
-        ssq_1 = self.ssq[1]
-        U_1 = self.U[1]
-        r_1 = self.r[1]
-        
-        kr_2 = self.kr[2]
-        ssq_2 = self.ssq[2]
-        U_2 = self.U[2]
-        r_2 = self.r[2]
-        
-        #U1 operations
-        U1_transpose = np.transpose(U_1, self.U1_transpose_dims)
-        U1_tdot_r1 = np.tensordot(U_1, r_1, axes=([-1],[0]))
-        input_min_U1tdotr1 = self.r[0] - self.f(U1_tdot_r1)[0]
-        
-        self.r[1] += (kr_1 / ssq_1) * np.tensordot(U1_transpose, input_min_U1tdotr1, axes=(self.U1T_tdot_dims, self.input_min_U1tdotr1_tdot_dims)) \
-                                            + (kr_2 * ssq_2) * (self.f(U_2.dot(r_2))[0] - r_1) \
-                                            - (kr_1 / ssq_1) * self.g(r_1, self.alph[1])[1]
-                                            
-        self.r[2] += (kr_2 / ssq_2) * (U_2.T.dot(self.r[1] - self.f(U_2.dot(r_2))[0])) \
-                                                + self.rn_topdown_term_dict[self.classif_method](label) \
-                                                - (kr_2 / ssq_2) * self.g(r_2, self.alph[2])[1]
-                                            
-    def r_updates_n_gt_eq_3_no_transform(self, label):
-        
-        n = self.num_layers
-                                                
-        kr_1 = self.kr[1]
-        ssq_1 = self.ssq[1]
-        U_1 = self.U[1]
-        r_1 = self.r[1]
-        
-        kr_2 = self.kr[2]
-        ssq_2 = self.ssq[2]
-        U_2 = self.U[2]
-        r_2 = self.r[2]
-        
-        #U1 operations
-        U1_transpose = np.transpose(U_1, self.U1_transpose_dims)
-        U1_tdot_r1 = np.tensordot(U_1, r_1, axes=([-1],[0]))
-        input_min_U1tdotr1 = self.r[0] - self.f(U1_tdot_r1)[0]
-        
-        # Layer 1
-        self.r[1] += (kr_1 / ssq_1) * np.tensordot(U1_transpose, input_min_U1tdotr1, axes=(self.U1T_tdot_dims, self.input_min_U1tdotr1_tdot_dims)) \
-                                            + (kr_2 * ssq_2) * (self.f(U_2.dot(r_2))[0] - r_1) \
-                                            - (kr_1 / ssq_1) * self.g(r_1, self.alph[1])[1]
-        # Layers 2 to n-1                                    
-        for i in range(2,n):
-            
-            kr_i = self.kr[i]
-            ssq_i = self.ssq[i]
-            r_i = self.r[i]
-            U_i = self.U[i]
-            
-            self.r[i] += (kr_i / ssq_i) * (U_i.T.dot(self.r[i-1] - self.f(U_i.dot(r_i))[0])) \
-                                                + (self.kr[i+1] * self.ssq[i+1]) * (self.f(self.U[i+1].dot(self.r[i+1]))[0] - r_i) \
-                                                - (kr_i / ssq_i) * self.g(r_i, self.alph[i])[1]
-
-        # Layer n
-        kr_n = self.kr[n]
-        ssq_n = self.ssq[n]
-        U_n = self.U[n]
-        r_n = self.r[n]
-
-        self.r[n] += (kr_n / ssq_n) * (U_n.T.dot(self.r[n-1] - self.f(U_n.dot(r_n))[0])) \
-                                                + self.rn_topdown_term_dict[self.classif_method](label) \
-                                                - (kr_n / ssq_n) * self.g(r_n, self.alph[n])[1]
-                                                
-    def U_updates_n_1_no_transform(self,label):
-
-        '''u1 will need a tensor dot
-        '''
-        
-        '''
-        check if F will work with 3d+ Us
-        '''
-        
-        kU_1 = self.kU[1]
-        ssq_1 = self.ssq[1]
-        U_1 = self.U[1]
-        r_1 = self.r[1]
-        
-        #U1 operations
-        U1_tdot_r1 = np.tensordot(U_1, r_1, axes=([-1],[0]))
-        input_min_U1tdotr1 = self.r[0] - self.f(U1_tdot_r1)[0]
-        
-        # Layer 1
-        self.U[1] += (kU_1 / ssq_1) * np.outer(input_min_U1tdotr1, r_1) \
-                        - (kU_1 / ssq_1) * self.h(U_1, self.lam[1])[1]
-                            
-    def U_updates_n_gt_eq_2_no_transform(self,label):
-        
-        kU_1 = self.kU[1]
-        ssq_1 = self.ssq[1]
-        U_1 = self.U[1]
-        r_1 = self.r[1]
-        
-        #U1 operations
-        U1_tdot_r1 = np.tensordot(U_1, r_1, axes=([-1],[0]))
-        input_min_U1tdotr1 = self.r[0] - self.f(U1_tdot_r1)[0]
-        
-        # Layer 1
-        self.U[1] += (kU_1 / ssq_1) * np.outer(input_min_U1tdotr1, r_1) \
-                        - (kU_1 / ssq_1) * self.h(U_1, self.lam[1])[1]
-        
-        n = self.num_layers
-        
-        #i>1 - n will all be the same
-        for i in range(1,n+1):
-            
-            kU_i = self.kU[i]
-            ssq_i = self.ssq[i]
-            r_i = self.r[i]
-            U_i = self.U[i]
-            
-            #i
-            self.U[i] += (kU_i / ssq_i) * np.outer((self.r[i-1] - self.f(U_i.dot(r_i))[0]), r_i) \
-                        - (kU_i / ssq_i) * self.h(U_i, self.lam[i])[1]
-                        
-    def Uo_update_no_transform(self, label):
-                # Format: Uo += kU_o / ssq_o * (label - softmax(Uo.dot(r_n)))
-                '''
-                check k/2 vs k/ssqo
-                for every top down rn update, U update, V update, (place where a lr is used)
-                '''
-                o = 'o'
-                r_n = self.r[self.num_layers]
-                self.U[o] += (self.kU[o]/ self.ssq[o]) * np.outer((label - self.softmax(self.U[o].dot(r_n))), r_n)
-
-    def rep_cost_n_1_no_transform(self):
         '''
         move to static eventually, as well as update_Component assignment
         '''
@@ -1020,7 +803,7 @@ class StaticPCC(PredictiveCodingClassifier):
         U1_tdot_r1 = np.tensordot(U_1, r_1, axes=([-1],[0]))
         
         # 1st layer axes necessary for dot product (2D or 4D)
-        bu_tdot_dims = self.bu_cost_tdot_dims
+        bu_tdot_dims = self.bu_error_tdot_dims
         
         # Bottom up only
         bu_v = r_0 - self.f(U1_tdot_r1)[0]
@@ -1033,7 +816,7 @@ class StaticPCC(PredictiveCodingClassifier):
         
         return bu_tot + pri_r + pri_U
 
-    def rep_cost_n_2_no_transform(self):
+    def rep_cost_n_2(self):
         '''
         move to static eventually, as well as update_Component assignment
         '''
@@ -1050,7 +833,7 @@ class StaticPCC(PredictiveCodingClassifier):
         U1_tdot_r1 = np.tensordot(U_1, r_1, axes=([-1],[0]))
         
         # 1st layer axes necessary for dot product (2D or 4D)
-        bu_tdot_dims = self.bu_cost_tdot_dims
+        bu_tdot_dims = self.bu_error_tdot_dims
         
         # Bottom up and td
         bu_v = r_0 - self.f(U1_tdot_r1)[0]
@@ -1077,7 +860,7 @@ class StaticPCC(PredictiveCodingClassifier):
         
         return bu_tot + td_tot + bu_tot2 + pri_r1 + pri_U1 + pri_r2 + pri_U2
 
-    def rep_cost_n_gt_eq_3_no_transform(self):
+    def rep_cost_n_gt_eq_3(self):
         '''
         move to static eventually, as well as update_Component assignment
         '''
@@ -1087,23 +870,29 @@ class StaticPCC(PredictiveCodingClassifier):
         U_1 = self.U[1]
         r_2 = self.r[2]
         U_2 = self.U[2]
+        ssq_0 = self.ssq[0]
         ssq_1 = self.ssq[1]
-        ssq_2 = self.ssq[2]
+        
+        '''
+        Li style: test
+        '''
         
         #U1 operations
-        U1_tdot_r1 = np.tensordot(U_1, r_1, axes=([-1],[0]))
+        U1_tdot_r1 = np.einsum('ijk,ik->ij', U_1, r_1)
         
         # 1st layer axes necessary for dot product (2D or 4D)
-        bu_tdot_dims = self.bu_cost_tdot_dims
+        bu_tdot_dims = self.bu_error_tdot_dims
         
         # Bottom up and td
         bu_v = r_0 - self.f(U1_tdot_r1)[0]
         bu_sq = np.tensordot(bu_v, bu_v, axes=(bu_tdot_dims, bu_tdot_dims))
-        bu_tot = (1 / ssq_1) * bu_sq
+        bu_tot = (1 / ssq_0) * bu_sq
         
-        td_v = r_1 - self.f(U_2.dot(r_2))[0]
+        U2_dot_r2 = self.f(U_2.dot(r_2))[0]
+        
+        td_v = r_1.reshape(U2_dot_r2.shape) - U2_dot_r2
         td_sq = td_v.dot(td_v)
-        td_tot = (1 / ssq_2) * td_sq
+        td_tot = (1 / ssq_1) * td_sq
         
         # Priors
         pri_r1 = self.g(np.squeeze(r_1), self.alph[1])[0]
@@ -1116,13 +905,19 @@ class StaticPCC(PredictiveCodingClassifier):
         pri_ri = 0
         pri_Ui = 0
         for i in range(2,n):
-            bu_v = self.r[i-1] - self.f(self.U[i].dot(self.r[i]))[0]
+            
+            if i == 2:
+                fUi_dot_ri = self.f(self.U[i].dot(self.r[i]))[0]
+                bu_v = self.r[i-1].reshape(fUi_dot_ri.shape) - fUi_dot_ri
+            else:
+                bu_v = self.r[i-1] - self.f(self.U[i].dot(self.r[i]))[0]
+                
             bu_sq = bu_v.dot(bu_v)
-            bu_tot += (1 / self.ssq[i]) * bu_sq
+            bu_tot += (1 / self.ssq[i-1]) * bu_sq
             
             td_v = self.r[i] - self.f(self.U[i+1].dot(self.r[i+1]))[0]
             td_sq = td_v.dot(td_v)
-            td_tot += (1 / self.ssq[i+1]) * td_sq
+            td_tot += (1 / self.ssq[i]) * td_sq
         
             pri_r = self.g(np.squeeze(self.r[i]), self.alph[i])[0]
             pri_U = self.h(self.U[i], self.lam[i])[0]
@@ -1132,96 +927,271 @@ class StaticPCC(PredictiveCodingClassifier):
             pri_ri += pri_r
             pri_Ui += pri_U
             
+        '''
+        test
+        '''
+            
         # Final layer will only have bu term
         bu_vn = self.r[n-1] - self.f(self.U[n].dot(self.r[n]))[0]
         bu_sqn = bu_vn.dot(bu_vn)
-        bu_totn = (1 / self.ssq[n]) * bu_sqn
+        bu_totn = (1 / self.ssq[n - 1]) * bu_sqn
         
         pri_rn = self.g(np.squeeze(self.r[n]), self.alph[n])[0]
         pri_Un = self.h(self.U[n], self.lam[n])[0]
         
         return bu_tot + td_tot + pri_r1 + pri_U1 + bu_i + td_i + pri_ri + pri_Ui + bu_totn + pri_rn + pri_Un
-    # Override methods as necessary for static PCC
     
-class TiledStaticPCC(StaticPCC):
+    def classif_cost_c1(self, label):
+        # Format: -label.dot(np.log(softmax(r_n)))
+        return -label.dot(np.log(self.stable_softmax(self.r[self.num_layers])))
     
-    def __init__(self, base_instance: StaticPCC):
-        
-        # Initialize the base class
-        super().__init__(base_instance)
-        
-        # Copy attributes from the base instance
-        self.__dict__.update(base_instance.__dict__)
-        
-        """
-        tSPCC can take:
-        2D input (num_tiles, flat_tile_area): flattened
-        4D input (num_tile_rows, num_tile_columns, numtlypxls, numtlxpxls): unflattened
-        
-        unflattened preserves spatial information, especially important in image processing
-        and more biologically realistic, as we see entire '2D' fields on surfaces
-        if flat works, though, great. it'll be faster, and speaks to the power of the PC model.
-        """
-        # For non-flat 212 pseudospectrograms, 1 input is 4,4,24,36
-        # That's a grid of 4x4 tiles, each tile is 24x36 pixels
-        
-        # None inits are to be received from assignment
-        if len(self.input_size) == 2:
-            self.flat_input = True
-        elif len(self.input_size) == 4:
-            self.flat_input = False
-        else:
-            raise ValueError("Input size must be 2D or 4D.")
-        
-        # Tiles
-        if self.flat_input:
-            print(f' fix later to always have images, tiled or not indexable by 1st d num images.\n')
-            print(f'setting num tiles')
-            print(f'input size: {self.input_size}')
-            self.num_tiles = self.input_size[0]
-        else:
-            raise ValueError("Unflattened input not yet supported.")
-            # self.num_tiles = self.input_size[0] * self.input_size[1]
+    def classif_cost_c2(self, label):
+        # Format: -label.dot(np.log(softmax(Uo.dot(r_n))))
+        o = 'o'
+        return -label.dot(np.log(self.stable_softmax(self.U[o].dot(self.r[self.num_layers])))) + self.h(self.U[o], self.lam[o])[0]
+    
+    def classif_cost_None(self, label):
+        return 0
+    
+    def rn_topdown_upd_c1(self, label):
+        '''
+        redo for recurrent =will all be the same except rn_bar'''
+        n = self.num_layers
+        o = 'o'
+        # Format: k_o / ssq_n * (label - softmax(r_n))
+        c1 = (self.kr[o] / self.ssq[n]) * (label - self.stable_softmax(self.r[n]))
+        return c1
+
+    def rn_topdown_upd_c2(self, label):
+        # Format: k_o / ssq_n * (label - softmax(Uo.dot(r_n)))
+        n = self.num_layers
+        o = 'o'
+        c2 = (self.kr[o]/ self.ssq[n]) * (label - self.stable_softmax(self.U[o].dot(self.r[n])))
+        return c2
+    
+    def rn_topdown_upd_None(self, label):
+        return 0
+    
+    def r_updates_n_1(self, label):
+        '''
+        move to static eventually, as well as update_Component assignment
+        '''
             
-        print(f'flat input: {self.flat_input}')
-        print(f'num tiles: {self.num_tiles}')
+        kr_1 = self.kr[1]
+        ssq_1 = self.ssq[1]
+        U_1 = self.U[1]
+        r_1 = self.r[1]
         
-        # Initiate r0
-        # Layer 0 will be the input, filled during training, testing, etc.
-        self.r[0] = np.zeros(self.input_size)
+        #U1 operations
+        U1_transpose = np.transpose(U_1, self.U1T_dims)
+        U1_tdot_r1 = np.tensordot(U_1, r_1, axes=([-1],[0]))
+        input_min_U1tdotr1 = self.r[0] - self.f(U1_tdot_r1)[0]
+        
+        self.r[1] += (kr_1 / ssq_1) * np.tensordot(U1_transpose, input_min_U1tdotr1, axes=(self.U1T_tdot_dims, self.bu_error_tdot_dims)) \
+                                                + self.rn_topdown_upd_dict[self.classif_method](label) \
+                                                - (kr_1 / ssq_1) * self.g(r_1, self.alph[1])[1]
+
+    def r_updates_n_2(self, label):
+        
+        '''
+        two layer model
+        '''
+        kr_1 = self.kr[1]
+        ssq_1 = self.ssq[1]
+        U_1 = self.U[1]
+        r_1 = self.r[1]
+        
+        kr_2 = self.kr[2]
+        ssq_2 = self.ssq[2]
+        U_2 = self.U[2]
+        r_2 = self.r[2]
+        
+        #U1 operations
+        U1_transpose = np.transpose(U_1, self.U1T_dims)
+        U1_tdot_r1 = np.tensordot(U_1, r_1, axes=([-1],[0]))
+        input_min_U1tdotr1 = self.r[0] - self.f(U1_tdot_r1)[0]
+        
+        self.r[1] += (kr_1 / ssq_1) * np.tensordot(U1_transpose, input_min_U1tdotr1, axes=(self.U1T_tdot_dims, self.bu_error_tdot_dims)) \
+                                            + (kr_2 * ssq_2) * (self.f(U_2.dot(r_2))[0] - r_1) \
+                                            - (kr_1 / ssq_1) * self.g(r_1, self.alph[1])[1]
+                                            
+        self.r[2] += (kr_2 / ssq_2) * (U_2.T.dot(self.r[1] - self.f(U_2.dot(r_2))[0])) \
+                                                + self.rn_topdown_upd_dict[self.classif_method](label) \
+                                                - (kr_2 / ssq_2) * self.g(r_2, self.alph[2])[1]
+                                            
+    def r_updates_n_gt_eq_3(self, label):
+        
+        n = self.num_layers
+        
+        ssq_0 = self.ssq[0]
+
+        kr_1 = self.kr[1]
+        ssq_1 = self.ssq[1]
+        U_1 = self.U[1]
+        r_1 = self.r[1]
+
+        U_2 = self.U[2]
+        r_2 = self.r[2]
+        
+        #U1 operations
+        U1_transpose = np.transpose(U_1, self.U1T_dims)
+        
+        '''
+        Li style: test
+        '''
+        # Expanded r1
+        # Perform einsum operation
+        U1_tdot_r1 = np.einsum('ijk,ik->ij', U_1, r_1)
+        ## Unexpanded r1
+        #U1_tdot_r1 = np.tensordot(U_1, r_1, axes=([-1],[0]))
+        
+        input_min_U1tdotr1 = self.r[0] - self.f(U1_tdot_r1)[0]
+        
+        
+        # Layer 1
+        self.r[1] += (kr_1 / ssq_0) * np.einsum('ijk,jk->ji', U1_transpose, input_min_U1tdotr1) \
+                                            + (kr_1 / ssq_1) * (self.f(U_2.dot(r_2))[0].reshape(r_1.shape) - r_1) \
+                                            - (kr_1) * self.g(r_1, self.alph[1])[1]
+        
+        
+        # Layers 2 to n-1                                    
+        for i in range(2,n):
+            
+            ssq_imin1 = self.ssq[i-1]
+            
+            kr_i = self.kr[i]
+            ssq_i = self.ssq[i]
+            r_i = self.r[i]
+            U_i = self.U[i]
+            
+            
+            if i == 2:
+                fUi_dot_ri = self.f(U_i.dot(r_i))[0]
+                bu_term = self.r[i-1].reshape(fUi_dot_ri.shape) - fUi_dot_ri
+            else:
+                bu_term = self.r[i-1] - self.f(U_i.dot(r_i))[0]
                 
-        # Initiate U1
-        # Layer 1 will expand based on the shape of r0
-        # Could be 3D or 5D
-        U1_size = tuple(list(self.input_size) + list(self.r[1].shape))
-        self.U[1] = self.prior_dist(size=U1_size)
-        # Get transpose and tensordot axes ready for U1 operations
-        self.set_U1_operation_dims(U1_size, self.input_size)
-        print(f'U1 size: {U1_size}')
-        print(f'U1 operations dims')
-        print(f'U1 transpose dims: {self.U1_transpose_dims}')
-        print(f'U1 tensordot dims: {self.U1T_tdot_dims}')
-        print(f'U1 input dims: {self.input_min_U1tdotr1_tdot_dims}')
-        self.set_bu_cost_dims(self.input_size)
+            
+            self.r[i] += (kr_i / ssq_imin1) * (U_i.T.dot(bu_term)) \
+                                                + (kr_i / ssq_i ) * (self.f(self.U[i+1].dot(self.r[i+1]))[0] - r_i) \
+                                                - (kr_i) * self.g(r_i, self.alph[i])[1]
 
+        # Layer n
+        ssq_nmin1 = self.ssq[n-1]
         
-    def validate_attributes(self):
-        # config file should have all necessary attributes
-        # think about improper combinations
+        kr_n = self.kr[n]
+        U_n = self.U[n]
+        r_n = self.r[n]
 
-        pass
-        # Add more validation checks as needed
+        self.r[n] += (kr_n / ssq_nmin1) * (U_n.T.dot(self.r[n-1] - self.f(U_n.dot(r_n))[0])) \
+                                                + self.rn_topdown_upd_dict[self.classif_method](label) \
+                                                - (kr_n) * self.g(r_n, self.alph[n])[1]
+        
+        '''
+        test
+        '''    
 
-    # Override methods as necessary for static PCC
+    def U_updates_n_1(self,label):
+
+        '''u1 will need a tensor dot
+        '''
+        
+        '''
+        check if F will work with 3d+ Us
+        '''
+        
+        kU_1 = self.kU[1]
+        ssq_1 = self.ssq[1]
+        U_1 = self.U[1]
+        r_1 = self.r[1]
+        
+        #U1 operations
+        U1_tdot_r1 = np.tensordot(U_1, r_1, axes=([-1],[0]))
+        input_min_U1tdotr1 = self.r[0] - self.f(U1_tdot_r1)[0]
+        
+        # Layer 1
+        self.U[1] += (kU_1 / ssq_1) * np.einsum(self.einsum_arg_U1, input_min_U1tdotr1, r_1) \
+                        - (kU_1 / ssq_1) * self.h(U_1, self.lam[1])[1]
+                            
+    def U_updates_n_gt_eq_2(self,label):
+        
+        ssq_0 = self.ssq[0]
+        
+        kU_1 = self.kU[1]
+        U_1 = self.U[1]
+        r_1 = self.r[1]
+        
+        '''
+        Li style: test
+        '''
+        
+        #U1 operations
+        U1_tdot_r1 = np.einsum('ijk,ik->ij', U_1, r_1)
+        
+        input_min_U1tdotr1 = self.r[0] - self.f(U1_tdot_r1)[0]
+        
+        einsum_arg_U1 = 'ij,ik->ijk'
+        
+        # Layer 1
+        self.U[1] += (kU_1 / ssq_0) * np.einsum(einsum_arg_U1, input_min_U1tdotr1, r_1) \
+                        - kU_1 * self.h(U_1, self.lam[1])[1]
+        
+        n = self.num_layers
+        
+        #i>1 - n will all be the same
+        for i in range(2,n+1):
+            
+            ssq_imin1 = self.ssq[i-1]
+            
+            kU_i = self.kU[i]
+            r_i = self.r[i]
+            U_i = self.U[i]
+            
+            if i == 2:
+                fUi_dot_ri = self.f(U_i.dot(r_i))[0]
+                rimin1_min_Uidotri = self.r[i-1].reshape(fUi_dot_ri.shape) - fUi_dot_ri
+            else:
+                rimin1_min_Uidotri = self.r[i-1] - self.f(U_i.dot(r_i))[0]
+            
+            #i
+            self.U[i] += (kU_i / ssq_imin1) * np.outer(rimin1_min_Uidotri, r_i) \
+                        - kU_i * self.h(U_i, self.lam[i])[1]
+                        
+    def Uo_update(self, label):
+        # Format: Uo += kU_o / ssq_o * (label - softmax(Uo.dot(r_n)))
+        '''
+        check k/2 vs k/ssqo
+        for every top down rn update, U update, V update, (place where a lr is used)
+        '''
+        o = 'o'
+        r_n = self.r[self.num_layers]
+        self.U[o] += (self.kU[o]/ self.ssq[o]) * np.outer((label - self.stable_softmax(self.U[o].dot(r_n))), r_n)
+
+    def classif_guess_c1(self, label):
+        guess = np.argmax(self.stable_softmax(self.r[self.num_layers]))
+        if guess == np.argmax(label):
+            return 1
+        else:
+            return 0
+    
+    def classif_guess_c2(self, label):
+        guess = np.argmax(self.stable_softmax(self.U['o'].dot(self.r[self.num_layers])))
+        if guess == np.argmax(label):
+            return 1
+        else:
+            return 0
+        
+    def classif_guess_None(self, label):
+        return 0
+    
     
 class RecurrentPCC(PredictiveCodingClassifier):
-    def __init__(self):
+
+    def __init__(self, base_instance: PredictiveCodingClassifier):
+        
+        # This is a safeguard for now, as PCC doesn't actually have any init logic but setting attrs.
+        # Initialize the base class
         super().__init__()
 
-    # Override methods as necessary for recurrent PCC
-
-class TiledRecurrentPCC(RecurrentPCC):
-    def __init__(self):
-        super().__init__()
-
-    # Override methods as necessary for recurrent PCC
+        # Copy attributes from the base instance
+        self.__dict__.update(base_instance.__dict__)
