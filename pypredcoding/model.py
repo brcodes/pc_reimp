@@ -11,6 +11,9 @@ import csv
 def create_zeros(size):
     return np.zeros(size)
 
+def create_rand(size):
+    return np.random.rand(*size) - 0.5
+
 class PredictiveCodingClassifier:
 
     def __init__(self):
@@ -19,14 +22,17 @@ class PredictiveCodingClassifier:
         self.act_fxn_dict = {'linear': self.linear_transform,
                                 'tanh': self.tanh_transform}
         self.prior_cost_dict = {'gaussian': self.gaussian_prior_costs, 
-                                'kurtotic': self.kurtotic_prior_costs}
-        # self.prior_dist_dict = {'gaussian': partial(np.random.normal, loc=0, scale=1),
-        #                         'kurtotic': partial(np.random.laplace, loc=0.0, scale=0.5)}
+                                'kurtotic': self.kurtotic_prior_costs,
+                                'Li_priors': self.Li_prior_costs}
+        
         
         self.r_prior_dist_dict = {'gaussian': partial(np.random.normal, loc=0, scale=1),
-                                'kurtotic': create_zeros}
+                                'kurtotic': partial(np.random.laplace, loc=0.0, scale=0.5),
+                                'Li_priors': create_zeros}
         
-        # U_prior set below in self.U_prior_dist
+        self.U_prior_dist_dict = {'gaussian': partial(np.random.normal, loc=0, scale=1),
+                                'kurtotic': partial(np.random.laplace, loc=0.0, scale=0.5),
+                                'Li_priors': create_rand}
         
         '''
         shell class for sPCC and rPCC subclasses
@@ -255,28 +261,8 @@ class PredictiveCodingClassifier:
         """
         Takes an argument pair of either r & alpha, or U & lambda, and returns
         a tuple of (g(r), g'(r)), or (h(U), h'(U)), respectively. Gaussian prior.
-        """
-        g_or_h = alph_or_lam * np.square(r_or_U).sum()
-        gprime_or_hprime = 2 * alph_or_lam * r_or_U
-        return (g_or_h, gprime_or_hprime)
-
-    # def kurtotic_prior_costs(self, r_or_U=None, alph_or_lam=None):
-    #     """
-    #     Takes an argument pair of either r & alpha, or U & lambda, and returns
-    #     a tuple of (g(r), g'(r)), or (h(U), h'(U)), respectively. Sparse kurtotic prior.
-    #     """
         
-    #     g_or_h = alph_or_lam * np.log(1 + np.square(r_or_U)).sum()
-    #     gprime_or_hprime = 2 * alph_or_lam * r_or_U / (1 + np.square(r_or_U))
-    #     return (g_or_h, gprime_or_hprime)
-    
-    '''
-    test
-    '''
-    def kurtotic_prior_costs(self, r_or_U=None, alph_or_lam=None):
-        """
-        Takes an argument pair of either r & alpha, or U & lambda, and returns
-        a tuple of (g(r), g'(r)), or (h(U), h'(U)), respectively. Sparse kurtotic prior.
+        Catch overflow here.
         """
         printlog = self.print_and_log
         
@@ -284,22 +270,90 @@ class PredictiveCodingClassifier:
             # Set NumPy to raise exceptions on overflow and invalid operations
             np.seterr(over='raise', invalid='raise')
             
-            g_or_h = alph_or_lam * np.log(1 + np.square(r_or_U)).sum()
-            gprime_or_hprime = (alph_or_lam * r_or_U) / (1 + np.square(r_or_U))
+            func_eval = alph_or_lam * np.square(r_or_U).sum()
+            func_deriv_eval = 2 * alph_or_lam * r_or_U
             
             # Reset NumPy error handling to default
             np.seterr(over='warn', invalid='warn')
             
-            return (g_or_h, gprime_or_hprime)
+            return (func_eval, func_deriv_eval)
         
         except FloatingPointError as e:
             printlog(f"FloatingPointError: {e}")
+            printlog(f'Overflow is checked in prior cost evaluation, and has been encountered.')
             
             if r_or_U is not None:
-                if r_or_U.ndim == 1:  # r_or_U is a vector
-                    printlog("First five elements of r:", r_or_U[:5])
-                elif r_or_U.ndim == 2:  # r_or_U is a matrix
-                    printlog("First 5x5 elements of U:\n", r_or_U[:5, :5])
+                printlog("r or U shape:", r_or_U.shape)
+                # Create a slice object that slices the first 5 elements in each dimension
+                slice_obj = tuple(slice(0, 3) for _ in range(r_or_U.ndim))
+                printlog("A few elements of r_or_U:\n", r_or_U[slice_obj])
+            
+            return None
+    
+    def kurtotic_prior_costs(self, r_or_U=None, alph_or_lam=None):
+        """
+        Takes an argument pair of either r & alpha, or U & lambda, and returns
+        a tuple of (g(r), g'(r)), or (h(U), h'(U)), respectively. Sparse kurtotic prior.
+        
+        Catch overflow here.
+        """
+        printlog = self.print_and_log
+        
+        try:
+            # Set NumPy to raise exceptions on overflow and invalid operations
+            np.seterr(over='raise', invalid='raise')
+            
+            func_eval = alph_or_lam * np.log(1 + np.square(r_or_U)).sum()
+            func_deriv_eval = (2 * alph_or_lam * r_or_U) / (1 + np.square(r_or_U))
+            
+            # Reset NumPy error handling to default
+            np.seterr(over='warn', invalid='warn')
+            
+            return (func_eval, func_deriv_eval)
+        
+        except FloatingPointError as e:
+            printlog(f"FloatingPointError: {e}")
+            printlog(f'Overflow is checked in prior cost evaluation, and has been encountered.')
+            
+            if r_or_U is not None:
+                printlog("r or U shape:", r_or_U.shape)
+                # Create a slice object that slices the first 5 elements in each dimension
+                slice_obj = tuple(slice(0, 3) for _ in range(r_or_U.ndim))
+                printlog("A few elements of r_or_U:\n", r_or_U[slice_obj])
+            
+            return None
+    
+
+    def Li_prior_costs(self, r_or_U=None, alph_or_lam=None):
+        """
+        Takes an argument pair of either r & alpha, or U & lambda, and returns
+        a tuple of (g(r), g'(r)), or (h(U), h'(U)), respectively. Li 'kurtotic' prior.
+        
+        Catch overflow here.
+        """
+        printlog = self.print_and_log
+        
+        try:
+            # Set NumPy to raise exceptions on overflow and invalid operations
+            np.seterr(over='raise', invalid='raise')
+            
+            func_eval = alph_or_lam * np.log(1 + np.square(r_or_U)).sum()
+            func_deriv_eval = (alph_or_lam * r_or_U) / (1 + np.square(r_or_U))
+            
+            # Reset NumPy error handling to default
+            np.seterr(over='warn', invalid='warn')
+            
+            return (func_eval, func_deriv_eval)
+        
+        except FloatingPointError as e:
+            printlog(f"FloatingPointError: {e}")
+            printlog(f'Overflow is checked in prior cost evaluation, and has been encountered.')
+            
+            if r_or_U is not None:
+                printlog("r or U shape:", r_or_U.shape)
+                # Create a slice object that slices the first 5 elements in each dimension
+                slice_obj = tuple(slice(0, 3) for _ in range(r_or_U.ndim))
+                printlog("A few elements of r_or_U:\n", r_or_U[slice_obj])
             
             return None
 
@@ -307,11 +361,13 @@ class PredictiveCodingClassifier:
         return self.r_prior_dist_dict[self.priors](size=size)
     
     def U_prior_dist(self, size):
-        return np.random.rand(*size) - 0.5
+        return self.U_prior_dist_dict[self.priors](size=size)
     
-    def hard_set_prior_dist(self):
+    def hard_set_r_prior_dist(self):
         '''
-        so a new one isn't made every tiem'''
+        so a new one isn't made every image
+        timesaver, but not a truly random draw
+        '''
         
         self.r_dists_hard = {}
         n = self.num_layers
@@ -319,7 +375,7 @@ class PredictiveCodingClassifier:
             lyr_size = self.all_hlyr_sizes[i - 1]
             self.r_dists_hard[lyr_size] = self.r_prior_dist(size=lyr_size)
     
-    def load_hard_prior_dist(self, size):
+    def load_hard_r_prior_dist(self, size):
         return self.r_dists_hard[size]
     
     '''

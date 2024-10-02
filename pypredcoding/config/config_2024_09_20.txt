@@ -32,6 +32,7 @@ output_lyr_size=212
 classif_method='c1'
 # Gaussian is standard normal,  kurtotic is Li method: rs are 0s, Us are uniform random in [-0.5,0.5]
 priors='kurtotic'
+# priors='Li_priors'
 # Update method: now rs and Us are updated, and when. This system has been designed to work with V's, as well.
 # Li method, rW (Weights) updated together (r1-n then U1-n) for 30 iters per image: {'rW_niters':30}
 # Rogers/Brown proposal #1: r updated (1-n) for 100 iters per image before W update (U1-n) {'r_niters_W':100}
