@@ -1,4 +1,4 @@
-from parameters import constant_lr, step_decay_lr, polynomial_decay_lr
+from cost_functions import StaticCostFunction, RecurrentCostFunction
 import numpy as np
 from functools import partial
 
@@ -12,6 +12,7 @@ def create_zeros(size):
     return np.zeros(size)
 
 def create_rand(size):
+    # Shifted random uniform 
     return np.random.rand(*size) - 0.5
 
 class PredictiveCodingClassifier:
@@ -228,6 +229,68 @@ class PredictiveCodingClassifier:
         # self.Jr = {i: [0] * (epoch_n + 1) for i in range(n)}
         # self.Jc = {i: [0] * (epoch_n + 1) for i in range(n)}
         
+    def set_component_update_funcs(self, num_layers, model_type, classif_method):
+        n = num_layers
+            
+        if n == 1:
+            rkey = Ukey = 1
+        elif n == 2:
+            rkey = Ukey = 2
+        elif n >= 3:
+            rkey = 3
+            Ukey = 2
+            
+        keys = [rkey, Ukey]
+            
+        self.r_updates = self.r_upd_func_dict[keys[0]]
+        self.U_updates = self.U_upd_func_dict[keys[1]]
+        
+        self.component_updates = [self.r_updates, self.U_updates]
+        
+        if classif_method == 'c2':
+            self.component_updates.append(self.Uo_update)
+            
+        if model_type == 'recurrent':
+            Vkey = 1
+            keys.append(Vkey)
+            self.V_updates = self.V_upd_func_dict[keys[2]]
+            self.component_updates.append(self.V_updates)
+            
+        
+        
+        
+        
+        
+        
+        classif_cost = self.classif_cost_dict[self.classif_method]
+        # Component update: r, U, Uo, and cost calculato
+        n = num_layers
+        if n == 1:
+            self.r_updates = self.r_updates_n_1
+            self.U_updates = self.U_updates_n_1
+            self.V_updates = self.V_updates
+            self.rep_cost = self.rep_cost_n_1
+        elif n == 2:
+            self.r_updates = self.r_updates_n_2
+            self.U_updates = self.U_updates_n_gt_eq_2
+            self.V_updates = self.V_updates
+            self.rep_cost = self.rep_cost_n_2
+        elif n >= 3:
+            self.r_updates = self.r_updates_n_gt_eq_3
+            self.U_updates = self.U_updates_n_gt_eq_2
+            self.V_updates = self.V_updates
+            self.rep_cost = self.rep_cost_n_gt_eq_3
+        else:
+            raise ValueError("Number of layers must be at least 1.")
+        self.component_updates = [self.r_updates, self.U_updates]
+        classif_method = self.classif_method
+        if classif_method == 'c2':
+            self.component_updates.append(self.Uo_update)
+        # Add Vs
+        self.component_updates.append(self.V_updates)
+        
+        pass
+        
     # Activation functions
     def linear_transform(self, U_dot_r):
         """
@@ -260,7 +323,7 @@ class PredictiveCodingClassifier:
     def gaussian_prior_costs(self, r_or_U=None, alph_or_lam=None):
         """
         Takes an argument pair of either r & alpha, or U & lambda, and returns
-        a tuple of (g(r), g'(r)), or (h(U), h'(U)), respectively. Gaussian prior.
+        a tuple of (g(r), g'(r)), or (h(U), h'(U)), respectively. Gaussian random prior.
         
         Catch overflow here.
         """
@@ -939,7 +1002,7 @@ class StaticPCC(PredictiveCodingClassifier):
         # 1st layer axes necessary for dot product (2D or 4D)
         bu_tdot_dims = self.bu_error_tdot_dims
         
-        # Bottom up and td
+        # Bottom up and tdw
         bu_v = r_0 - self.f(U1_tdot_r1)[0]
         bu_sq = np.tensordot(bu_v, bu_v, axes=(bu_tdot_dims, bu_tdot_dims))
         bu_tot = (1 / ssq_0) * bu_sq
@@ -1251,3 +1314,32 @@ class RecurrentPCC(PredictiveCodingClassifier):
 
         # Copy attributes from the base instance
         self.__dict__.update(base_instance.__dict__)
+        
+        # General method, grabs r,U (Uo, V when applicable) update funcs and cost funcs
+        self.set_component_update_funcs(num_layers=self.num_layers)
+        
+        # Component updates: r, U, Uo, and cost calculato
+        n = self.num_layers
+        if n == 1:
+            self.r_updates = self.r_updates_n_1
+            self.U_updates = self.U_updates_n_1
+            self.V_updates = self.V_updates
+            self.rep_cost = self.rep_cost_n_1
+        elif n == 2:
+            self.r_updates = self.r_updates_n_2
+            self.U_updates = self.U_updates_n_gt_eq_2
+            self.V_updates = self.V_updates
+            self.rep_cost = self.rep_cost_n_2
+        elif n >= 3:
+            self.r_updates = self.r_updates_n_gt_eq_3
+            self.U_updates = self.U_updates_n_gt_eq_2
+            self.V_updates = self.V_updates
+            self.rep_cost = self.rep_cost_n_gt_eq_3
+        else:
+            raise ValueError("Number of layers must be at least 1.")
+        self.component_updates = [self.r_updates, self.U_updates]
+        classif_method = self.classif_method
+        if classif_method == 'c2':
+            self.component_updates.append(self.Uo_update)
+        # Add Vs
+        self.component_updates.append(self.V_updates)
