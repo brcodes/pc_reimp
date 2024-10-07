@@ -6,40 +6,102 @@ class StaticCostFunction():
         # Copy attributes from the model
         self.__dict__.update(sPCC.__dict__)
         
-        if self.learning_rate_denominators == 'standard':
-            self.prior_denom = 2
-            self.top_layer_td_upd_denom = 2
-            
-        elif self.learning_rate_denominators == 'Li':
-            self.prior_denom = 1
-            self.top_layer_td_upd_denom = self.ssq[self.num_layers]
-        
-        if self.architecture == 'flat_hidden_layers':
-            self.rep_cost_dict = {1: self.rep_cost_n_1_flat, 2: self.rep_cost_n_2_flat, 3: self.rep_cost_n_gt_eq_3_flat}
-            self.r_upd_func_dict = {1: self.r_updates_n_1_flat, 2: self.r_updates_n_2_flat, 3: self.r_updates_n_gt_eq_3_flat}
-            self.U_upd_func_dict = {1: self.U_updates_n_1_flat, 2: self.U_updates_n_gt_eq_2_flat}
-            
-        elif self.architecture == 'expand_first_hidden_lyr':
-            self.rep_cost_dict = {1: self.rep_cost_n_1, 2: self.rep_cost_n_2, 3: self.rep_cost_n_gt_eq_3}
-            self.r_upd_func_dict = {1: self.r_updates_n_1, 2: self.r_updates_n_2, 3: self.r_updates_n_gt_eq_3}
-            self.U_upd_func_dict = {1: self.U_updates_n_1, 2: self.U_updates_n_gt_eq_2}
-        
-        elif self.architecture == 'expand_first_hidden_lyr_Li':
-            self.rep_cost_dict = {1: self.rep_cost_n_1_Li, 2: self.rep_cost_n_2_Li, 3: self.rep_cost_n_gt_eq_3_Li}
-            self.r_upd_func_dict = {1: self.r_updates_n_1_Li, 2: self.r_updates_n_2_Li, 3: self.r_updates_n_gt_eq_3_Li}
-            self.U_upd_func_dict = {1: self.U_updates_n_1_Li, 2: self.U_updates_n_gt_eq_2_Li}
-                
-        # Top-layer r top-down (classification-based) update functions
-        self.rn_topdown_upd_dict = {'c1': self.rn_topdown_upd_c1, 'c2': self.rn_topdown_upd_c2, None: self.rn_topdown_upd_None}
-        
-        ''' self.Uo_update is general '''
-        # Classification cost functions
-        self.classif_cost_dict = {'c1': self.classif_cost_c1, 'c2': self.classif_cost_c2, None: self.classif_cost_None}
-        # Classification attempt functions
-        self.classif_guess_dict = {'c1': self.classif_guess_c1, 'c2': self.classif_guess_c2, None: self.classif_guess_None}
-        
-            
+    def rep_cost_n_1(self):
+        pass
+    
+    def rep_cost_n_2(self):
+        pass
+    
+    def rep_cost_n_gt_eq_3(self):
+        pass
+    
+    def classif_cost_c1(self, label):
+        # Format: -label.dot(np.log(softmax(r_n)))
+        return -label.dot(np.log(self.softmax_func(self.r[self.num_layers])))
+    
+    def classif_cost_c2(self, label):
+        # Format: -label.dot(np.log(softmax(Uo.dot(r_n))))
+        o = 'o'
+        return -label.dot(np.log(self.softmax_func(self.U[o].dot(self.r[self.num_layers])))) + self.h(self.U[o], self.lam[o])[0]
+    
+    def classif_cost_None(self, label):
+        return 0
+    
+    def rn_topdown_upd_c1(self, label):
+        '''
+        redo for recurrent =will all be the same except rn_bar'''
+        n = self.num_layers
+        o = 'o'
+        # Format: (k_o / lr_denom) * (label - softmax(r_n))
+        c1 = (self.kr[o] / lr_denominator) * (label - self.softmax_func(self.r[n]))
+        return c1
 
+    def rn_topdown_upd_c2(self, label):
+        # Format: (k_o / 2) * (label - softmax(Uo.dot(r_n)))
+        # No "Li" denominator option here, because she never ran a C2 model.
+        n = self.num_layers
+        o = 'o'
+        c2 = (self.kr[o] / 2) * (label - self.softmax_func(self.U[o].dot(self.r[n])))
+        return c2
+    
+    def rn_topdown_upd_None(self, label):
+        return 0
+    
+    def r_updates_n_1(self, label):
+        pass
+    
+    def r_updates_n_2(self, label):
+        pass
+    
+    def r_updates_n_gt_eq_3(self, label):
+        pass
+    
+    def U_updates_n_1(self,label):
+        pass
+    
+    def U_updates_n_gt_eq_2(self,label):
+        pass
+    
+    def Uo_update(self, label):
+        # Format: Uo += kU_o / 2 * (label - softmax(Uo.dot(r_n)))
+        # No "Li" denominator option here, because she never ran a C2 model.
+
+        o = 'o'
+        r_n = self.r[self.num_layers]
+        self.U[o] += (self.kU[o] / 2) * np.outer((label - self.softmax_func(self.U[o].dot(r_n))), r_n)
+
+    def classif_guess_c1(self, label):
+        guess = np.argmax(self.softmax_func(self.r[self.num_layers]))
+        if guess == np.argmax(label):
+            return 1
+        else:
+            return 0
+    
+    def classif_guess_c2(self, label):
+        guess = np.argmax(self.softmax_func(self.U['o'].dot(self.r[self.num_layers])))
+        if guess == np.argmax(label):
+            return 1
+        else:
+            return 0
+        
+    def classif_guess_None(self, label):
+        return 0
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
 
     def rep_cost_n_1(self):
         '''
@@ -210,15 +272,15 @@ class StaticCostFunction():
         redo for recurrent =will all be the same except rn_bar'''
         n = self.num_layers
         o = 'o'
-        # Format: k_o / ssq_n * (label - softmax(r_n))
-        c1 = (self.kr[o] / self.ssq[n]) * (label - self.stable_softmax(self.r[n]))
+        # Format: k_o  * (label - softmax(r_n))
+        c1 = (self.kr[o] ) * (label - self.stable_softmax(self.r[n]))
         return c1
 
     def rn_topdown_upd_c2(self, label):
-        # Format: k_o / ssq_n * (label - softmax(Uo.dot(r_n)))
+        # Format: k_o * (label - softmax(Uo.dot(r_n)))
         n = self.num_layers
         o = 'o'
-        c2 = (self.kr[o]/ self.ssq[n]) * (label - self.stable_softmax(self.U[o].dot(self.r[n])))
+        c2 = (self.kr[o]) * (label - self.stable_softmax(self.U[o].dot(self.r[n])))
         return c2
     
     def rn_topdown_upd_None(self, label):
@@ -417,7 +479,7 @@ class StaticCostFunction():
         '''
         o = 'o'
         r_n = self.r[self.num_layers]
-        self.U[o] += (self.kU[o]/ self.ssq[o]) * np.outer((label - self.stable_softmax(self.U[o].dot(r_n))), r_n)
+        self.U[o] += (self.kU[o]/ lr_denominator) * np.outer((label - self.stable_softmax(self.U[o].dot(r_n))), r_n)
 
     def classif_guess_c1(self, label):
         guess = np.argmax(self.stable_softmax(self.r[self.num_layers]))
