@@ -6,6 +6,177 @@ class StaticCostFunction():
         # Copy attributes from the model
         self.__dict__.update(sPCC.__dict__)
         
+        # Create dictionaries for each unique method prefix
+        self.U1r1_dict = self.create_subcomponent_dict("U1r1")
+        self.U1T_Idiff_dict = self.create_subcomponent_dict("U1T_Idiff")
+        self.U2r2_dict = self.create_subcomponent_dict("U2r2")
+        self.U2T_L1diff_dict = self.create_subcomponent_dict("U2T_L1diff")
+        self.U3r3_dict = self.create_subcomponent_dict("U3r3")
+        self.U3T_L2diff_dict = self.create_subcomponent_dict("U3T_L2diff")
+        # U-only components now
+        self.Idiff_r1_dict = self.create_subcomponent_dict("Idiff_r1")
+        self.L1diff_r2_dict = self.create_subcomponent_dict("L1diff_r2")
+        self.L2diff_r3_dict = self.create_subcomponent_dict("L2diff_r3")
+        
+        # Initialize general methods based on the architecture key
+        self.initialize_components(self.architecture)
+    
+    def create_subcomponent_dict(self, prefix):
+        return {
+            "flat_hidden_layers": getattr(self, f"{prefix}_fhl"),
+            "expand_1st_layer_Li": getattr(self, f"{prefix}_e1l_Li"),
+            "expand_1st_layer": getattr(self, f"{prefix}_e1l")
+        }
+        
+    def initialize_components(self, architecture_key):
+        self.U1r1 = self.U1r1_dict[architecture_key]
+        self.U1T_Idiff = self.U1T_Idiff_dict[architecture_key]
+        self.U2r2 = self.U2r2_dict[architecture_key]
+        self.U2T_L1diff = self.U2T_L1diff_dict[architecture_key]
+        self.U3r3 = self.U3r3_dict[architecture_key]
+        self.U3T_L2diff = self.U3T_L2diff_dict[architecture_key]
+            
+    '''
+    cost function subcomponents
+    
+    used in r or U updates
+    dependent on architecture parameter
+    '''
+    
+    def U1r1_fhl(self):
+        pass
+    
+    def U1r1_e1l_Li(self):
+        pass
+    
+    def U1r1_e1l(self):
+        pass
+    
+    def U1T_Idiff_fhl(self):
+        pass
+    
+    def U1T_Idiff_e1l_Li(self):
+        pass
+    
+    def U1T_Idiff_e1l(self):
+        pass
+    
+    def U2r2_fhl(self):
+        pass
+    
+    def U2r2_e1l_Li(self):
+        pass
+    
+    def U2r2_e1l(self):
+        pass
+    
+    def U2T_L1diff_fhl(self):
+        pass
+    
+    def U2T_L1diff_e1l_Li(self):
+        pass
+    
+    def U2T_L1diff_e1l(self):
+        pass
+    
+    def U3r3_fhl(self):
+        pass
+    
+    def U3r3_e1l_Li(self):
+        pass
+    
+    def U3r3_e1l(self):
+        pass
+    
+    def U3T_L2diff_fhl(self):
+        pass
+    
+    def U3T_L2diff_e1l_Li(self):
+        pass
+    
+    def U3T_L2diff_e1l(self):
+        pass
+    
+    '''
+    cost function subcomponents
+    
+    used in U updates only
+    dependent on architecture parameter
+    '''
+    
+    def Idiff_r1_fhl(self):
+        pass
+    
+    def Idiff_r1_e1l_Li(self):
+        pass
+    
+    def Idiff_r1_e1l(self):
+        pass
+    
+    def L1diff_r2_fhl(self):
+        pass
+    
+    def L1diff_r2_e1l_Li(self):
+        pass
+    
+    def L1diff_r2_e1l(self):
+        pass
+    
+    def L2diff_r3_fhl(self):
+        pass
+    
+    def L2diff_r3_e1l_Li(self):
+        pass
+    
+    def L2diff_r3_e1l(self):
+        pass
+    
+    '''
+    cost function components
+    
+    used in r or U updates
+    '''
+    
+    def U1mat_mult_r1vecormat(self):
+        pass
+    
+    def U1T_mult_args(self):
+        pass
+    
+    def U1Tmat_mult_Idiffmat(self):
+        pass
+    
+    def U2mat_mult_r2vec(self):
+        pass
+    
+    def U2Tmat_mult_L1diffvecormat(self):
+        pass
+    
+    def U_gteq_3mat_mult_r_gteq_3vec(self):
+        pass
+    
+    def U3Tmat_mult_L2diffvec(self):
+        pass
+    
+    '''
+    cost function components
+    
+    used in U updates only
+    '''
+    
+    def Idiffmat_mult_r1vecormat(self):
+        pass
+    
+    def L1diffvecormat_mult_r2vec(self):
+        pass
+    
+    def L_gteq_2diffvec_mult_r_gteq_3vec(self):
+        pass
+    
+    '''
+    actual cost functions
+    '''    
+        
     def rep_cost_n_1(self):
         pass
     
