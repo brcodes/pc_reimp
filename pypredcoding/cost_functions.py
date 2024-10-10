@@ -29,12 +29,32 @@ class StaticCostFunction():
         }
         
     def initialize_components(self, architecture_key):
+        
+        def U1T_mult_args(self):
+            pass
+    
         self.U1r1 = self.U1r1_dict[architecture_key]
         self.U1T_Idiff = self.U1T_Idiff_dict[architecture_key]
         self.U2r2 = self.U2r2_dict[architecture_key]
         self.U2T_L1diff = self.U2T_L1diff_dict[architecture_key]
         self.U3r3 = self.U3r3_dict[architecture_key]
         self.U3T_L2diff = self.U3T_L2diff_dict[architecture_key]
+        # U-only
+        self.Idiff_r1 = self.Idiff_r1_dict[architecture_key]
+        self.L1diff_r2 = self.L1diff_r2_dict[architecture_key]
+        self.L2diff_r3 = self.L2diff_r3_dict[architecture_key]
+        
+    # def initialize_components(self, architecture_key):
+    #     self.U1mat_mult_r1vecormat = self.U1r1_dict[architecture_key]
+    #     self.U1Tmat_mult_Idiffmat = self.U1T_Idiff_dict[architecture_key]
+    #     self.U2mat_mult_r2vec = self.U2r2_dict[architecture_key]
+    #     self.U2Tmat_mult_L1diffvecormat = self.U2T_L1diff_dict[architecture_key]
+    #     self.U_gteq3_mat_mult_r_gteq3_vec = self.U3r3_dict[architecture_key]
+    #     self.U3Tmat_mult_L2diffvec = self.U3T_L2diff_dict[architecture_key]
+    #     # U-only
+    #     self.Idiffmat_mult_r1vecormat = self.Idiff_r1_dict[architecture_key]
+    #     self.L1diffvecormat_mult_r2vec = self.L1diff_r2_dict[architecture_key]
+    #     self.L_gteq2_diffvec_mult_r_gteq3_vec = self.L2diff_r3_dict[architecture_key]
             
     '''
     cost function subcomponents
@@ -131,60 +151,112 @@ class StaticCostFunction():
     def L2diff_r3_e1l(self):
         pass
     
-    '''
-    cost function components
-    
-    used in r or U updates
-    '''
-    
-    def U1mat_mult_r1vecormat(self):
-        pass
-    
-    def U1T_mult_args(self):
-        pass
-    
-    def U1Tmat_mult_Idiffmat(self):
-        pass
-    
-    def U2mat_mult_r2vec(self):
-        pass
-    
-    def U2Tmat_mult_L1diffvecormat(self):
-        pass
-    
-    def U_gteq_3mat_mult_r_gteq_3vec(self):
-        pass
-    
-    def U3Tmat_mult_L2diffvec(self):
-        pass
-    
-    '''
-    cost function components
-    
-    used in U updates only
-    '''
-    
-    def Idiffmat_mult_r1vecormat(self):
-        pass
-    
-    def L1diffvecormat_mult_r2vec(self):
-        pass
-    
-    def L_gteq_2diffvec_mult_r_gteq_3vec(self):
-        pass
-    
+   
     '''
     actual cost functions
     '''    
         
     def rep_cost_n_1(self):
+        r1 = self.r[1]
+        U1 = self.U[1]
+        bu_tdot_dims = self.bu_error_tdot_dims
+
+        U1r1 = self.U1mat_mult_r1vecormat(U1, r1)
+        
+        # Bottom-up component of the representation error
+        bu_vec = self.r[0] - U1r1
+        bu_square = np.tensordot(bu_vec, bu_vec, axes=(bu_tdot_dims, bu_tdot_dims))
+        bu_total = (1 / self.ssq[1]) * bu_square
+        
+        # Priors on that layer
+        prior_r = self.g(np.squeeze(r1), self.alph[1])[0]
+        prior_U = self.h(U1, self.lam[1])[0]
+        
+        # Return total
+        return bu_total + prior_r + prior_U
+        
         pass
     
     def rep_cost_n_2(self):
-        pass
+        r1 = self.r[1]
+        r2 = self.r[2]
+        U1 = self.U[1]
+        U2 = self.U[2]
+        bu_tdot_dims = self.bu_error_tdot_dims
+        td_tdot_dims = self.td_error_tdot_dims
+
+        # Layer 1
+        U1r1 = self.U1mat_mult_r1vecormat(U1, r1)
+        
+        # Bottom-up component of the representation error
+        bu_vec = self.r[0] - U1r1
+        bu_square = np.tensordot(bu_vec, bu_vec, axes=(bu_tdot_dims, bu_tdot_dims))
+        bu_total = (1 / self.ssq[1]) * bu_square
+        
+        U2r2 = self.U2mat_mult_r2vec(U2, r2)
+        
+        # Top-down component of the representation error
+        td_vec = r1 - U2r2
+        td_square = np.tensordot(td_vec, td_vec, axes=(td_tdot_dims, td_tdot_dims))
+        td_total = (1 / self.ssq[2]) * td_square
+        
+        # Priors on that layer
+        prior_r = self.g(np.squeeze(r1), self.alph[1])[0]
+        prior_U = self.h(U1, self.lam[1])[0]
+        
+        # Layer 2
+        bu_total2 = td_total
+        
+        prior_r2 = self.g(np.squeeze(r2), self.alph[2])[0]
+        prior_U2 = self.h(U2, self.lam[2])[0]
+        
+        # Return total
+        return bu_total + td_total + prior_r + prior_U + bu_total2 + prior_r2 + prior_U2
     
     def rep_cost_n_gt_eq_3(self):
-        pass
+        
+        n = self.num_layers
+        r1 = self.r[1]
+        r2 = self.r[2]
+        U1 = self.U[1]
+        U2 = self.U[2]
+        bu_tdot_dims = self.bu_error_tdot_dims
+        td_tdot_dims = self.td_error_tdot_dims
+
+        # Layer 1
+        U1r1 = self.U1mat_mult_r1vecormat(U1, r1)
+        
+        # Bottom-up component of the representation error
+        bu_vec = self.r[0] - U1r1
+        bu_square = np.tensordot(bu_vec, bu_vec, axes=(bu_tdot_dims, bu_tdot_dims))
+        bu_total = (1 / self.ssq[1]) * bu_square
+        
+        U2r2 = self.U2mat_mult_r2vec(U2, r2)
+        
+        # Top-down component of the representation error
+        td_vec = r1 - U2r2
+        td_square = np.tensordot(td_vec, td_vec, axes=(td_tdot_dims, td_tdot_dims))
+        td_total = (1 / self.ssq[2]) * td_square
+        
+        # Priors on that layer
+        prior_r = self.g(np.squeeze(r1), self.alph[1])[0]
+        prior_U = self.h(U1, self.lam[1])[0]
+        
+        # Layer 2
+        bu_total2 = td_total
+        
+        U3r3 = self.U3mat_mult_r3vec(self.U[3], self.r[3])
+        
+        # Top-down component
+        td_vec2 = r2 - U3r3
+        td_square2 = np.dot(td_vec2, td_vec2)
+        td_total2 = (1 / self.ssq[3]) * td_square2
+        
+        prior_r2 = self.g(np.squeeze(r2), self.alph[2])[0]
+        prior_U2 = self.h(U2, self.lam[2])[0]
+        
+        # Return total
+        return bu_total + td_total + prior_r + prior_U + bu_total2 + prior_r2 + prior_U2
     
     def classif_cost_c1(self, label):
         # Format: -label.dot(np.log(softmax(r_n)))
