@@ -29,6 +29,10 @@ note in config that e1l Li will only work with tiled, flat case. it is only inte
 may not even support layer number changes. only hyperparameter changes and specific layer parameter changes (shapes between r1U2 must match up)
 
 fill in each subcomponent function (make sure all callable using U1,r1, U1T, etc.no other arguments.)
+
+make sure it's understood that for our rn topdown update components, we're using a ko
+set ko to kn to be Li model
+but it's tunable now for the future
 '''
 
 # cost_functions.py
@@ -373,33 +377,121 @@ class StaticCostFunction():
     def rn_topdown_upd_c1(self, label):
         '''
         redo for recurrent =will all be the same except rn_bar'''
-        n = self.num_layers
-        o = 'o'
-        # Format: (k_o / lr_denom) * (label - softmax(r_n))
-        c1 = (self.kr[o] / lr_denominator) * (label - self.softmax_func(self.r[n]))
-        return c1
+        return label - self.softmax_func(self.r[self.num_layers])
 
     def rn_topdown_upd_c2(self, label):
-        # Format: (k_o / 2) * (label - softmax(Uo.dot(r_n)))
-        # No "Li" denominator option here, because she never ran a C2 model.
-        n = self.num_layers
-        o = 'o'
-        c2 = (self.kr[o] / 2) * (label - self.softmax_func(self.U[o].dot(self.r[n])))
-        return c2
+        '''
+        rn_bar
+        '''
+        return label - self.softmax_func(self.U['o'].dot(self.r[self.num_layers]))
     
     def rn_topdown_upd_None(self, label):
         return 0
     
     def r_updates_n_1(self, label):
-        pass
+        
+        r1 = self.r[1]
+        U1 = self.U[1]
+        kr1 = self.kr[1]
+        
+        # Layer 1
+        U1T = np.transpose(U1, self.U1T_dims)
+        U1r1 = self.U1mat_mult_r1vecormat(U1, r1)
+        Idiff = self.r[0] - U1r1
+        
+        self.r[1] += (kr1 / self.ssq[0]) * self.U1Tmat_mult_Idiffmat(U1T, Idiff) \
+                    + (self.kr['o'] / self.lr_rn_td_denominator) * self.rn_topdown_upd_dict[self.classif_method](label) \
+                    - (kr1 / self.lr_prior_denominator) * self.g(r1, self.alph[1])[1]
+        
     
     def r_updates_n_2(self, label):
-        pass
+        
+        r1 = self.r[1]
+        r2 = self.r[2]
+        U1 = self.U[1]
+        U2 = self.U[2]
+        kr1 = self.kr[1]
+        kr2 = self.kr[2]
+        ssq1 = self.ssq[1]
+        lr_prior_denominator = self.lr_prior_denominator
+        
+        # Layer 1
+        U1T = np.transpose(U1, self.U1T_dims)
+        U1r1 = self.U1mat_mult_r1vecormat(U1, r1)
+        U2r2 = self.U2mat_mult_r2vec(U2, r2)
+        Idiff = self.r[0] - U1r1
+        
+        self.r[1] += (kr1 / self.ssq[0]) * self.U1Tmat_mult_Idiffmat(U1T, Idiff) \
+                    + (kr1 / ssq1) * (U2r2 - r1) \
+                    - (kr1 / lr_prior_denominator) * self.g(r1, self.alph[1])[1]
+                    
+        # Layer 2
+        U2T = np.transpose(U2, self.U2T_dims) 
+        L1diff = r1 - U2r2
+        
+        self.r[2] += (kr2 / ssq1) * self.U2Tmat_mult_L1diffvecormat(U2T, L1diff) \
+                    + (self.kr['o'] / self.lr_rn_td_denominator) * self.rn_topdown_upd_dict[self.classif_method](label) \
+                    - (kr2 / lr_prior_denominator) * self.g(r2, self.alph[2])[1]
     
     def r_updates_n_gt_eq_3(self, label):
-        pass
+        
+        n = self.num_layers
+        r1 = self.r[1]
+        r2 = self.r[2]
+        U1 = self.U[1]
+        U2 = self.U[2]
+        kr1 = self.kr[1]
+        kr2 = self.kr[2]
+        ssq1 = self.ssq[1]
+        lr_prior_denominator = self.lr_prior_denominator
+        
+        # Layer 1
+        U1T = np.transpose(U1, self.U1T_dims)
+        U1r1 = self.U1mat_mult_r1vecormat(U1, r1)
+        U2r2 = self.U2mat_mult_r2vec(U2, r2)
+        Idiff = self.r[0] - U1r1
+        
+        self.r[1] += (kr1 / self.ssq[0]) * self.U1Tmat_mult_Idiffmat(U1T, Idiff) \
+                    + (kr1 / ssq1) * (U2r2 - r1) \
+                    - (kr1 / lr_prior_denominator) * self.g(r1, self.alph[1])[1]
+                    
+        # Layer 2 - n-1
+        for i in range(2, n):
+            
+            # 3 in 2 case, i+1 in i case
+            ri1 = self.r[i + 1]
+            Ui1 = self.U[i + 1]
+            Ui1ri1 = self.U_gteq3_mat_mult_r_gteq3_vec(Ui1, ri1)
+            
+            # Layer i == 2
+            if i == 2:
+                U2T = np.transpose(U2, self.U2T_dims) 
+                L1diff = r1 - U2r2
+                
+                self.r[i] += (kr2 / ssq1) * self.U2Tmat_mult_L1diffvecormat(U2T, L1diff) \
+                        + (kr2 / self.ssq[2]) * (Ui1ri1 - r2) \
+                        - (kr2 / lr_prior_denominator) * self.g(r2, self.alph[2])[1]
+            
+            # Layer i > 2
+            else:
+                
+                ri = self.r[i]
+                Ui = self.U[i]
+                UiT = Ui.T
+                Uiri = self.U_gteq3_mat_mult_r_gteq3_vec(Ui, ri)
+                Lidiff = ri - Uiri
+                
+                self.r[i] += (self.kr[i] / self.ssq[i - 1]) * self.U3Tmat_mult_L2diffvec(UiT, Lidiff) \
+                        + (self.kr[i] / self.ssq[i]) * (Ui1ri1 - ri) \
+                        - (self.kr[i] / lr_prior_denominator) * self.g(ri, self.alph[i])[1]
+                    
+        # Layer n
+                    
     
     def U_updates_n_1(self,label):
+        
+        
+        
         pass
     
     def U_updates_n_gt_eq_2(self,label):
