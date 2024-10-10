@@ -1,5 +1,36 @@
 import numpy as np
 
+'''
+to-do
+
+softmax_func, k config
+lr_prior_denominators
+squeeze into r prior
+l activation functions element wise
+clean up train
+clean up evaluate
+implement cost_function classes in train, evaluate
+hard-code 10 epoch diagnostic/prints
+save checkpoint
+load checkpoint
+add seconds to log
+home/log
+home/models/checkpoints
+home/results/diagnostics/
+            /plots/
+bu_error_tdot_dims
+td_error_tdot_dims (tdot necessary?)
+self.U1T_mult_args
+self.U1_einsum_arg
+self.U1T args
+U2T just = U2.T if fhl, e1l_Li, but self.U2T args if e1l
+
+note in config that e1l Li will only work with tiled, flat case. it is only intended to replicate her dissertation data.
+may not even support layer number changes. only hyperparameter changes and specific layer parameter changes (shapes between r1U2 must match up)
+
+fill in each subcomponent function (make sure all callable using U1,r1, U1T, etc.no other arguments.)
+'''
+
 # cost_functions.py
 class StaticCostFunction():
     def __init__(self, sPCC):
@@ -28,22 +59,6 @@ class StaticCostFunction():
             "expand_1st_layer": getattr(self, f"{prefix}_e1l")
         }
         
-    # def initialize_components(self, architecture_key):
-        
-    #     def U1T_mult_args(self):
-    #         pass
-    
-    #     self.U1r1 = self.U1r1_dict[architecture_key]
-    #     self.U1T_Idiff = self.U1T_Idiff_dict[architecture_key]
-    #     self.U2r2 = self.U2r2_dict[architecture_key]
-    #     self.U2T_L1diff = self.U2T_L1diff_dict[architecture_key]
-    #     self.U3r3 = self.U3r3_dict[architecture_key]
-    #     self.U3T_L2diff = self.U3T_L2diff_dict[architecture_key]
-    #     # U-only
-    #     self.Idiff_r1 = self.Idiff_r1_dict[architecture_key]
-    #     self.L1diff_r2 = self.L1diff_r2_dict[architecture_key]
-    #     self.L2diff_r3 = self.L2diff_r3_dict[architecture_key]
-        
     def initialize_components(self, architecture_key):
         self.U1mat_mult_r1vecormat = self.U1r1_dict[architecture_key]
         self.U1Tmat_mult_Idiffmat = self.U1T_Idiff_dict[architecture_key]
@@ -63,59 +78,78 @@ class StaticCostFunction():
     dependent on architecture parameter
     '''
     
-    def U1r1_fhl(self):
-        pass
+    def U1r1_fhl(self, U1, r1, args):
+        return np.tensordot(U1, r1, axes=([-1],[0]))    
+        
+    def U1r1_e1l_Li(self, U1, r1, args):
+        return np.matmul(U1, r1[:,:,None]).squeeze()
     
-    def U1r1_e1l_Li(self):
-        pass
+    def U1r1_e1l(self, U1, r1, args):
+        # np.einsum(self.U1_einsum_arg, U1, r1) 
+        # ijk,ik->ij in 3d U1 case, 2d r1 case
+        # ijklm,ijm-> ijkl in 5d U1 case, 3d r1 case
+        return np.einsum(args, U1, r1)    
     
-    def U1r1_e1l(self):
-        pass
+    def U1T_Idiff_fhl(self, U1T, Idiff, args):
+        # axes=(self.U1T_tdot_dims, self.bu_error_tdot_dims)
+        return np.tensordot(U1T, Idiff, axes=args)
     
-    def U1T_Idiff_fhl(self):
-        pass
+    def U1T_Idiff_e1l_Li(self, U1T, Idiff, args):
+        return np.matmul(U1T, Idiff[:,:,None]).squeeze()
     
-    def U1T_Idiff_e1l_Li(self):
-        pass
+    def U1T_Idiff_e1l(self, U1T, Idiff, args):
+        # np.einsum(self.U1T_einsum_arg...
+        # ijk,jk->ji in 3d U1 case, 2d r1 case
+        # ijklm,jklm->jki in 5d U1 case, 3d r1 case
+        return np.einsum(args, U1T, Idiff)
     
-    def U1T_Idiff_e1l(self):
-        pass
+    def U2r2_fhl(self, U2, r2):
+        return np.dot(U2, r2)
     
-    def U2r2_fhl(self):
-        pass
+    def U2r2_e1l_Li(self, U2, r2):
+        return np.dot(U2, r2).reshape(self.r[1].shape)
     
-    def U2r2_e1l_Li(self):
-        pass
+    def U2r2_e1l(self, U2, r2):
+        return np.tensordot(U2, r2, axes=([-1],[0]))
     
-    def U2r2_e1l(self):
-        pass
+    def U2T_L1diff_fhl(self, U2T, L1diff, args):
+        return np.dot(U2T, L1diff)
     
-    def U2T_L1diff_fhl(self):
-        pass
+    def U2T_L1diff_e1l_Li(self, U2T, L1diff, args):
+        return np.dot(U2T, L1diff.flatten())
     
-    def U2T_L1diff_e1l_Li(self):
-        pass
+    def U2T_L1diff_e1l(self, U2T, L1diff, args):
+        # example: 16,32,128 3d U1 case, 2d r1 case
+        # or: 4,4,32,128 5d U1 case, 3d r1 case
+        # U2T = 128,16,32     or:   128,4,4,32
+        # L1diff = 16,32       or:   4,4,32
+        # arg ijk,jk->i         or:     ijkl,jkl->i
+        # In either case set up a self.U2T_args with an identical protocol to self.U1T_args (range, swap last for first.)
+        # Then einsums
+        return np.einsum(args, U2T, L1diff)
     
-    def U2T_L1diff_e1l(self):
-        pass
+    '''
+    these are all dots
+    can shortcut later but kept for clarity
+    '''
     
-    def U3r3_fhl(self):
-        pass
+    def U3r3_fhl(self, U3, r3):
+        return np.dot(U3, r3)
     
-    def U3r3_e1l_Li(self):
-        pass
+    def U3r3_e1l_Li(self, U3, r3):
+        return np.dot(U3, r3)
     
-    def U3r3_e1l(self):
-        pass
+    def U3r3_e1l(self, U3, r3):
+        return np.dot(U3, r3)
     
-    def U3T_L2diff_fhl(self):
-        pass
+    def U3T_L2diff_fhl(self, U3T, L2diff):
+        return np.dot(U3T, L2diff)
     
-    def U3T_L2diff_e1l_Li(self):
-        pass
+    def U3T_L2diff_e1l_Li(self, U3T, L2diff):
+        return np.dot(U3T, L2diff)
     
-    def U3T_L2diff_e1l(self):
-        pass
+    def U3T_L2diff_e1l(self, U3T, L2diff):
+        return np.dot(U3T, L2diff)
     
     '''
     cost function subcomponents
@@ -151,7 +185,7 @@ class StaticCostFunction():
     def L2diff_r3_e1l(self):
         pass
     
-   
+
     '''
     actual cost functions
     '''    
@@ -309,7 +343,6 @@ class StaticCostFunction():
             # Priors on that layer
             prior_rn = self.g(np.squeeze(self.r[n]), self.alph[n])[0]
             prior_Un = self.h(self.U[n], self.lam[n])[0]
-            
             
         # Return total
         return bu_total + td_total + prior_r + prior_U + bu_total2 + td_total2 + prior_r2 + prior_U2 + \
