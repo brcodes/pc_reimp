@@ -28,33 +28,33 @@ class StaticCostFunction():
             "expand_1st_layer": getattr(self, f"{prefix}_e1l")
         }
         
-    def initialize_components(self, architecture_key):
-        
-        def U1T_mult_args(self):
-            pass
-    
-        self.U1r1 = self.U1r1_dict[architecture_key]
-        self.U1T_Idiff = self.U1T_Idiff_dict[architecture_key]
-        self.U2r2 = self.U2r2_dict[architecture_key]
-        self.U2T_L1diff = self.U2T_L1diff_dict[architecture_key]
-        self.U3r3 = self.U3r3_dict[architecture_key]
-        self.U3T_L2diff = self.U3T_L2diff_dict[architecture_key]
-        # U-only
-        self.Idiff_r1 = self.Idiff_r1_dict[architecture_key]
-        self.L1diff_r2 = self.L1diff_r2_dict[architecture_key]
-        self.L2diff_r3 = self.L2diff_r3_dict[architecture_key]
-        
     # def initialize_components(self, architecture_key):
-    #     self.U1mat_mult_r1vecormat = self.U1r1_dict[architecture_key]
-    #     self.U1Tmat_mult_Idiffmat = self.U1T_Idiff_dict[architecture_key]
-    #     self.U2mat_mult_r2vec = self.U2r2_dict[architecture_key]
-    #     self.U2Tmat_mult_L1diffvecormat = self.U2T_L1diff_dict[architecture_key]
-    #     self.U_gteq3_mat_mult_r_gteq3_vec = self.U3r3_dict[architecture_key]
-    #     self.U3Tmat_mult_L2diffvec = self.U3T_L2diff_dict[architecture_key]
+        
+    #     def U1T_mult_args(self):
+    #         pass
+    
+    #     self.U1r1 = self.U1r1_dict[architecture_key]
+    #     self.U1T_Idiff = self.U1T_Idiff_dict[architecture_key]
+    #     self.U2r2 = self.U2r2_dict[architecture_key]
+    #     self.U2T_L1diff = self.U2T_L1diff_dict[architecture_key]
+    #     self.U3r3 = self.U3r3_dict[architecture_key]
+    #     self.U3T_L2diff = self.U3T_L2diff_dict[architecture_key]
     #     # U-only
-    #     self.Idiffmat_mult_r1vecormat = self.Idiff_r1_dict[architecture_key]
-    #     self.L1diffvecormat_mult_r2vec = self.L1diff_r2_dict[architecture_key]
-    #     self.L_gteq2_diffvec_mult_r_gteq3_vec = self.L2diff_r3_dict[architecture_key]
+    #     self.Idiff_r1 = self.Idiff_r1_dict[architecture_key]
+    #     self.L1diff_r2 = self.L1diff_r2_dict[architecture_key]
+    #     self.L2diff_r3 = self.L2diff_r3_dict[architecture_key]
+        
+    def initialize_components(self, architecture_key):
+        self.U1mat_mult_r1vecormat = self.U1r1_dict[architecture_key]
+        self.U1Tmat_mult_Idiffmat = self.U1T_Idiff_dict[architecture_key]
+        self.U2mat_mult_r2vec = self.U2r2_dict[architecture_key]
+        self.U2Tmat_mult_L1diffvecormat = self.U2T_L1diff_dict[architecture_key]
+        self.U_gteq3_mat_mult_r_gteq3_vec = self.U3r3_dict[architecture_key]
+        self.U3Tmat_mult_L2diffvec = self.U3T_L2diff_dict[architecture_key]
+        # U-only
+        self.Idiffmat_mult_r1vecormat = self.Idiff_r1_dict[architecture_key]
+        self.L1diffvecormat_mult_r2vec = self.L1diff_r2_dict[architecture_key]
+        self.L_gteq2_diffvec_mult_r_gteq3_vec = self.L2diff_r3_dict[architecture_key]
             
     '''
     cost function subcomponents
@@ -161,9 +161,8 @@ class StaticCostFunction():
         U1 = self.U[1]
         bu_tdot_dims = self.bu_error_tdot_dims
 
-        U1r1 = self.U1mat_mult_r1vecormat(U1, r1)
-        
         # Bottom-up component of the representation error
+        U1r1 = self.U1mat_mult_r1vecormat(U1, r1)
         bu_vec = self.r[0] - U1r1
         bu_square = np.tensordot(bu_vec, bu_vec, axes=(bu_tdot_dims, bu_tdot_dims))
         bu_total = (1 / self.ssq[1]) * bu_square
@@ -186,16 +185,14 @@ class StaticCostFunction():
         td_tdot_dims = self.td_error_tdot_dims
 
         # Layer 1
-        U1r1 = self.U1mat_mult_r1vecormat(U1, r1)
-        
         # Bottom-up component of the representation error
+        U1r1 = self.U1mat_mult_r1vecormat(U1, r1)
         bu_vec = self.r[0] - U1r1
         bu_square = np.tensordot(bu_vec, bu_vec, axes=(bu_tdot_dims, bu_tdot_dims))
         bu_total = (1 / self.ssq[1]) * bu_square
         
-        U2r2 = self.U2mat_mult_r2vec(U2, r2)
-        
         # Top-down component of the representation error
+        U2r2 = self.U2mat_mult_r2vec(U2, r2)
         td_vec = r1 - U2r2
         td_square = np.tensordot(td_vec, td_vec, axes=(td_tdot_dims, td_tdot_dims))
         td_total = (1 / self.ssq[2]) * td_square
@@ -205,8 +202,10 @@ class StaticCostFunction():
         prior_U = self.h(U1, self.lam[1])[0]
         
         # Layer 2
+        # Bottom-up
         bu_total2 = td_total
         
+        # Priors on that layer
         prior_r2 = self.g(np.squeeze(r2), self.alph[2])[0]
         prior_U2 = self.h(U2, self.lam[2])[0]
         
@@ -218,45 +217,103 @@ class StaticCostFunction():
         n = self.num_layers
         r1 = self.r[1]
         r2 = self.r[2]
+        r3 = self.r[3]
         U1 = self.U[1]
         U2 = self.U[2]
+        U3 = self.U[3]
         bu_tdot_dims = self.bu_error_tdot_dims
         td_tdot_dims = self.td_error_tdot_dims
 
         # Layer 1
-        U1r1 = self.U1mat_mult_r1vecormat(U1, r1)
-        
         # Bottom-up component of the representation error
+        U1r1 = self.U1mat_mult_r1vecormat(U1, r1)
         bu_vec = self.r[0] - U1r1
         bu_square = np.tensordot(bu_vec, bu_vec, axes=(bu_tdot_dims, bu_tdot_dims))
-        bu_total = (1 / self.ssq[1]) * bu_square
-        
-        U2r2 = self.U2mat_mult_r2vec(U2, r2)
+        bu_total = (1 / self.ssq[0]) * bu_square
         
         # Top-down component of the representation error
+        U2r2 = self.U2mat_mult_r2vec(U2, r2)
         td_vec = r1 - U2r2
         td_square = np.tensordot(td_vec, td_vec, axes=(td_tdot_dims, td_tdot_dims))
-        td_total = (1 / self.ssq[2]) * td_square
+        td_total = (1 / self.ssq[1]) * td_square
         
         # Priors on that layer
         prior_r = self.g(np.squeeze(r1), self.alph[1])[0]
         prior_U = self.h(U1, self.lam[1])[0]
         
         # Layer 2
+        # Bottom-up
         bu_total2 = td_total
         
-        U3r3 = self.U3mat_mult_r3vec(self.U[3], self.r[3])
-        
         # Top-down component
+        U3r3 = self.U_gteq3_mat_mult_r_gteq3_vec(U3, r3)
         td_vec2 = r2 - U3r3
         td_square2 = np.dot(td_vec2, td_vec2)
-        td_total2 = (1 / self.ssq[3]) * td_square2
+        td_total2 = (1 / self.ssq[2]) * td_square2
         
+        # Priors on that layer
         prior_r2 = self.g(np.squeeze(r2), self.alph[2])[0]
         prior_U2 = self.h(U2, self.lam[2])[0]
         
+        # Layer 3 - n-1 (skips if 3-layer model)
+        bu_totali_all_i = 0
+        td_totali_all_i = 0
+        prior_ri_all_i = 0
+        prior_Ui_all_i = 0
+        
+        for i in range(3,n):
+            
+            # If is cheaper than Ui mat mul ri
+            if i == 3:
+                # Bottom-up
+                bu_totali = td_total2
+                
+                # Priors on that layer
+                prior_ri = self.g(np.squeeze(r3), self.alph[i])[0]
+                prior_Ui = self.h(self.U3, self.lam[i])[0]
+            else:
+                # Bottom-up
+                Uiri = self.U_gteq3_mat_mult_r_gteq3_vec(self.U[i], self.r[i])
+                bu_veci = self.r[i - 1] - Uiri
+                bu_squarei = np.dot(bu_veci, bu_veci)
+                bu_totali = (1 / self.ssq[i - 1]) * bu_squarei
+                
+                # Priors on that layer
+                prior_ri = self.g(np.squeeze(self.r[i]), self.alph[i])[0]
+                prior_Ui = self.h(self.U[i], self.lam[i])[0]
+            
+            # Top-down component
+            Ui1ri1 = self.U_gteq3_mat_mult_r_gteq3_vec(self.U[i + 1], self.r[i + 1])
+            td_veci = self.r[i] - Ui1ri1
+            td_squarei = np.dot(td_veci, td_veci)
+            td_totali = (1 / self.ssq[i]) * td_squarei
+            
+            bu_totali_all_i += bu_totali
+            td_totali_all_i += td_totali
+            prior_ri_all_i += prior_ri
+            prior_Ui_all_i += prior_Ui
+            
+        # Layer n
+        if n == 3:
+            # Bottom-up
+            bu_totaln = td_total2
+            
+            # Priors on that layer
+            prior_rn = self.g(np.squeeze(r3), self.alph[3])[0]
+            prior_Un = self.h(U3, self.lam[3])[0]
+
+        else:
+            # Bottom-up
+            bu_totaln = td_totali
+            
+            # Priors on that layer
+            prior_rn = self.g(np.squeeze(self.r[n]), self.alph[n])[0]
+            prior_Un = self.h(self.U[n], self.lam[n])[0]
+            
+            
         # Return total
-        return bu_total + td_total + prior_r + prior_U + bu_total2 + prior_r2 + prior_U2
+        return bu_total + td_total + prior_r + prior_U + bu_total2 + td_total2 + prior_r2 + prior_U2 + \
+                bu_totali_all_i + td_totali_all_i + prior_ri_all_i + prior_Ui_all_i + bu_totaln + prior_rn + prior_Un
     
     def classif_cost_c1(self, label):
         # Format: -label.dot(np.log(softmax(r_n)))
