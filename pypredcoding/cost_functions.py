@@ -473,23 +473,33 @@ class StaticCostFunction():
             
             # Layer i > 2
             else:
-                rimin1 = self.r[i - 1]
                 ri = self.r[i]
                 ri1 = self.r[i + 1]
                 Ui = self.U[i]
                 Ui1 = self.U[i + 1]
+                kri = self.kr[i]
                 
                 UiT = Ui.T
                 Uiri = self.U_gteq3_mat_mult_r_gteq3_vec(Ui, ri)
                 Ui1ri1 = self.U_gteq3_mat_mult_r_gteq3_vec(Ui1, ri1)
-                Limin1diff = rimin1 - Uiri
+                Limin1diff = self.r[i - 1] - Uiri
                 
-                self.r[i] += (self.kr[i] / self.ssq[i - 1]) * self.U3Tmat_mult_L2diffvec(UiT, Limin1diff) \
-                            + (self.kr[i] / self.ssq[i]) * (Ui1ri1 - ri) \
-                            - (self.kr[i] / lr_prior_denominator) * self.g(ri, self.alph[i])[1]
+                self.r[i] += (kri / self.ssq[i - 1]) * self.U3Tmat_mult_L2diffvec(UiT, Limin1diff) \
+                            + (kri / self.ssq[i]) * (Ui1ri1 - ri) \
+                            - (kri / lr_prior_denominator) * self.g(ri, self.alph[i])[1]
                     
         # Layer n
-                    
+        rn = self.r[n]
+        Un = self.U[n]
+        krn = self.kr[n]
+        
+        UnT = Un.T
+        Unrn = self.U_gteq3_mat_mult_r_gteq3_vec(Un, rn)
+        Lnmin1diff = self.r[n - 1] - Unrn
+        
+        self.r[n] += (krn / self.ssq[n - 1]) * self.U3Tmat_mult_L2diffvec(UnT, Lnmin1diff) \
+                    + (self.kr['o'] / self.lr_rn_td_denominator) * self.rn_topdown_upd_dict[self.classif_method](label) \
+                    - (krn / lr_prior_denominator) * self.g(rn, self.alph[n])[1]
     
     def U_updates_n_1(self,label):
         
