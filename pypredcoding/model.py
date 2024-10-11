@@ -243,10 +243,10 @@ class PredictiveCodingClassifier:
         self.einsum_arg_Ui = 'i,j->ij'
         
         # Hidden layer sizes for priors
-        self.all_hlyr_sizes = self.hidden_lyr_sizes.copy()
-        self.all_hlyr_sizes.append(self.output_lyr_size)
-        if tiled:
-            self.all_hlyr_sizes[0] = (self.num_tiles, self.all_hlyr_sizes[0])
+        self.all_lyr_sizes = self.hidden_lyr_sizes.copy()
+        self.all_lyr_sizes.append(self.output_lyr_size)
+        if architecture == 'expand_first_lyr_Li' or architecture == 'expand_first_lyr':
+            self.all_lyr_sizes[0] = self.r[1].shape
             
         
         '''
