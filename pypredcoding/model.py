@@ -151,11 +151,13 @@ class PredictiveCodingClassifier:
         
         # If flat hidden layers, r1 is hidden layer sizes [0]
         
-        # Initiate rs
+        # Initiate rs and Us
+        # r0
         self.r[0] = np.zeros(input_shape)
         for i in range(1, n + 1):
             # Layer 1
             if i == 1:
+                # r1
                 if architecture == 'flat_hidden_layers':
                     self.r[1] = self.r_prior_dist(size=(self.hidden_lyr_sizes[0]))
                 # Li architecture is only meant for one type of input
@@ -170,42 +172,40 @@ class PredictiveCodingClassifier:
                         self.r[1] = self.r_prior_dist(size=(self.input_shape[0], self.input_shape[1], self.hidden_lyr_sizes[0]))
                     elif not tiled_input:
                         self.r[1] = self.r_prior_dist(size=(self.hidden_lyr_sizes[0]))
-            # Layer i    
-            elif i > 1 and i < n:
-                self.r[i] = self.r_prior_dist(size=(self.hidden_lyr_sizes[i - 1]))
-            # Layer n
-            elif i == n:
-                self.r[n] = self.r_prior_dist(size=(self.output_lyr_size)) 
-
-        
-        # Initiate Us
-        # U1 is going to be a little bit different
-        if tiled:
-            input_size_list = list(input_size)
-            input_size_list.append(self.r[1].shape[1])
-            U1_size = tuple(input_size_list)
-        else:
-            U1_size = tuple(list(input_size) + list(self.r[1].shape))
-        
-        print(f'U1_size: {U1_size}')
-        
-        self.U[1] = self.U_prior_dist(size=U1_size)
-        # U2 through Un
-        for i in range(2, n + 1):
-            
-            if i == 2:
+                # U1
+                input_shape_list = list(input_shape)
+                input_shape_list.append(self.hidden_lyr_sizes[0])
+                U1_size = tuple(input_shape_list)
+                print(f'U1_size: {U1_size}')
+                self.U[1] = self.U_prior_dist(size=U1_size)
                 
-                if tiled:
-                    Ui_size = (self.r[i-1].shape[0] * self.r[i-1].shape[1], self.r[i].shape[0])
+            # Layer i > 1 and i < n
+            elif i > 1 and i < n:
+                # ri
+                self.r[i] = self.r_prior_dist(size=(self.hidden_lyr_sizes[i - 1]))
+                # U2
+                if i == 2:
+                    if architecture == 'expand_first_lyr_Li':
+                        if tiled_input and flat_input:
+                            U2_size = (self.r[1].shape[0] * self.r[1].shape[1], self.hidden_lyr_sizes[i - 1])
+                            self.U[2] = self.U_prior_dist(size=U2_size)
+                    else:
+                        # Unpack all the dimension sizes in r1
+                        U2_size = (*self.r[1].shape, self.r[2].shape[0])
+                        self.U[2] = self.U_prior_dist(size=U2_size)
+                # U3+
                 else:
                     Ui_size = (self.r[i-1].shape[0], self.r[i].shape[0])
-                    
-            else:
-                Ui_size = (self.r[i-1].shape[0], self.r[i].shape[0])
-            
-            print(f'U{i}_size: {Ui_size}')
-            
-            self.U[i] = self.U_prior_dist(size=Ui_size)
+                    self.U[i] = self.U_prior_dist(size=Ui_size)
+            # Layer n
+            elif i == n:
+                # rn
+                self.r[n] = self.r_prior_dist(size=(self.output_lyr_size))
+                # Un
+                Un_size = (self.r[n-1].shape[0], self.r[n].shape[0])
+                self.U[n] = self.U_prior_dist(size=Un_size)
+                
+        # Classification now
         if self.classif_method == 'c2':
             Uo_size = (self.num_classes, self.output_lyr_size)
             self.U['o'] = self.U_prior_dist(size=Uo_size)
