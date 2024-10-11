@@ -458,32 +458,35 @@ class StaticCostFunction():
         # Layer 2 - n-1
         for i in range(2, n):
             
-            # 3 in 2 case, i+1 in i case
-            ri1 = self.r[i + 1]
-            Ui1 = self.U[i + 1]
-            Ui1ri1 = self.U_gteq3_mat_mult_r_gteq3_vec(Ui1, ri1)
-            
             # Layer i == 2
             if i == 2:
+                r3 = self.r[3]
+                U3 = self.U[3]
+                
                 U2T = np.transpose(U2, self.U2T_dims) 
+                U3r3 = self.U_gteq3_mat_mult_r_gteq3_vec(U3, r3)
                 L1diff = r1 - U2r2
                 
-                self.r[i] += (kr2 / ssq1) * self.U2Tmat_mult_L1diffvecormat(U2T, L1diff) \
-                        + (kr2 / self.ssq[2]) * (Ui1ri1 - r2) \
-                        - (kr2 / lr_prior_denominator) * self.g(r2, self.alph[2])[1]
+                self.r[2] += (kr2 / ssq1) * self.U2Tmat_mult_L1diffvecormat(U2T, L1diff) \
+                            + (kr2 / self.ssq[2]) * (U3r3 - r2) \
+                            - (kr2 / lr_prior_denominator) * self.g(r2, self.alph[2])[1]
             
             # Layer i > 2
             else:
-                
+                rimin1 = self.r[i - 1]
                 ri = self.r[i]
+                ri1 = self.r[i + 1]
                 Ui = self.U[i]
+                Ui1 = self.U[i + 1]
+                
                 UiT = Ui.T
                 Uiri = self.U_gteq3_mat_mult_r_gteq3_vec(Ui, ri)
-                Lidiff = ri - Uiri
+                Ui1ri1 = self.U_gteq3_mat_mult_r_gteq3_vec(Ui1, ri1)
+                Limin1diff = rimin1 - Uiri
                 
-                self.r[i] += (self.kr[i] / self.ssq[i - 1]) * self.U3Tmat_mult_L2diffvec(UiT, Lidiff) \
-                        + (self.kr[i] / self.ssq[i]) * (Ui1ri1 - ri) \
-                        - (self.kr[i] / lr_prior_denominator) * self.g(ri, self.alph[i])[1]
+                self.r[i] += (self.kr[i] / self.ssq[i - 1]) * self.U3Tmat_mult_L2diffvec(UiT, Limin1diff) \
+                            + (self.kr[i] / self.ssq[i]) * (Ui1ri1 - ri) \
+                            - (self.kr[i] / lr_prior_denominator) * self.g(ri, self.alph[i])[1]
                     
         # Layer n
                     
