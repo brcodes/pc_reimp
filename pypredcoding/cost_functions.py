@@ -515,14 +515,53 @@ class StaticCostFunction():
                     - (kU1 / self.lr_prior_denominator) * self.h(U1, self.lam[1])[1]
     
     def U_updates_n_gt_eq_2(self,label):
-        pass
+        
+        n = self.num_layers
+        r1 = self.r[1]
+        U1 = self.U[1]
+        kU1 = self.kU[1]
+        lr_prior_denominator = self.lr_prior_denominator
+        
+        # Layer 1
+        U1r1 = self.U1mat_mult_r1vecormat(U1, r1)
+        Idiff = self.r[0] - U1r1
+        
+        self.U[1] += (kU1 / self.ssq[0]) * self.Idiffmat_mult_r1vecormat(Idiff, r1) \
+                    - (kU1 / lr_prior_denominator) * self.h(U1, self.lam[1])[1]
+                    
+        # Layer 2 - n
+        for i in range(2,n+1):
+
+            # Layer i == 2
+            if i == 2:
+                r2 = self.r[2]
+                U2 = self.U[2]
+                kU2 = self.kU[2]
+                
+                U2r2 = self.U2mat_mult_r2vec(self.U[2], self.r[2])
+                L1diff = r1 - U2r2
+                
+                self.U[2] += (kU2 / self.ssq[1]) * self.L1diffvecormat_mult_r2vec(L1diff, r2) \
+                            + (kU2 / lr_prior_denominator) * self.h(U2, self.lam[2])[1]
+            
+            # i > 2               
+            else:
+                ri = self.r[i]
+                Ui = self.U[i]
+                kUi = self.kU[i]
+                
+                Uiri = self.U_gteq3_mat_mult_r_gteq3_vec(Ui, ri)
+                Limin1diff = self.r[i - 1] - Uiri
+                
+                #i
+                self.U[i] += (kUi / self.ssq[i - 1]) * self.L_gteq2_diffvec_mult_r_gteq3_vec(Limin1diff, ri) \
+                            - (kUi / lr_prior_denominator) * self.h(Ui, self.lam[i])[1]
     
     def Uo_update(self, label):
-        # Format: Uo += kU_o / 2 * (label - softmax(Uo.dot(r_n)))
         # No "Li" denominator option here, because she never ran a C2 model.
         o = 'o'
-        r_n = self.r[self.num_layers]
-        self.U[o] += (self.kU[o] / 2) * np.outer((label - self.softmax_func(self.U[o].dot(r_n))), r_n)
+        rn = self.r[self.num_layers]
+        self.U[o] += (self.kU[o] / 2) * np.outer((label - self.softmax_func(self.U[o].dot(rn))), rn)
 
     def classif_guess_c1(self, label):
         guess = np.argmax(self.softmax_func(self.r[self.num_layers]))
