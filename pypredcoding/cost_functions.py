@@ -503,9 +503,16 @@ class StaticCostFunction():
     
     def U_updates_n_1(self,label):
         
+        r1 = self.r[1]
+        U1 = self.U[1]
+        kU1 = self.kU[1]
         
+        # Layer 1
+        U1r1 = self.U1mat_mult_r1vecormat(U1, r1)
+        Idiff = self.r[0] - U1r1
         
-        pass
+        self.U[1] += (kU1 / self.ssq[0]) * self.Idiffmat_mult_r1vecormat(Idiff, r1) \
+                    - (kU1 / self.lr_prior_denominator) * self.h(U1, self.lam[1])[1]
     
     def U_updates_n_gt_eq_2(self,label):
         pass
@@ -513,7 +520,6 @@ class StaticCostFunction():
     def Uo_update(self, label):
         # Format: Uo += kU_o / 2 * (label - softmax(Uo.dot(r_n)))
         # No "Li" denominator option here, because she never ran a C2 model.
-
         o = 'o'
         r_n = self.r[self.num_layers]
         self.U[o] += (self.kU[o] / 2) * np.outer((label - self.softmax_func(self.U[o].dot(r_n))), r_n)
