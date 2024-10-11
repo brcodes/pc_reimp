@@ -4,7 +4,8 @@ import numpy as np
 to-do
 
 softmax_func, k config
-lr_prior_denominators
+lr_prior_denominator
+lr_rn_td_denominator
 squeeze into r prior
 l activation functions element wise
 clean up train
@@ -33,6 +34,12 @@ fill in each subcomponent function (make sure all callable using U1,r1, U1T, etc
 make sure it's understood that for our rn topdown update components, we're using a ko
 set ko to kn to be Li model
 but it's tunable now for the future
+
+fill in args = see einsums
+
+iron out pcc
+iron out spcc
+
 '''
 
 # cost_functions.py
@@ -82,30 +89,31 @@ class StaticCostFunction():
     dependent on architecture parameter
     '''
     
-    def U1r1_fhl(self, U1, r1, args):
+    def U1r1_fhl(self, U1, r1):
         return np.tensordot(U1, r1, axes=([-1], [0]))    
         
-    def U1r1_e1l_Li(self, U1, r1, args):
+    def U1r1_e1l_Li(self, U1, r1):
         return np.matmul(U1, r1[:, :, None]).squeeze()
     
-    def U1r1_e1l(self, U1, r1, args):
+    def U1r1_e1l(self, U1, r1):
         # np.einsum(self.U1_einsum_arg, U1, r1) 
         # ijk,ik->ij in 3d U1 case, 2d r1 case
         # ijklm,ijm-> ijkl in 5d U1 case, 3d r1 case
-        return np.einsum(args, U1, r1)    
+        
+        return np.einsum(self.U1_einsum_arg, U1, r1)    
     
-    def U1T_Idiff_fhl(self, U1T, Idiff, args):
+    def U1T_Idiff_fhl(self, U1T, Idiff):
         # axes=(self.U1T_tdot_dims, self.bu_error_tdot_dims)
-        return np.tensordot(U1T, Idiff, axes=args)
+        return np.tensordot(U1T, Idiff, axes=(self.U1T_tdot_dims, self.Idiff_tdot_dims))
     
-    def U1T_Idiff_e1l_Li(self, U1T, Idiff, args):
+    def U1T_Idiff_e1l_Li(self, U1T, Idiff):
         return np.matmul(U1T, Idiff[:, :, None]).squeeze()
     
-    def U1T_Idiff_e1l(self, U1T, Idiff, args):
+    def U1T_Idiff_e1l(self, U1T, Idiff):
         # np.einsum(self.U1T_einsum_arg...
         # ijk,jk->ji in 3d U1 case, 2d r1 case
         # ijklm,jklm->jki in 5d U1 case, 3d r1 case
-        return np.einsum(args, U1T, Idiff)
+        return np.einsum(self.U1T_einsum_arg, U1T, Idiff)
     
     def U2r2_fhl(self, U2, r2):
         return np.dot(U2, r2)
@@ -116,13 +124,13 @@ class StaticCostFunction():
     def U2r2_e1l(self, U2, r2):
         return np.tensordot(U2, r2, axes=([-1], [0]))
     
-    def U2T_L1diff_fhl(self, U2T, L1diff, args):
+    def U2T_L1diff_fhl(self, U2T, L1diff):
         return np.dot(U2T, L1diff)
     
-    def U2T_L1diff_e1l_Li(self, U2T, L1diff, args):
+    def U2T_L1diff_e1l_Li(self, U2T, L1diff):
         return np.dot(U2T, L1diff.flatten())
     
-    def U2T_L1diff_e1l(self, U2T, L1diff, args):
+    def U2T_L1diff_e1l(self, U2T, L1diff):
         # example: 16,32,128 3d U1 case, 2d r1 case
         # or: 4,4,32,128 5d U1 case, 3d r1 case
         # U2T = 128,16,32     or:   128,4,4,32
@@ -130,7 +138,7 @@ class StaticCostFunction():
         # arg ijk,jk->i         or:     ijkl,jkl->i
         # In either case set up a self.U2T_args with an identical protocol to self.U1T_args (range, swap last for first.)
         # Then einsums
-        return np.einsum(args, U2T, L1diff)
+        return np.einsum(self.U2T_einsum_arg, U2T, L1diff)
     
     '''
     these are all dots
@@ -162,33 +170,33 @@ class StaticCostFunction():
     dependent on architecture parameter
     '''
     
-    def Idiff_r1_fhl(self, Idiff, r1, args):
+    def Idiff_r1_fhl(self, Idiff, r1):
         # See e1l
         # Looks like einsum_arg_U1 works here
-        return np.einsum(args, Idiff, r1)
+        return np.einsum(self.Idiff_einsum_arg, Idiff, r1)
     
-    def Idiff_r1_e1l_Li(self, Idiff, r1, args):
+    def Idiff_r1_e1l_Li(self, Idiff, r1):
         return np.matmul(Idiff[:, :, None], r1[:, None, :])
     
-    def Idiff_r1_e1l(self, Idiff, r1, args):
+    def Idiff_r1_e1l(self, Idiff, r1):
         # Here it'll be
         # 16,864         16,32
         # ij,ik-> ijk 3d U1 case, 2d r1 case
         # if I is 4d (unflat, tiled, 5d U1 case, 3d r1 case)
         # 4,4,24,36      4,4,32         U1: 4,4,24,36,32
         # then ijkl,ijm->ijklm
-        return np.einsum(args, Idiff, r1)
+        return np.einsum(self.Idiff_einsum_arg, Idiff, r1)
     
-    def L1diff_r2_fhl(self, L1diff, r2, args):
+    def L1diff_r2_fhl(self, L1diff, r2):
         return np.outer(L1diff, r2)
     
-    def L1diff_r2_e1l_Li(self, L1diff, r2, args):
+    def L1diff_r2_e1l_Li(self, L1diff, r2):
         return np.outer(L1diff.flatten(), r2)
     
     def L1diff_r2_e1l(self, L1diff, r2, args):
         # 16,32     128     ij,k->ijk
         # 4,4,32    128     ijk,l->ijkl
-        return np.einsum(args, L1diff, r2)
+        return np.einsum(self.L1diff_einsum_arg, L1diff, r2)
     
     def L2diff_r3_fhl(self, L2diff, r3):
         return np.outer(L2diff, r3)

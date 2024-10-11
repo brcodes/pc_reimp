@@ -146,9 +146,6 @@ def instantiate_model(params):
     else:
         raise ValueError('Invalid model type')
     
-    # Now attributes are params
-    model.validate_attributes()
-    
     return model
 
 def create_data(dataset_name):
