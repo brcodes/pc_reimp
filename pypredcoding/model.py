@@ -96,6 +96,69 @@ class PredictiveCodingClassifier:
         '''
         for key, value in params.items():
             setattr(self, key, value)
+            
+    def set_U1_einsum_arg(self):
+        # Only applicable to 'expand_first_lyr'
+        # 5d U1 case, 3d r1 case (tiled nonflat)
+        if self.tiled_input and not self.flat_input:
+            self.U1_einsum_arg = 'ijklm,ijm-> ijkl'
+        # If tiled flat, untiled flat, or untiled nonflat
+        # 3d U1 case, 2d r1 case
+        else:
+            self.U1_einsum_arg = 'ijk,ik->ij'
+            
+    def set_U1T_dims(self, U1_size):
+        # Applicable to all architectures
+        # Transpose dims
+        ndims_U1 = len(U1_size)
+        range_ndims_U1 = range(ndims_U1)
+        last_dim_id_U1 = range_ndims_U1[-1]
+        nonlast_dim_ids_U1 = range_ndims_U1[:-1]
+        transpose_dims_U1 = tuple([last_dim_id_U1] + list(nonlast_dim_ids_U1))
+        self.U1T_dims = transpose_dims_U1
+        
+    def set_U1T_tdot_dims(self, U1_size):
+        # Only affects 'flat hidden layers' architecture
+        # For U1T Idiff calculation
+        # Tensordot dims
+        # U1T, last n-1
+        ndims_U1 = len(U1_size)
+        range_ndims_U1 = range(ndims_U1)
+        nonfirst_dim_ids_U1 = range_ndims_U1[1:]
+        self.U1T_tdot_dims = list(nonfirst_dim_ids_U1)
+            
+    def set_U1T_einsum_arg(self):
+        # Only affects 'expand first lyr' architecture
+        # For U1T Idiff calculation
+        # 5d U1 case, 3d r1 case (tiled nonflat)
+        if self.tiled_input and not self.flat_input:
+            self.U1T_einsum_arg = 'ijklm,jklm->jki'
+        # Otherwise
+        else:
+            self.U1T_einsum_arg = 'ijk,jk->ji'
+            
+    def set_U2T_dims(self, U2_size):
+        # Applicable to all architectures
+        # Transpose dims
+        # Same protocol as U1T.
+        ndims_U2 = len(U2_size)
+        range_ndims_U2 = range(ndims_U2)
+        last_dim_id_U2 = range_ndims_U2[-1]
+        nonlast_dim_ids_U2 = range_ndims_U2[:-1]
+        transpose_dims_U2 = tuple([last_dim_id_U2] + list(nonlast_dim_ids_U2))
+        self.U2T_dims = transpose_dims_U2
+        
+    def set_U2T_einsum_arg(self):
+        # Only affects 'expand first lyr' architecture
+        # For U2T L1diff calculation
+        # 5d U1 case, 3d r1 case (tiled nonflat)
+        if self.tiled_input and not self.flat_input:
+            self.U2T_einsum_arg = 'ijkl,jkl->i'
+        # Otherwise
+        else:
+            self.U2T_einsum_arg = 'ijk,jk->i'
+            
+    
         
     def config_from_attributes(self):
         '''
@@ -211,14 +274,10 @@ class PredictiveCodingClassifier:
             self.U['o'] = self.U_prior_dist(size=Uo_size)
         
             
-        # Initiate U1-based operations dims (dimentions flex based on input)
-        # Transpose dims
-        ndims_U1 = len(U1_size)
-        range_ndims_U1 = range(ndims_U1)
-        last_dim_id_U1 = range_ndims_U1[-1]
-        nonlast_dim_ids_U1 = range_ndims_U1[:-1]
-        transpose_dims_U1 = tuple([last_dim_id_U1] + list(nonlast_dim_ids_U1))
-        self.U1T_dims = transpose_dims_U1
+        # Initiate U1 and U2-based operations dims (dimentions flex based on input and architecture)
+        # Transposes
+        self.set_U1T_dims()
+        self.set_U2T_dims()
         
         # Tensordot dims
         # U1T, last n-1
