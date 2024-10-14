@@ -51,7 +51,7 @@ def model_name_from_params(params):
     update_method, um_int = next(iter(params['update_method'].items()))
     um_int_str = str(um_int)  # Convert the value to a string
 
-    name = 'mod.' + params['model_type'] + '_' + ('tl' if params['tiled'] else 'ntl') + '_' \
+    name = 'mod.' + params['model_type'] + '_' + ('tl' if params['tiled_input'] else 'ntl') + '_' \
                     + str(params['num_layers']) + '_' + layer_sizes + '_' + num_imgs + '_' + params['activ_func'] + '_' \
                     + params['priors'] + '_' + params['classif_method'] + '_' \
                     + update_method + '-' + um_int_str + '_' + params['exp_name'] + '_' + str(params['epoch_n']) + '.pydb'
@@ -179,8 +179,8 @@ def print_params(params):
         print(f'{key}: {value}')
         
 def initiate_log(params):
-    timestamp = datetime.now().strftime('%y%m%d_%H%M')
-    log_dir = 'models/log'
+    timestamp = datetime.now().strftime('%y%m%d_%H%M%S')
+    log_dir = 'log'
     makedirs(log_dir, exist_ok=True)
     log_file_name = f'exp_{timestamp}.txt'
     log_file_path = join(log_dir, log_file_name)

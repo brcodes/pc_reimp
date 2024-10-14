@@ -1,4 +1,4 @@
-from cost_functions import StaticCostFunction, RecurrentCostFunction
+from cost_functions import StaticCostFunction
 import numpy as np
 from functools import partial
 
@@ -6,7 +6,8 @@ from datetime import datetime
 import pickle
 from os import makedirs
 from os.path import join, exists, dirname, isfile
-import csv
+# May have to remove if cluster
+import matplotlib.pyplot as plt
 
 class PredictiveCodingClassifier:
 
@@ -27,9 +28,8 @@ class PredictiveCodingClassifier:
                                 'kurtotic': partial(np.random.laplace, loc=0.0, scale=0.5),
                                 'Li_priors': self.create_Li_rand}
         
-        self.softmax_dict = {'normal': partial(self.softmax, k=self.softmax_k),
-                            'stable': partial(self.stable_softmax, k=self.softmax_k)}
-        self.softmax_func = partial(self.set_softmax_func, softmax_type=self.softmax_type)
+        self.softmax_dict = {'normal': self.softmax,
+                            'stable': self.stable_softmax}
         
         '''
         shell class for sPCC and rPCC subclasses
@@ -215,7 +215,7 @@ class PredictiveCodingClassifier:
         Set up the model from the attributes.
         '''
         # Not made
-        self.validate_attributes()
+        #  self.validate_attributes()
         
         # Transforms and priors
         self.f = self.act_fxn_dict[self.activ_func]
@@ -333,7 +333,6 @@ class PredictiveCodingClassifier:
         self.set_L1diff_tdot_dims(self.r[1].shape)
         # Used in U "dot" r at higher dims
         self.set_U1_einsum_arg()
-        self.set_U2_einsum_arg()
         # Transposes
         self.set_U1T_dims(U1_size)
         self.set_U2T_dims(U2_size)
@@ -352,7 +351,7 @@ class PredictiveCodingClassifier:
             self.all_lyr_sizes[0] = self.r[1].shape
             
         # Set softmax
-        self.softmax_func = partial(self.set_softmax_func, softmax_type=self.softmax_type)
+        self.softmax_func = partial(self.set_softmax_func, softmax_type=self.softmax_type, k=self.softmax_k)
         
         # Initiate Jr, Jc, and accuracy (diagnostics) for storage, print, plot
         epoch_n = self.epoch_n
@@ -613,7 +612,7 @@ class PredictiveCodingClassifier:
         # Print to the terminal
         print(*args, **kwargs)
         # Print to the file
-        exp_log_path = join('models/log',self.exp_log_name)
+        exp_log_path = join('log',self.exp_log_name)
         if not exists(exp_log_path):
             raise FileNotFoundError(f"Log file {exp_log_path} not found.")
         with open(exp_log_path, "a") as f:
@@ -669,8 +668,8 @@ class PredictiveCodingClassifier:
         pre-initiate all distributions
         for speed
         '''
-        self.hard_set_prior_dist()
-        prior_dist = self.load_hard_prior_dist
+        self.hard_set_r_prior_dist()
+        prior_dist = self.load_hard_r_prior_dist
         # Else: prior_dist = self.r_prior_dist
         '''
         '''
@@ -689,14 +688,14 @@ class PredictiveCodingClassifier:
         
         evaluate = partial(self.evaluate, update_method_name=update_method_name, update_method_number=update_method_number, classif_method=classif_method, plot=None)
 
+        epoch = 0
+        Jr0 = 0
+        Jc0 = 0
+        accuracy = 0
         if online_diagnostics:
             printlog('\n')
             printlog('Diagnostics on')
             printlog('Epoch: 0')
-            epoch = 0
-            Jr0 = 0
-            Jc0 = 0
-            accuracy = 0
             for img in range(num_imgs):
                 input = X[img]
                 label = Y[img]
@@ -706,13 +705,14 @@ class PredictiveCodingClassifier:
                 Jr0 += rep_cost()
                 Jc0 += classif_cost(label)
             accuracy += evaluate(X, Y)
-            self.accuracy[epoch] = accuracy
-            self.Jr[epoch] = Jr0
-            self.Jc[epoch] = Jc0
             printlog(f'Jr: {Jr0}, Jc: {Jc0}, Accuracy: {accuracy}')
         else:
             printlog('\n')
-            printlog('Diagnostics: Off')
+            printlog('Diagnostics: Off. No epoch 0 calculation')
+            printlog(f'Jr: {Jr0}, Jc: {Jc0}, Accuracy: {accuracy}')
+        self.Jr[epoch] = Jr0
+        self.Jc[epoch] = Jc0
+        self.accuracy[epoch] = accuracy
         
         # Training
         epoch_n = self.epoch_n
@@ -741,9 +741,9 @@ class PredictiveCodingClassifier:
             if online_diagnostics:
                 printlog(f'eval {epoch}')
                 accuracy += evaluate(X, Y)
-            self.accuracy[epoch] = accuracy
             self.Jr[epoch] = Jre
             self.Jc[epoch] = Jce
+            self.accuracy[epoch] = accuracy
             
             '''
             hard-coded in here for KB investigation'''
@@ -752,7 +752,9 @@ class PredictiveCodingClassifier:
             if epoch % 10 == 0:
                 # Save mid-training diagnostics
                 online_name = self.generate_output_name(self.mod_name, epoch)
-                self.save_diagnostics(output_dir='models/', output_name=online_name)
+                self.save_diagnostics(output_dir='results/diagnostics/', output_name=online_name)
+                self.plot(input_dir='results/diagnostics/', input_name=online_name)
+            ''''''
             
             printlog(f'Jr: {Jre}, Jc: {Jce}, Accuracy: {accuracy}')
             t_end_epoch = datetime.now()
@@ -765,13 +767,17 @@ class PredictiveCodingClassifier:
         tot_time = t_end_epoch - t_start_train
         printlog(f'Tot time: {tot_time}.')
         printlog('Saving final model...')
+        
         # Save final model
         final_name = self.generate_output_name(self.mod_name, epoch)
         self.save_model(output_dir='models/', output_name=final_name)
         # Save final diagnostics
-        self.save_diagnostics(output_dir='models/', output_name=final_name)
+        self.save_diagnostics(output_dir='results/diagnostics/', output_name=final_name)
         
-        # Final diagnostics
+        if plot:
+            self.plot(input_dir='results/diagnostics/', input_name=final_name)
+        
+        # Final diagnostics terminal readout
         # Functionize later
         printlog('\n\n')
         printlog(f'Final diagnostics over {epoch} epochs:')
@@ -789,9 +795,6 @@ class PredictiveCodingClassifier:
         change_per_min_Jc = percent_diff_Jc / tot_time.total_seconds() * 60
         change_per_min_accuracy = percent_diff_accuracy / tot_time.total_seconds() * 60
         printlog(f'Change per min Jr: {change_per_min_Jr}, Jc: {change_per_min_Jc}, Accuracy: {change_per_min_accuracy}')
-        
-        if plot:
-            pass
 
     def evaluate(self, X, Y, update_method_name, update_method_number, classif_method, plot=None):
         
@@ -800,7 +803,7 @@ class PredictiveCodingClassifier:
         pre-initiate all distributions
         for speed
         '''
-        prior_dist = self.load_hard_prior_dist
+        prior_dist = self.load_hard_r_prior_dist
         # Else: prior_dist = self.r_prior_dist
         '''
         test
@@ -811,8 +814,6 @@ class PredictiveCodingClassifier:
         update_non_weight_components = partial(self.update_method_no_weight_dict[update_method_name], update_method_number)
         
         classify = self.classify
-        
-
         num_imgs = self.num_imgs
         accuracy = 0
         for img in range(num_imgs):
@@ -940,6 +941,75 @@ class PredictiveCodingClassifier:
         with open(output_path, 'wb') as f:
             pickle.dump({'Jr': self.Jr, 'Jc': self.Jc, 'accuracy':self.accuracy}, f)
             
+    def plot(input_dir, input_name):
+        diags_path = join(input_dir, input_name)
+        
+        # Load the model
+        with open(diags_path, 'rb') as file:
+            diags = pickle.load(file)
+        
+        print(f'loaded diag file: {input_name}')
+        
+        # Split the filename by _ and take the last, then split by . and take the first. This is epoch_n
+        epoch_n = int(input_name.split('_')[-1].split('.')[0])
+        
+        # clip diags at epoch_n
+        diags['Jr'] = diags['Jr'][:epoch_n]
+        diags['Jc'] = diags['Jc'][:epoch_n]
+        diags['accuracy'] = diags['accuracy'][:epoch_n]
+            
+        epochs = range(len(diags['Jr']))
+            
+        # Turn each accuracy into an actual percent
+        diags['accuracy'] = [acc * 100 for acc in diags['accuracy']]
+
+        # Calculate percent changes
+        epsilon = 1e-6
+        percent_change_Jr = ((diags['Jr'][-1] - diags['Jr'][0]) / (diags['Jr'][0] + epsilon)) * 100
+        percent_change_Jc = ((diags['Jc'][-1] - diags['Jc'][0]) / (diags['Jc'][0] + epsilon)) * 100
+        percent_change_accuracy = ((diags['accuracy'][-1] - diags['accuracy'][0]) / (diags['accuracy'][0] + epsilon)) * 100
+
+        fig, ax1 = plt.subplots()
+
+        # Plot Jr
+        ax1.plot(epochs, diags['Jr'], 'y-', label='Jr')
+        ax1.set_xlabel('Epochs')
+        ax1.set_ylabel('Jr', color='y')
+        ax1.tick_params(axis='y', labelcolor='y')
+        ax1.set_ylim(0, max(diags['Jr']) * 1.05)
+
+        # Create a second y-axis for Jc
+        ax2 = ax1.twinx()
+        ax2.plot(epochs, diags['Jc'], 'b-', label='Jc')
+        ax2.set_ylabel('Jc', color='b')
+        ax2.tick_params(axis='y', labelcolor='b')
+        ax2.set_ylim(0, max(diags['Jc']) * 1.05)
+
+        # Create a third y-axis for accuracy
+        ax3 = ax1.twinx()
+        ax3.spines['right'].set_position(('outward', 60))
+        ax3.plot(epochs, diags['accuracy'], 'r-', label='Accuracy', linewidth=0.5)
+        ax3.set_ylabel('Accuracy (%)', color='r')
+        ax3.tick_params(axis='y', labelcolor='r')
+        ax3.set_ylim(min(diags['accuracy']) * 1.05, max(diags['accuracy']) * 1.05)
+
+        # Add legends
+        lines, labels = ax1.get_legend_handles_labels()
+        lines2, labels2 = ax2.get_legend_handles_labels()
+        lines3, labels3 = ax3.get_legend_handles_labels()
+        ax1.legend(lines + lines2 + lines3, labels + labels2 + labels3, loc='center left', bbox_to_anchor=(-.3, .9))
+
+        # Add percent change text
+        plt.text(0.1, 0.95, f'Jr % Change: {percent_change_Jr:.2f}%', transform=ax1.transAxes, color='y')
+        plt.text(0.1, 0.90, f'Jc % Change: {percent_change_Jc:.2f}%', transform=ax1.transAxes, color='b')
+        plt.text(0.1, 0.85, f'Accuracy % Change: {percent_change_accuracy:.2f}%', transform=ax1.transAxes, color='r')
+        
+        plt.title('Training Diagnostics\n' + input_name)
+        
+        results_folder = 'results/plots'
+        results_path = join(results_folder, input_name)
+        fig.savefig(results_path + '.png', dpi=300, bbox_inches='tight')
+            
         
 class StaticPCC(PredictiveCodingClassifier):
 
@@ -954,6 +1024,27 @@ class StaticPCC(PredictiveCodingClassifier):
         
         # Cost functions
         static_cost_func_class = StaticCostFunction(self)
+        
+        # Component cost funcs: r, U, Uo updates, and cost calculators
+        n = self.num_layers
+        if n == 1:
+            self.r_updates = static_cost_func_class.r_updates_n_1
+            self.U_updates = static_cost_func_class.U_updates_n_1
+            self.rep_cost = static_cost_func_class.rep_cost_n_1
+        elif n == 2:
+            self.r_updates = static_cost_func_class.r_updates_n_2
+            self.U_updates = static_cost_func_class.U_updates_n_gt_eq_2
+            self.rep_cost = static_cost_func_class.rep_cost_n_2
+        elif n >= 3:
+            self.r_updates = static_cost_func_class.r_updates_n_gt_eq_3
+            self.U_updates = static_cost_func_class.U_updates_n_gt_eq_2
+            self.rep_cost = static_cost_func_class.rep_cost_n_gt_eq_3
+        else:
+            raise ValueError("Number of layers must be at least 1.")
+        # Components together
+        self.component_updates = [self.r_updates, self.U_updates]
+        if self.classif_method == 'c2':
+            self.component_updates.append(self.Uo_update)
 
         # Dictionaries for methods from base class and static cost function class
         self.update_method_dict = {'rW_niters': partial(self.update_method_rWniters, component_updates=self.component_updates),
@@ -976,31 +1067,9 @@ class StaticPCC(PredictiveCodingClassifier):
                                 'c2': static_cost_func_class.classif_guess_c2,
                                 None: static_cost_func_class.classif_guess_None}
         
-        # Component cost funcs: r, U, Uo updates, and cost calculators
-        n = self.num_layers
-        if n == 1:
-            self.r_updates = static_cost_func_class.r_updates_n_1
-            self.U_updates = static_cost_func_class.U_updates_n_1
-            self.rep_cost = static_cost_func_class.rep_cost_n_1
-        elif n == 2:
-            self.r_updates = static_cost_func_class.r_updates_n_2
-            self.U_updates = static_cost_func_class.U_updates_n_gt_eq_2
-            self.rep_cost = static_cost_func_class.rep_cost_n_2
-        elif n >= 3:
-            self.r_updates = static_cost_func_class.r_updates_n_gt_eq_3
-            self.U_updates = static_cost_func_class.U_updates_n_gt_eq_2
-            self.rep_cost = static_cost_func_class.rep_cost_n_gt_eq_3
-        else:
-            raise ValueError("Number of layers must be at least 1.")
         # Classification now
         self.classif_cost = self.classif_cost_dict[self.classif_method]
         self.classify = self.classif_guess_dict[self.classif_method]
-        
-        # Components together
-        self.component_updates = [self.r_updates, self.U_updates]
-        if self.classif_method == 'c2':
-            self.component_updates.append(self.Uo_update)
-        
     
 class RecurrentPCC(PredictiveCodingClassifier):
 

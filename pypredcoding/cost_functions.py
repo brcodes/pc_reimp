@@ -9,7 +9,6 @@ implement cost_function classes in train, evaluate
 hard-code 10 epoch diagnostic/prints
 load checkpoint
 save checkpoint
-add seconds to log
 home/log
 home/models/checkpoints
 home/results/diagnostics/
@@ -54,8 +53,8 @@ class StaticCostFunction():
     def create_subcomponent_dict(self, prefix):
         return {
             "flat_hidden_layers": getattr(self, f"{prefix}_fhl"),
-            "expand_1st_layer_Li": getattr(self, f"{prefix}_e1l_Li"),
-            "expand_1st_layer": getattr(self, f"{prefix}_e1l")
+            "expand_first_lyr_Li": getattr(self, f"{prefix}_e1l_Li"),
+            "expand_first_lyr": getattr(self, f"{prefix}_e1l")
         }
         
     def initialize_components(self, architecture_key):

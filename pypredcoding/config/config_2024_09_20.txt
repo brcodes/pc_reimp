@@ -7,9 +7,9 @@
 ## METADATA AND EXPERIMENT
 
 # Will append model filenames
-exp_name='li_params_prior_dists_r1U2'
+exp_name='architecture tests_li setup_priors_lrfractions_e1lLi'
 # Extra text about the experiments.
-notes='2024_09_20 r1 16,32 U2 512,128, param equiv., prior dists - r100W success exploration'
+notes='architecture tests'
 
 # Don't change:
 train_with=True
@@ -36,22 +36,25 @@ output_lyr_size=212
 # sPCC Architecture (some may be applicable to rpcc down the line)
 # i. all r's are flat (1d) (Rogers idea- an ML convention, but not as biologically equatable according to RB 1999) ('flat_hidden_lyrs')
 # ii. expand r1 (2d) using Li architecture ('expand_first_lyr_Li') - uses exact same update equation components as her sPCC, leading to odd shapes, but a functioning model (212 ps classification)
-# iii. expand r1 (2d) using Rogers architecture ('expand_first_lyr') - how an expansion probably should have worked, to keep sizes consistent, math sensible, incl. no online reshaping (slow).
+# iii. expand r1 (2-3d) using Rogers architecture ('expand_first_lyr') - how an expansion probably should have worked, to keep sizes consistent, math sensible, incl. no online reshaping (slow).
 architecture='expand_first_lyr_Li'
 # C1 or C2, see Rogers/Brown work for clarification; can be None, 'c1', 'c2'. None should be supported (sets terms to 0)
 classif_method='c1'
 # Gaussian is standard normal,  kurtotic is Li method: rs are 0s, Us are uniform random in [-0.5,0.5]
 priors='Li_priors'
-# learning rate denominators for cost function prior terms
-# Brown math had them as 2 (what it should be for derivatives of functions with square terms) 'Brown_denominators'
-# Li math had them as 1 (no change to lr). 'Li_denominators'
+# learning rate denominators for cost function 
+# Brown math had them as 2 for priors (what it should be for derivatives of functions with square term) and rn top-down update terms ('Brown_denominators')
+# Li math had them as 1 (no change to lr) for priors, and ssq_n for rn top-down update terms. 'Li_denominators'
 # Other denominators are the same between the two systems: BU updates take ssq(i-1) and TD updates take ssq(i)
-lr_prior_denominator='Li_denominators'
+lr_denominators='Li_denominators'
 # Update method: now rs and Us are updated, and when. This system has been designed to work with V's, as well.
 # Li method, rW (Weights) updated together (r1-n then U1-n) for 30 iters per image: {'rW_niters':30}
 # Rogers/Brown proposal #1: r updated (1-n) for 100 iters per image before W update (U1-n) {'r_niters_W':100}
 # Rogers/Brown proposal #2. rs updated until change in ea. indiv. vector < some stop criterion per image, then U or V  {'r_eq_W':0.05}
 update_method={'r_niters_W':100}
+# softmax (normal or stable)
+softmax_type='normal'
+softmax_k=1
 
 # Don't change:
 # Can be static or recurrent
@@ -88,13 +91,27 @@ kU={1:0.001, 2:0.001, 3:0.001, 'o':0.001}
 alph= {1:1.0, 2:0.05, 3:0.05} 
 lam= {1:0.001, 2:0.001, 3:0.001, 'o':0.001}
 # layer covariance parameters, sigma squared.
-ssq= {0:1, 1:10, 2:10, 3:2, 'o':2} 
+ssq= {0:1, 1:10, 2:10, 3:2} 
 
 # Don't change (unless you add batch support. Li's should be stochastic, though.):
 # Stochastic gradient descent is 1, all above is batch gd.
 batch_size=1
+
+# Note. This may not work on the cluster given the presence of
+# matplotlib in the model.py script, and possibly in investigate_model
+# Remove or comment out this code, and imports, to get to run.
+
 # Don't change:
-online_diagnostics= True
-
-
-
+# save checkpoints? None, save every ('save_every') Int or every 'fraction' (Float, 1/N) of total epochs
+# The only thing that differentiates a 'checkpoint' from a 'model' is abstractly the latter is considered fully trained, while the former is not
+# Under this paradigm, models are saved in models/ and checkpoints are saved in models/checkpoints/
+save_checkpoint= {'save_every':50} 
+# if checkpoints present, load? None, or Int != -1 for checkpoint epoch desired. Int == -1 for latest checkpoint.
+load_checkpoint=None
+# calculates and stores loss and accuracy by epoch, prints by epoch. Must be true for plot_train to print anything but 0s.
+# You'd want to turn this off if, for example, you care about speed, you know the model will train (most likely), and you don't mind doing the accuracy evaluation post-hoc on the full (trained) model.
+# You will not get any loss evaluation, though, online or post-hoc, if you turn this off. 
+online_diagnostics= True 
+# plot loss and accuracy by epoch directly after training (online_diagnostics must ==  True  for this to plot real data)
+# If you're running something on the cluster, it may not work unless you turn this off.
+plot_train= True 
