@@ -51,8 +51,9 @@ def model_name_from_params(params):
     update_method, um_int = next(iter(params['update_method'].items()))
     um_int_str = str(um_int)  # Convert the value to a string
 
-    name = 'mod.' + params['model_type'] + '_' + ('tl' if params['tiled_input'] else 'ntl') + '_' \
-                    + str(params['num_layers']) + '_' + layer_sizes + '_' + num_imgs + '_' + params['activ_func'] + '_' \
+    name = 'mod.' + params['model_type'][0] + '_' + ('tl' if params['tiled_input'] else 'ntl') + '_' \
+                    + str(params['num_layers']) + '_' + layer_sizes + '_' + num_imgs + '_' + params['activ_func'][:3] + '_' \
+                    + ''.join([word[0] for word in params['architecture'].split('_')]) + '_' \
                     + params['priors'] + '_' + params['classif_method'] + '_' \
                     + update_method + '-' + um_int_str + '_' + params['exp_name'] + '_' + str(params['epoch_n']) + '.pydb'
                     

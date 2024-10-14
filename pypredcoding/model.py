@@ -179,7 +179,7 @@ class PredictiveCodingClassifier:
             self.U2T_einsum_arg = 'ijk,jk->i'
             
     def set_Idiff_einsum_arg(self):
-        # Only affects 'expand first lyr' and 'flat_hidden_layers' architectures
+        # Only affects 'expand first lyr' and 'flat_hidden_lyrs' architectures
         # For Idiff ('outer') r1 calculation
         # If 'expand first lyr'
         if self.architecture == 'expand_first_lyr':
@@ -190,7 +190,7 @@ class PredictiveCodingClassifier:
             else:
                 self.Idiff_einsum_arg = 'ij,ik->ijk'
         # Flat
-        elif self.architecture == 'flat_hidden_layers':
+        elif self.architecture == 'flat_hidden_lyrs':
             # 5d U1 case, 3d r1 case (tiled nonflat)
             if self.tiled_input and not self.flat_input:
                 self.Idiff_einsum_arg = 'ijkl,m->ijklm'
@@ -275,7 +275,7 @@ class PredictiveCodingClassifier:
             # Layer 1
             if i == 1:
                 # r1
-                if architecture == 'flat_hidden_layers':
+                if architecture == 'flat_hidden_lyrs':
                     self.r[1] = self.r_prior_dist(size=(self.hidden_lyr_sizes[0]))
                 # Li architecture is only meant for one type of input
                 elif architecture == 'expand_first_lyr_Li':
@@ -308,6 +308,7 @@ class PredictiveCodingClassifier:
                             self.U[2] = self.U_prior_dist(size=U2_size)
                     else:
                         # Unpack all the dimension sizes in r1
+                        print('r', self.r)
                         U2_size = (*self.r[1].shape, self.r[2].shape[0])
                         self.U[2] = self.U_prior_dist(size=U2_size)
                 # U3+
@@ -599,8 +600,8 @@ class PredictiveCodingClassifier:
         softmax_vector = exp_vector / np.sum(exp_vector)
         return softmax_vector
     
-    def set_softmax_func(self, softmax_type, vector):
-        return self.softmax_dict[softmax_type](vector=vector)
+    def set_softmax_func(self, softmax_type, vector, k):
+        return self.softmax_dict[softmax_type](vector=vector, k=k)
     
     def reset_rs_gteq1(self, all_lyr_sizes, prior_dist):
         n = self.num_layers
@@ -626,13 +627,21 @@ class PredictiveCodingClassifier:
         clean up
         '''
         printlog('\n\n')
-        printlog(f'priors: {self.priors} init preview:')
+        printlog('shapes')
         for i in range(0, self.num_layers + 1):
             printlog(f'r{i} shape: {self.r[i].shape}')
-            printlog(f'r{i} first 3: {self.r[i][:3]}')
             if i > 0:
                 # Check if the array is 3D or 5D
                 printlog(f'U{i} shape: {self.U[i].shape}')
+        if self.classif_method == 'c2':
+            printlog(f'Uo shape: {self.U["o"].shape}')
+        printlog('\n')
+            
+        printlog(f'priors: {self.priors} init preview:')
+        for i in range(0, self.num_layers + 1):
+            printlog(f'r{i} first 3: {self.r[i][:3]}')
+            if i > 0:
+                # Check if the array is 3D or 5D
                 if self.U[i].ndim == 3:
                     printlog(f'U{i} first 3x3x3: {self.U[i][:3, :3, :3]}')
                 elif self.U[i].ndim == 5:
@@ -640,8 +649,8 @@ class PredictiveCodingClassifier:
                 else:
                     printlog(f'U{i} first 3x3: {self.U[i][:3, :3]}')
         if self.classif_method == 'c2':
-            printlog(f'Uo shape: {self.U["o"].shape}')
             printlog(f'Uo first 3x3: {self.U["o"][:3, :3]}')
+        printlog('\n')
             
         '''
         clean up
@@ -749,7 +758,7 @@ class PredictiveCodingClassifier:
             hard-coded in here for KB investigation'''
             
             # For every 10 epochs, save mid-training diagnostics
-            if epoch % 10 == 0:
+            if epoch % 1 == 0:
                 # Save mid-training diagnostics
                 online_name = self.generate_output_name(self.mod_name, epoch)
                 self.save_diagnostics(output_dir='results/diagnostics/', output_name=online_name)
@@ -941,8 +950,9 @@ class PredictiveCodingClassifier:
         with open(output_path, 'wb') as f:
             pickle.dump({'Jr': self.Jr, 'Jc': self.Jc, 'accuracy':self.accuracy}, f)
             
-    def plot(input_dir, input_name):
-        diags_path = join(input_dir, input_name)
+    def plot(self, input_dir, input_name):
+        diags_name = 'diag.' + input_name
+        diags_path = join(input_dir, diags_name)
         
         # Load the model
         with open(diags_path, 'rb') as file:
@@ -1054,10 +1064,6 @@ class StaticPCC(PredictiveCodingClassifier):
         self.update_method_no_weight_dict = {'rW_niters': partial(self.update_method_r_niters, component_updates=self.component_updates),
                                     'r_niters_W': partial(self.update_method_r_niters, component_updates=self.component_updates),
                                     'r_eq_W': partial(self.update_method_r_eq, component_updates=self.component_updates)}
-        
-        self.rn_topdown_upd_dict = {'c1': static_cost_func_class.rn_topdown_upd_c1,
-                                    'c2': static_cost_func_class.rn_topdown_upd_c2,
-                                    None: static_cost_func_class.rn_topdown_upd_None}
         
         self.classif_cost_dict = {'c1': static_cost_func_class.classif_cost_c1,
                                 'c2': static_cost_func_class.classif_cost_c2,

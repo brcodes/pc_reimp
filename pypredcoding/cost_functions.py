@@ -49,10 +49,14 @@ class StaticCostFunction():
         
         # Initialize general methods based on the architecture key
         self.initialize_components(self.architecture)
+        
+        self.rn_topdown_upd_dict = {'c1': self.rn_topdown_upd_c1,
+                                    'c2': self.rn_topdown_upd_c2,
+                                    None: self.rn_topdown_upd_None}
     
     def create_subcomponent_dict(self, prefix):
         return {
-            "flat_hidden_layers": getattr(self, f"{prefix}_fhl"),
+            "flat_hidden_lyrs": getattr(self, f"{prefix}_fhl"),
             "expand_first_lyr_Li": getattr(self, f"{prefix}_e1l_Li"),
             "expand_first_lyr": getattr(self, f"{prefix}_e1l")
         }
@@ -357,12 +361,12 @@ class StaticCostFunction():
     
     def classif_cost_c1(self, label):
         # Format: -label.dot(np.log(softmax(r_n)))
-        return -label.dot(np.log(self.softmax_func(self.r[self.num_layers])))
+        return -label.dot(np.log(self.softmax_func(vector=self.r[self.num_layers])))
     
     def classif_cost_c2(self, label):
         # Format: -label.dot(np.log(softmax(Uo.dot(r_n))))
         o = 'o'
-        return -label.dot(np.log(self.softmax_func(self.U[o].dot(self.r[self.num_layers])))) + self.h(self.U[o], self.lam[o])[0]
+        return -label.dot(np.log(self.softmax_func(vector=self.U[o].dot(self.r[self.num_layers])))) + self.h(self.U[o], self.lam[o])[0]
     
     def classif_cost_None(self, label):
         return 0
@@ -370,13 +374,13 @@ class StaticCostFunction():
     def rn_topdown_upd_c1(self, label):
         '''
         redo for recurrent =will all be the same except rn_bar'''
-        return label - self.softmax_func(self.r[self.num_layers])
+        return label - self.softmax_func(vector=self.r[self.num_layers])
 
     def rn_topdown_upd_c2(self, label):
         '''
         rn_bar
         '''
-        return label - self.softmax_func(self.U['o'].dot(self.r[self.num_layers]))
+        return label - self.softmax_func(vector=self.U['o'].dot(self.r[self.num_layers]))
     
     def rn_topdown_upd_None(self, label):
         return 0
@@ -554,17 +558,17 @@ class StaticCostFunction():
         # No "Li" denominator option here, because she never ran a C2 model.
         o = 'o'
         rn = self.r[self.num_layers]
-        self.U[o] += (self.kU[o] / 2) * np.outer((label - self.softmax_func(self.U[o].dot(rn))), rn)
+        self.U[o] += (self.kU[o] / 2) * np.outer((label - self.softmax_func(vector=self.U[o].dot(rn))), rn)
 
     def classif_guess_c1(self, label):
-        guess = np.argmax(self.softmax_func(self.r[self.num_layers]))
+        guess = np.argmax(self.softmax_func(vector=self.r[self.num_layers]))
         if guess == np.argmax(label):
             return 1
         else:
             return 0
     
     def classif_guess_c2(self, label):
-        guess = np.argmax(self.softmax_func(self.U['o'].dot(self.r[self.num_layers])))
+        guess = np.argmax(self.softmax_func(vector=self.U['o'].dot(self.r[self.num_layers])))
         if guess == np.argmax(label):
             return 1
         else:
