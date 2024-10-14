@@ -193,7 +193,7 @@ class StaticCostFunction():
     def L1diff_r2_e1l_Li(self, L1diff, r2):
         return np.outer(L1diff.flatten(), r2)
     
-    def L1diff_r2_e1l(self, L1diff, r2, args):
+    def L1diff_r2_e1l(self, L1diff, r2):
         # 16,32     128     ij,k->ijk
         # 4,4,32    128     ijk,l->ijkl
         return np.einsum(self.L1diff_einsum_arg, L1diff, r2)
@@ -215,7 +215,7 @@ class StaticCostFunction():
     def rep_cost_n_1(self):
         r1 = self.r[1]
         U1 = self.U[1]
-        bu_tdot_dims = self.bu_error_tdot_dims
+        bu_tdot_dims = self.Idiff_tdot_dims
 
         # Bottom-up component of the representation error
         U1r1 = self.U1mat_mult_r1vecormat(U1, r1)
@@ -237,8 +237,8 @@ class StaticCostFunction():
         r2 = self.r[2]
         U1 = self.U[1]
         U2 = self.U[2]
-        bu_tdot_dims = self.bu_error_tdot_dims
-        td_tdot_dims = self.td_error_tdot_dims
+        bu_tdot_dims = self.Idiff_tdot_dims
+        td_tdot_dims = self.L1diff_tdot_dims
 
         # Layer 1
         # Bottom-up component of the representation error
@@ -277,8 +277,8 @@ class StaticCostFunction():
         U1 = self.U[1]
         U2 = self.U[2]
         U3 = self.U[3]
-        bu_tdot_dims = self.bu_error_tdot_dims
-        td_tdot_dims = self.td_error_tdot_dims
+        bu_tdot_dims = self.Idiff_tdot_dims
+        td_tdot_dims = self.L1diff_tdot_dims
 
         # Layer 1
         # Bottom-up component of the representation error

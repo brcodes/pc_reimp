@@ -27,6 +27,10 @@ class PredictiveCodingClassifier:
                                 'kurtotic': partial(np.random.laplace, loc=0.0, scale=0.5),
                                 'Li_priors': self.create_Li_rand}
         
+        self.softmax_dict = {'normal': partial(self.softmax, k=self.softmax_k),
+                            'stable': partial(self.stable_softmax, k=self.softmax_k)}
+        self.softmax_func = partial(self.set_softmax_func, softmax_type=self.softmax_type)
+        
         '''
         shell class for sPCC and rPCC subclasses
         inheritance: some general methods, and all attributes
@@ -97,6 +101,22 @@ class PredictiveCodingClassifier:
         for key, value in params.items():
             setattr(self, key, value)
             
+    def set_Idiff_tdot_dims(self, input_size):
+        # All architectures
+        # Input dims, all
+        ndims_input = len(input_size)
+        range_ndims_input = range(ndims_input)
+        # L1 Bottom-up error dims for Idiff^2 calculation in rep_cost()
+        self.Idiff_tdot_dims = list(range_ndims_input)
+        
+    def set_L1diff_tdot_dims(self, L1_size):
+        # All architectures
+        # L1 (r1) dims, all
+        ndims_input = len(L1_size)
+        range_ndims_input = range(ndims_input)
+        # L1's Top-down error dims for L1diff^2 calculation in rep_cost()
+        self.L1diff_tdot_dims = list(range_ndims_input)
+            
     def set_U1_einsum_arg(self):
         # Only applicable to 'expand_first_lyr'
         # 5d U1 case, 3d r1 case (tiled nonflat)
@@ -157,6 +177,36 @@ class PredictiveCodingClassifier:
         # Otherwise
         else:
             self.U2T_einsum_arg = 'ijk,jk->i'
+            
+    def set_Idiff_einsum_arg(self):
+        # Only affects 'expand first lyr' and 'flat_hidden_layers' architectures
+        # For Idiff ('outer') r1 calculation
+        # If 'expand first lyr'
+        if self.architecture == 'expand_first_lyr':
+            # 5d U1 case, 3d r1 case (tiled nonflat)
+            if self.tiled_input and not self.flat_input:
+                self.Idiff_einsum_arg = 'ijkl,ijm->ijklm'
+            # Otherwise
+            else:
+                self.Idiff_einsum_arg = 'ij,ik->ijk'
+        # Flat
+        elif self.architecture == 'flat_hidden_layers':
+            # 5d U1 case, 3d r1 case (tiled nonflat)
+            if self.tiled_input and not self.flat_input:
+                self.Idiff_einsum_arg = 'ijkl,m->ijklm'
+            # Otherwise
+            else:
+                self.Idiff_einsum_arg = 'ij,k->ijk'
+            
+    def set_L1diff_einsum_arg(self):
+        # Only affects 'expand first lyr'  architecture
+        # For L1diff ('outer') r2 calculation
+        # 5d U1 case, 3d r1 case (tiled nonflat)
+        if self.tiled_input and not self.flat_input:
+            self.Idiff_einsum_arg = 'ijk,l->ijkl'
+        # Otherwise
+        else:
+            self.Idiff_einsum_arg = 'ij,k->ijk'
             
     
         
@@ -273,44 +323,32 @@ class PredictiveCodingClassifier:
             Uo_size = (self.num_classes, self.output_lyr_size)
             self.U['o'] = self.U_prior_dist(size=Uo_size)
         
-            
         # Initiate U1 and U2-based operations dims (dimentions flex based on input and architecture)
+        # If the rep cost is being calculated
+        self.set_Idiff_tdot_dims(input_shape)
+        self.set_L1diff_tdot_dims(self.r[1].shape)
+        # Used in U "dot" r at higher dims
+        self.set_U1_einsum_arg()
+        self.set_U2_einsum_arg()
         # Transposes
-        self.set_U1T_dims()
-        self.set_U2T_dims()
+        self.set_U1T_dims(U1_size)
+        self.set_U2T_dims(U2_size)
+        # U1-2T stuff
+        self.set_U1T_tdot_dims(U1_size)
+        self.set_U1T_einsum_arg()
+        self.set_U2T_einsum_arg()
+        # U-only stuff
+        self.set_Idiff_einsum_arg()
+        self.set_L1diff_einsum_arg()
         
-        # Tensordot dims
-        # U1T, last n-1
-        nonfirst_dim_ids_U1 = range_ndims_U1[1:]
-        self.U1T_tdot_dims = list(nonfirst_dim_ids_U1)
-        
-        # Input dims, all
-        ndims_input = len(input_size)
-        range_ndims_input = range(ndims_input)
-        # Bottom-up error and cost dims (either used in update, or cost)
-        self.bu_error_tdot_dims = list(range_ndims_input)
-        
-        # Einsum dims
-        self.einsum_arg_U1 = ''
-        dim_str = 'ijklmnopqrstuvwxyz'
-        for dim in range(ndims_input):
-            self.einsum_arg_U1 += dim_str[dim]
-        self.einsum_arg_U1 += ',' + dim_str[ndims_input] + '->' + dim_str[:ndims_input + 1]
-        if ndims_input > len(dim_str):
-            raise ValueError('Too many dimensions.')
-        # Will always be 'i,j->ij' for U2 through Un
-        self.einsum_arg_Ui = 'i,j->ij'
-        
-        # Hidden layer sizes for priors
+        # All layer sizes for priors
         self.all_lyr_sizes = self.hidden_lyr_sizes.copy()
         self.all_lyr_sizes.append(self.output_lyr_size)
         if architecture == 'expand_first_lyr_Li' or architecture == 'expand_first_lyr':
             self.all_lyr_sizes[0] = self.r[1].shape
             
-        
-        '''
-        Li style: test
-        '''
+        # Set softmax
+        self.softmax_func = partial(self.set_softmax_func, softmax_type=self.softmax_type)
         
         # Initiate Jr, Jc, and accuracy (diagnostics) for storage, print, plot
         epoch_n = self.epoch_n
@@ -535,7 +573,7 @@ class PredictiveCodingClassifier:
         self.r_dists_hard = {}
         n = self.num_layers
         for i in range (1, n + 1):
-            lyr_size = self.all_hlyr_sizes[i - 1]
+            lyr_size = self.all_lyr_sizes[i - 1]
             self.r_dists_hard[lyr_size] = self.r_prior_dist(size=lyr_size)
     
     def load_hard_r_prior_dist(self, size):
@@ -545,27 +583,30 @@ class PredictiveCodingClassifier:
     test
     not actually stable - conformity to Li softmax (normal, no k)
     '''
-    def softmax(self, vector):
+    def softmax(self, vector, k=1):
 
         # Compute the exponentials of the vector
-        exp_vector = np.exp(vector)
+        exp_vector = np.exp(k * vector)
         # Compute the softmax values
         softmax_vector = exp_vector / np.sum(exp_vector)
         return softmax_vector
     
-    # def stable_softmax(self, vector, k=1):
-    #     # Subtract the maximum value from the vector for numerical stability
-    #     shift_vector = vector - np.max(vector)
-    #     # Compute the exponentials of the shifted vector
-    #     exp_vector = np.exp(k * shift_vector)
-    #     # Compute the softmax values
-    #     softmax_vector = exp_vector / np.sum(exp_vector)
-    #     return softmax_vector
+    def stable_softmax(self, vector, k=1):
+        # Subtract the maximum value from the vector for numerical stability
+        shift_vector = vector - np.max(vector)
+        # Compute the exponentials of the shifted vector
+        exp_vector = np.exp(k * shift_vector)
+        # Compute the softmax values
+        softmax_vector = exp_vector / np.sum(exp_vector)
+        return softmax_vector
     
-    def reset_rs_gteq1(self, all_hlyr_sizes, prior_dist):
+    def set_softmax_func(self, softmax_type, vector):
+        return self.softmax_dict[softmax_type](vector=vector)
+    
+    def reset_rs_gteq1(self, all_lyr_sizes, prior_dist):
         n = self.num_layers
         for i in range(1, n + 1):
-            self.r[i] = prior_dist(size=all_hlyr_sizes[i - 1])
+            self.r[i] = prior_dist(size=all_lyr_sizes[i - 1])
 
     # Prints and sends to log file
     def print_and_log(self, *args, **kwargs):
@@ -602,7 +643,6 @@ class PredictiveCodingClassifier:
         if self.classif_method == 'c2':
             printlog(f'Uo shape: {self.U["o"].shape}')
             printlog(f'Uo first 3x3: {self.U["o"][:3, :3]}')
-        printlog(f'einsum arg U1: {self.einsum_arg_U1}')
             
         '''
         clean up
@@ -632,15 +672,13 @@ class PredictiveCodingClassifier:
         '''
         self.hard_set_prior_dist()
         prior_dist = self.load_hard_prior_dist
-
         # Else: prior_dist = self.r_prior_dist
         '''
         test
         '''
         
-        n = self.num_layers
-        all_hlyr_sizes = self.all_hlyr_sizes
-        reset_rs_gteq1 = partial(self.reset_rs_gteq1, all_hlyr_sizes=all_hlyr_sizes)
+        all_lyr_sizes = self.all_lyr_sizes
+        reset_rs_gteq1 = partial(self.reset_rs_gteq1, all_lyr_sizes=all_lyr_sizes)
         
         update_method_name = next(iter(self.update_method))
         update_method_number = self.update_method[update_method_name]
@@ -712,7 +750,7 @@ class PredictiveCodingClassifier:
                 input = X_shuff[img]
                 label = Y_shuff[img]
                 self.r[0] = input
-                reset_rs(prior_dist=prior_dist)
+                reset_rs_gteq1(prior_dist=prior_dist)
                 update_all_components(label=label)
                 if online_diagnostics:
                     Jre += rep_cost()
@@ -809,26 +847,26 @@ class PredictiveCodingClassifier:
         pre-initiate all distributions
         for speed
         '''
-
         prior_dist = self.load_hard_prior_dist
         # Else: prior_dist = self.r_prior_dist
         '''
         test
         '''
-        reset_rs = partial(self.reset_rs, all_hlyr_sizes=self.all_hlyr_sizes)
+        
+        reset_rs_gteq1 = partial(self.reset_rs_gteq1, all_lyr_sizes=self.all_lyr_sizes)
         
         update_non_weight_components = partial(self.update_method_no_weight_dict[update_method_name], update_method_number)
         
         classify = self.classify
         
-        n = self.num_layers
+
         num_imgs = self.num_imgs
         accuracy = 0
         for img in range(num_imgs):
             input = X[img]
             label = Y[img]
             self.r[0] = input
-            reset_rs(prior_dist=prior_dist)
+            reset_rs_gteq1(prior_dist=prior_dist)
             update_non_weight_components(label=label)
             guess = classify(label)
             accuracy += guess
