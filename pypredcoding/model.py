@@ -214,7 +214,7 @@ class PredictiveCodingClassifier:
         '''
         Set up the model from the attributes.
         '''
-        
+        # Not made
         self.validate_attributes()
         
         # Transforms and priors
@@ -222,23 +222,17 @@ class PredictiveCodingClassifier:
         self.g = self.prior_cost_dict[self.priors]
         self.h = self.prior_cost_dict[self.priors]
         
-        self.r = {}
-        self.U = {}
-        
-        
-        '''
-        Li style: test
-        '''
-        
-        # Initiate rs, Us (Vs in recurrent subclass)
-        # r0 is going to be different
-        tiled_input = self.tiled_input
-        flat_input = self.flat_input
-        architecture = self.architecture
-        input_shape = self.input_shape
-        num_layers = self.num_layers
-        n = num_layers
-        
+        # Lr denominators (Brown method or Li method)
+        if self.lr_denominators == "Li_denominators":
+            # Prior terms
+            self.lr_prior_denominator = 1
+            # rn top-down update term
+            self.lr_rn_td_denominator = self.ssq[self.num_layers]
+        elif self.lr_denominators == "Brown_denominators":
+            self.lr_prior_denominator = 2
+            # rn top-down update term
+            self.lr_rn_td_denominator = 2
+
         '''
         scenario
         
@@ -264,7 +258,17 @@ class PredictiveCodingClassifier:
         
         # If flat hidden layers, r1 is hidden layer sizes [0]
         
-        # Initiate rs and Us
+        # Params needed
+        tiled_input = self.tiled_input
+        flat_input = self.flat_input
+        architecture = self.architecture
+        input_shape = self.input_shape
+        num_layers = self.num_layers
+        n = num_layers
+
+        # Inits on representations and weights
+        self.r = {}
+        self.U = {}
         # r0
         self.r[0] = np.zeros(input_shape)
         for i in range(1, n + 1):
@@ -579,10 +583,6 @@ class PredictiveCodingClassifier:
     def load_hard_r_prior_dist(self, size):
         return self.r_dists_hard[size]
     
-    '''
-    test
-    not actually stable - conformity to Li softmax (normal, no k)
-    '''
     def softmax(self, vector, k=1):
 
         # Compute the exponentials of the vector
@@ -652,7 +652,7 @@ class PredictiveCodingClassifier:
         num_tiles = self.num_tiles
         '''
         test: re-shape 3392,864 (num imgs * tiles per image, flattened tile) to 212, 16, 864 (num imgs, tiles per image, flattened tile)
-        This will be completed by data.py in the future
+        This will be completed by data.py in the future, by God's grace.
         '''
         printlog('test: reshaping X into num imgs, num tiles per image, flattened tile')
         X = X.reshape(num_imgs, num_tiles, -1)
@@ -661,12 +661,11 @@ class PredictiveCodingClassifier:
         test
         '''
         printlog('Train init:')
-        printlog('X shape (incl. test reshape):', X.shape)
+        printlog('X shape:', X.shape)
         printlog('Y shape:', Y.shape)
         
         
         '''
-        test
         pre-initiate all distributions
         for speed
         '''
@@ -674,11 +673,9 @@ class PredictiveCodingClassifier:
         prior_dist = self.load_hard_prior_dist
         # Else: prior_dist = self.r_prior_dist
         '''
-        test
         '''
-        
-        all_lyr_sizes = self.all_lyr_sizes
-        reset_rs_gteq1 = partial(self.reset_rs_gteq1, all_lyr_sizes=all_lyr_sizes)
+
+        reset_rs_gteq1 = partial(self.reset_rs_gteq1, all_lyr_sizes=self.all_lyr_sizes)
         
         update_method_name = next(iter(self.update_method))
         update_method_number = self.update_method[update_method_name]
@@ -689,20 +686,6 @@ class PredictiveCodingClassifier:
         
         classif_method = self.classif_method
         classif_cost = self.classif_cost
-        
-        '''
-        test
-        '''
-        printlog(f'self.kr: {self.kr}')
-        printlog(f'self.kU: {self.kU}')
-        printlog(f'self.update_method: {self.update_method}')
-        printlog(f'update_method_name: {update_method_name}')
-        printlog(f'update_method_number: {update_method_number}')
-        printlog(f'classif_method: {classif_method}')
-        
-        '''
-        test
-        '''
         
         evaluate = partial(self.evaluate, update_method_name=update_method_name, update_method_number=update_method_number, classif_method=classif_method, plot=None)
 
@@ -762,8 +745,11 @@ class PredictiveCodingClassifier:
             self.Jr[epoch] = Jre
             self.Jc[epoch] = Jce
             
+            '''
+            hard-coded in here for KB investigation'''
+            
             # For every 10 epochs, save mid-training diagnostics
-            if epoch % 5 == 0:
+            if epoch % 10 == 0:
                 # Save mid-training diagnostics
                 online_name = self.generate_output_name(self.mod_name, epoch)
                 self.save_diagnostics(output_dir='models/', output_name=online_name)
@@ -803,39 +789,6 @@ class PredictiveCodingClassifier:
         change_per_min_Jc = percent_diff_Jc / tot_time.total_seconds() * 60
         change_per_min_accuracy = percent_diff_accuracy / tot_time.total_seconds() * 60
         printlog(f'Change per min Jr: {change_per_min_Jr}, Jc: {change_per_min_Jc}, Accuracy: {change_per_min_accuracy}')
-        
-        # Add a row to models/experiments.csv
-        csv_file_path = 'models/experiments.csv'
-        csv_columns = ["classif_method", "update_method_name", "kr", "kU", "epochs", "Jr 0", "Jr Final", "Jr % Change", "Jc 0", "Jc Final", "Jc % Change", "Tot Time", "Acc 0", "Acc Final", "Acc % Change"]
-        csv_data = [
-            classif_method,
-            update_method_name,
-            self.kr[1],
-            self.kU[1],
-            epoch,
-            self.Jr[0],
-            self.Jr[epoch],
-            percent_diff_Jr,
-            self.Jc[0],
-            self.Jc[epoch],
-            percent_diff_Jc,
-            tot_time,
-            self.accuracy[0],
-            self.accuracy[epoch],
-            percent_diff_accuracy
-        ]
-
-        # Ensure the directory exists
-        makedirs(dirname(csv_file_path), exist_ok=True)
-
-        # Write to the CSV file
-        file_exists = isfile(csv_file_path)
-        with open(csv_file_path, mode='a', newline='') as file:
-            writer = csv.writer(file)
-            if not file_exists:
-                writer.writerow(csv_columns)  # Write the header only if the file does not exist
-            writer.writerow(csv_data)
-        
         
         if plot:
             pass
@@ -987,8 +940,7 @@ class PredictiveCodingClassifier:
         with open(output_path, 'wb') as f:
             pickle.dump({'Jr': self.Jr, 'Jc': self.Jc, 'accuracy':self.accuracy}, f)
             
-            
-            
+        
 class StaticPCC(PredictiveCodingClassifier):
 
     def __init__(self, base_instance: PredictiveCodingClassifier):
@@ -999,21 +951,45 @@ class StaticPCC(PredictiveCodingClassifier):
 
         # Copy attributes from the base instance
         self.__dict__.update(base_instance.__dict__)
+        
+        # Cost functions
+        static_cost_func_class = StaticCostFunction(self)
 
+        # Dictionaries for methods from base class and static cost function class
+        self.update_method_dict = {'rW_niters': partial(self.update_method_rWniters, component_updates=self.component_updates),
+                                    'r_niters_W': partial(self.update_method_r_niters_W, component_updates=self.component_updates),
+                                    'r_eq_W': partial(self.update_method_r_eq_W, component_updates=self.component_updates)}
+        
+        self.update_method_no_weight_dict = {'rW_niters': partial(self.update_method_r_niters, component_updates=self.component_updates),
+                                    'r_niters_W': partial(self.update_method_r_niters, component_updates=self.component_updates),
+                                    'r_eq_W': partial(self.update_method_r_eq, component_updates=self.component_updates)}
+        
+        self.rn_topdown_upd_dict = {'c1': static_cost_func_class.rn_topdown_upd_c1,
+                                    'c2': static_cost_func_class.rn_topdown_upd_c2,
+                                    None: static_cost_func_class.rn_topdown_upd_None}
+        
+        self.classif_cost_dict = {'c1': static_cost_func_class.classif_cost_c1,
+                                'c2': static_cost_func_class.classif_cost_c2,
+                                None: static_cost_func_class.classif_cost_None}
+        
+        self.classif_guess_dict = {'c1': static_cost_func_class.classif_guess_c1,
+                                'c2': static_cost_func_class.classif_guess_c2,
+                                None: static_cost_func_class.classif_guess_None}
+        
         # Component cost funcs: r, U, Uo updates, and cost calculators
         n = self.num_layers
         if n == 1:
-            self.r_updates = self.r_updates_n_1
-            self.U_updates = self.U_updates_n_1
-            self.rep_cost = self.rep_cost_n_1
+            self.r_updates = static_cost_func_class.r_updates_n_1
+            self.U_updates = static_cost_func_class.U_updates_n_1
+            self.rep_cost = static_cost_func_class.rep_cost_n_1
         elif n == 2:
-            self.r_updates = self.r_updates_n_2
-            self.U_updates = self.U_updates_n_gt_eq_2
-            self.rep_cost = self.rep_cost_n_2
+            self.r_updates = static_cost_func_class.r_updates_n_2
+            self.U_updates = static_cost_func_class.U_updates_n_gt_eq_2
+            self.rep_cost = static_cost_func_class.rep_cost_n_2
         elif n >= 3:
-            self.r_updates = self.r_updates_n_gt_eq_3
-            self.U_updates = self.U_updates_n_gt_eq_2
-            self.rep_cost = self.rep_cost_n_gt_eq_3
+            self.r_updates = static_cost_func_class.r_updates_n_gt_eq_3
+            self.U_updates = static_cost_func_class.U_updates_n_gt_eq_2
+            self.rep_cost = static_cost_func_class.rep_cost_n_gt_eq_3
         else:
             raise ValueError("Number of layers must be at least 1.")
         # Classification now
@@ -1024,30 +1000,7 @@ class StaticPCC(PredictiveCodingClassifier):
         self.component_updates = [self.r_updates, self.U_updates]
         if self.classif_method == 'c2':
             self.component_updates.append(self.Uo_update)
-
         
-        self.update_method_dict = {'rW_niters': partial(self.update_method_rWniters, component_updates=self.component_updates),
-                                    'r_niters_W': partial(self.update_method_r_niters_W, component_updates=self.component_updates),
-                                    'r_eq_W': partial(self.update_method_r_eq_W, component_updates=self.component_updates)}
-        
-        self.update_method_no_weight_dict = {'rW_niters': partial(self.update_method_r_niters, component_updates=self.component_updates),
-                                    'r_niters_W': partial(self.update_method_r_niters, component_updates=self.component_updates),
-                                    'r_eq_W': partial(self.update_method_r_eq, component_updates=self.component_updates)}
-        
-        self.rn_topdown_upd_dict = {'c1': self.rn_topdown_upd_c1,
-                                    'c2': self.rn_topdown_upd_c2,
-                                    None: self.rn_topdown_upd_None}
-        
-        self.classif_cost_dict = {'c1': self.classif_cost_c1,
-                                'c2': self.classif_cost_c2,
-                                None: self.classif_cost_None}
-        
-        self.classif_guess_dict = {'c1': self.classif_guess_c1,
-                                'c2': self.classif_guess_c2,
-                                None: self.classif_guess_None}
-        
-    def validate_attributes(self):
-        pass
     
 class RecurrentPCC(PredictiveCodingClassifier):
 
