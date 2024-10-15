@@ -69,6 +69,8 @@ def load_model(model_path):
     
     with open(model_path, 'rb') as file:
         model = load(file)
+        
+
     return model
 
 def load_checkpoint(model_name, params):
@@ -87,6 +89,7 @@ def load_checkpoint(model_name, params):
     
     if params['load_checkpoint'] == -1:
         
+        print('Loading latest checkpoint')
         # case where we load the latest checkpoint
         max_epoch = -1
         chk_file_path = None
@@ -109,6 +112,7 @@ def load_checkpoint(model_name, params):
             
     elif params['load_checkpoint'] != -1:
         
+        print(f'Loading checkpoint at epoch {params["load_checkpoint"]}')
         desired_epoch = params['load_checkpoint']
         chk_file_path = None
         file_name_valid = False
@@ -124,6 +128,7 @@ def load_checkpoint(model_name, params):
                 
                 if epoch == desired_epoch:
                     chk_file_path = join(checkpoint_dir, filename)
+                    max_epoch = desired_epoch
             except ValueError:
                 continue
             
@@ -132,7 +137,9 @@ def load_checkpoint(model_name, params):
     
     checkpoint = load_model(chk_file_path)
     
-    return checkpoint
+    print(f'Loaded checkpoint: {chk_file_path}')
+    
+    return checkpoint, max_epoch
             
 def instantiate_model(params):
     
@@ -210,8 +217,10 @@ def run_experiment(config_file_path):
         
         # Model
         if params['load_checkpoint'] is not None:
-            model = load_checkpoint(model_name, params)
-            print(f'Loaded checkpoint: {model_name}')
+            model, epoch = load_checkpoint(model_name, params)
+            load_name_ep_params = {'load_name': model_name, 'load_epoch': epoch}
+            model.set_model_attributes(load_name_ep_params)
+            print(f'Desired final state: {model_name}\n')
         else:
             model = instantiate_model(params)
             model_name_param = {'mod_name': model_name}
@@ -228,7 +237,7 @@ def run_experiment(config_file_path):
         print(f'Loaded data: {params["dataset_train"]}')
         
         # Train: will shuffle data automatically
-        model.train(X_train, Y_train, save_checkpoint=params['save_checkpoint'], plot=params['plot_train'])
+        model.train(X_train, Y_train, save_checkpoint=params['save_checkpoint'], load_checkpoint=params['load_checkpoint'], plot=params['plot_train'])
         
         '''
         later remove load_checkpoint from train- this is an outside function

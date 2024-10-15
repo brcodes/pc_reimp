@@ -34,62 +34,6 @@ class PredictiveCodingClassifier:
         '''
         shell class for sPCC and rPCC subclasses
         inheritance: some general methods, and all attributes
-        
-        "self."
-        
-        # metadata and experiment (this is grabbed by run_experiment, but saved here as a flag)
-        mod_name: str: name of chosen model if eval, pred or end-state model if train
-        exp_name: str: name of experiment
-        train_with: bool: whether to train the model (in here, has or has not init a training)
-        evaluate_with: bool: whether to evaluate the model (in here, has or has not init an evaluation)
-        predict_with: bool: whether to predict with the model (in here, has or has not init a prediction)
-        notes: str: any notes about the experiment
-        
-        # model
-        model_type: str: 'static' or 'recurrent'
-        tiled: bool: whether to tile the input data
-        flat_input: bool: whether to flatten the input data
-        num_layers: int: number of layers in the model (discluding input layer '0')
-        input_size: tuple: size of input data, one sample
-        hidden_lyr_sizes: list: size of hidden layers
-        output_lyr_size: int: size of output layer (if c1, must == num_classes)
-        classif_method: str or None: 'c1' or 'c2' or None
-        activ_func: str: 'linear' or 'tanh'
-        priors: str: 'gaussian' or 'kurtotic'
-        update_method: dict: {'rW_niters':#} or {'r_niters_W':#} or {'r_eq_W':#} # is int for iters, float for eq
-        
-        # dataset train
-        num_imgs: int: number of images in dataset
-        num_classes: int: number of classes in dataset
-        dataset_train: str: name of dataset to grab from data/
-        
-        # training
-        batch_size: int: number of samples in each batch
-        epoch_n: int: number of epochs to train
-        kr: dict: learning rates for each layer, r component
-        kU: dict: learning rates for each layer, U component
-        kV: dict: learning rates for each layer, V component
-        alph: dict: prior parameter for each layer, r component
-        lam: dict: prior parameter for each layer, U component
-        ssq: dict: layer var/covar parameter for each layer
-        
-        # training data
-        save_checkpoint: dict or None: {'save_every':#} or {'fraction':#} # is int, num or denom
-        load_checkpoint: int or None: number of checkpoint to load. -1 for most recent. None for no load
-        online_diagnostics: bool: whether to save and print diagnostics during training (loss, accuracy)
-        plot_train: bool: whether to plot training diagnostics. online_diagnostics must be True
-        
-        # dataset evaluation
-        dataset_eval: str: name of dataset to grab from data/
-        
-        # evaluation data
-        plot_eval: str or None: 'first' for first image, etc. (see model.py)
-        
-        # dataset prediction
-        dataset_pred: str: name of dataset to grab from data/
-        
-        # prediction data
-        plot_pred: str or None: 'first' for first image, etc. (see model.py)
         '''
         
     def set_model_attributes(self, params):
@@ -212,9 +156,7 @@ class PredictiveCodingClassifier:
         # Otherwise
         else:
             self.Idiff_einsum_arg = 'ij,k->ijk'
-            
     
-        
     def config_from_attributes(self):
         '''
         Set up the model from the attributes.
@@ -367,68 +309,6 @@ class PredictiveCodingClassifier:
         # Later: by layer
         # self.Jr = {i: [0] * (epoch_n + 1) for i in range(n)}
         # self.Jc = {i: [0] * (epoch_n + 1) for i in range(n)}
-        
-    def set_component_update_funcs(self, num_layers, model_type, classif_method):
-        n = num_layers
-            
-        if n == 1:
-            rkey = Ukey = 1
-        elif n == 2:
-            rkey = Ukey = 2
-        elif n >= 3:
-            rkey = 3
-            Ukey = 2
-            
-        keys = [rkey, Ukey]
-            
-        self.r_updates = self.r_upd_func_dict[keys[0]]
-        self.U_updates = self.U_upd_func_dict[keys[1]]
-        
-        self.component_updates = [self.r_updates, self.U_updates]
-        
-        if classif_method == 'c2':
-            self.component_updates.append(self.Uo_update)
-            
-        if model_type == 'recurrent':
-            Vkey = 1
-            keys.append(Vkey)
-            self.V_updates = self.V_upd_func_dict[keys[2]]
-            self.component_updates.append(self.V_updates)
-            
-        
-        
-        
-        
-        
-        
-        classif_cost = self.classif_cost_dict[self.classif_method]
-        # Component update: r, U, Uo, and cost calculato
-        n = num_layers
-        if n == 1:
-            self.r_updates = self.r_updates_n_1
-            self.U_updates = self.U_updates_n_1
-            self.V_updates = self.V_updates
-            self.rep_cost = self.rep_cost_n_1
-        elif n == 2:
-            self.r_updates = self.r_updates_n_2
-            self.U_updates = self.U_updates_n_gt_eq_2
-            self.V_updates = self.V_updates
-            self.rep_cost = self.rep_cost_n_2
-        elif n >= 3:
-            self.r_updates = self.r_updates_n_gt_eq_3
-            self.U_updates = self.U_updates_n_gt_eq_2
-            self.V_updates = self.V_updates
-            self.rep_cost = self.rep_cost_n_gt_eq_3
-        else:
-            raise ValueError("Number of layers must be at least 1.")
-        self.component_updates = [self.r_updates, self.U_updates]
-        classif_method = self.classif_method
-        if classif_method == 'c2':
-            self.component_updates.append(self.Uo_update)
-        # Add Vs
-        self.component_updates.append(self.V_updates)
-        
-        pass
         
     # Activation functions
     def linear_transform(self, U_dot_r):
@@ -623,7 +503,7 @@ class PredictiveCodingClassifier:
         with open(exp_log_path, "a") as f:
             print(*args, **kwargs, file=f)
     
-    def train(self, X, Y, save_checkpoint=None, plot=False):
+    def train(self, X, Y, save_checkpoint=None, load_checkpoint=None, plot=False):
         
         printlog = self.print_and_log
         
@@ -667,8 +547,9 @@ class PredictiveCodingClassifier:
         test: re-shape 3392,864 (num imgs * tiles per image, flattened tile) to 212, 16, 864 (num imgs, tiles per image, flattened tile)
         This will be completed by data.py in the future, by God's grace.
         '''
-        printlog('test: reshaping X into num imgs, num tiles per image, flattened tile')
+        printlog('original X shape:', X.shape)
         X = X.reshape(num_imgs, num_tiles, -1)
+        printlog('test: reshaping X into num imgs, num tiles per image, flattened tile')
 
         '''
         test
@@ -704,11 +585,11 @@ class PredictiveCodingClassifier:
         evaluate = partial(self.evaluate, update_method_name=update_method_name, update_method_number=update_method_number, classif_method=classif_method, plot=None)
         
         # Checkpointing
-        if 'save_every' in self.save_checkpoint:
+        if 'save_every' in save_checkpoint:
             # If N
-            checkpoint = self.save_checkpoint['save_every'] 
-        elif 'fraction' in self.save_checkpoint:
-            fraction_value = self.save_checkpoint['fraction']
+            checkpoint = save_checkpoint['save_every'] 
+        elif 'fraction' in save_checkpoint:
+            fraction_value = save_checkpoint['fraction']
             # If frac tuple
             if isinstance(fraction_value, tuple):
                 numerator, denominator = fraction_value
@@ -720,16 +601,29 @@ class PredictiveCodingClassifier:
             checkpoint = np.ceil(checkpoint)
         else:
             checkpoint = None  # Default case if neither key is found
-        printlog(f'Checkpoint method: {self.save_checkpoint}', '\n', 'saving every', checkpoint)
+        printlog(f'Checkpoint method: {save_checkpoint}', '\n', 'saving every', checkpoint)
         
+        # If loading
+        if load_checkpoint is not None:
+            printlog(f'Load checkpoint method: {load_checkpoint}')
+            # # Then add the number of epochs it already has to the starting '0'
+            # load_name = self.load_name 
+            # # take off .pydb
+            # load_name_no_pydb = load_name.rsplit('.', 1)[0]
+            # # isolate epoch number
+            # load_epoch = int(load_name_no_pydb.rsplit('_', 1)[1])
+            # epoch = load_epoch
+            start_epoch = self.load_epoch
+            printlog('starting epoch is', epoch)
+        else:
+            start_epoch = 0
 
-        # Epoch 0 evaluation
-        epoch = 0
+        # Epoch '0' evaluation (pre-training, or if checkpoint has been loaded, pre-additional-training)
         Jr0 = 0
         Jc0 = 0
         accuracy = 0
         printlog('\n')
-        printlog('Epoch: 0')
+        printlog(f'Epoch: {start_epoch}')
         for img in range(num_imgs):
             input = X[img]
             label = Y[img]
@@ -740,15 +634,15 @@ class PredictiveCodingClassifier:
             Jc0 += classif_cost(label)
         accuracy += evaluate(X, Y)
         printlog(f'Jr: {Jr0}, Jc: {Jc0}, Accuracy: {accuracy}')
-        self.Jr[epoch] = Jr0
-        self.Jc[epoch] = Jc0
-        self.accuracy[epoch] = accuracy
+        self.Jr[start_epoch] = Jr0
+        self.Jc[start_epoch] = Jc0
+        self.accuracy[start_epoch] = accuracy
         
         # Training
         printlog('Training...')
         t_start_train = datetime.now()
         for e in range(epoch_n):
-            epoch = e + 1
+            epoch = e + 1 + start_epoch
             printlog(f'Epoch {epoch}')
             t_start_epoch = datetime.now()
             Jre = 0
