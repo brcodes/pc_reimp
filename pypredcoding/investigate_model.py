@@ -3,12 +3,13 @@ import matplotlib.pyplot as plt
 from os import listdir
 from os.path import getctime, join, isfile
 from datetime import datetime
-
-# Directory containing the diagnostics
-diags_dir = 'models'
 filename_marker = ''
 
-# # Which diagnostics to plot
+# Directory containing the diagnostics
+diags_dir = 'results/diagnostics/'
+
+# # Which diagnostics to plot:
+
 # # Grab most recent in folder
 # which = 'most_recent'
 # # Grab only those from today
@@ -19,6 +20,11 @@ filename_marker = ''
 # Grab all
 # which = 'all'
 which = 'all_in_order'
+
+'''
+warning: this will overwrite online diagnostic plots from training, if in results/plots/
+should be identical, though.
+'''
 
 # Get the list of files in the directory
 files = listdir(diags_dir)

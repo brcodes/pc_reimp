@@ -55,7 +55,7 @@ if __name__ == "__main__":
 
     # Do not put in list form. this takes the general filename appendage for your search, and will auto.
     #-matically put a, b etc at the end of it, to differentiate runs. This becomes the model.exp_name parameter.
-    exp_name_base = 'li_params_priors_r1_U2_r100Wexplore'
+    exp_name_base = ''
     
     '''
     user sets: ^^^

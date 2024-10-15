@@ -4,12 +4,25 @@
 ## Parameters relevant for sPCC but not rPCC will be ignored for the latter, and vice versa.
 ## You can keep them all in, as long as your model_type is set correctly. rPCC not fully written. sPCC only.
 
+## ********
+## Note for Kevin
+## ********
+
+# While Li_priors and Li learning rate denominators will work with models of any type
+# Li architecture 'expand_first_lyr_Li' includes her funky update math, which will probably not.
+# This config is designed for a strict replication of her model params, only
+# i.e. n = 3 layers, tiled_input = true, flat_input = true.
+
+## ********
+
+## ********
+
 ## METADATA AND EXPERIMENT
 # Will append model filenames
 exp_name='architecture tests Li'
 # Extra text about the experiments.
 notes='architecture tests'
-
+#
 # Don't change:
 train_with=True
 evaluate_with=False
@@ -62,6 +75,7 @@ update_method={'rW_niters':30}
 
 # softmax (normal or stable)
 softmax_type='normal'
+# Li's had no k, so k =1.
 softmax_k=1
 
 # Don't change:
@@ -114,12 +128,12 @@ plot_train= True
 # save every 1/N of total epochs {'fraction': 0.1} or {'fraction': (1/10)}
 # The only thing that differentiates a 'checkpoint' from a 'model' is abstractly the latter is considered fully trained, while the former is not
 # Under this paradigm, models are saved in models/ and checkpoints are saved in models/checkpoints/
-save_checkpoint= {'save_every':50} 
+save_checkpoint= {'save_every':5} 
 
-# if checkpoints present, load? None, or Int != -1 for checkpoint epoch desired. Int == -1 for latest checkpoint.
+# if checkpoints present, load? None for none. Int != -1 for checkpoint epoch desired. Int == -1 for latest checkpoint.
 load_checkpoint=-1
 
-# Don't change (unless you add batch support. Li's should be stochastic, though.):
+# Don't change (unless you add batch support. Li's should be stochastic, though):
 # Stochastic gradient descent is 1, all above is batch gd.
 batch_size=1
 

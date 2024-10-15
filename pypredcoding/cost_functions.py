@@ -3,17 +3,6 @@ import numpy as np
 '''
 to-do
 
-clean up train
-clean up evaluate
-implement cost_function classes in train, evaluate
-hard-code 10 epoch diagnostic/prints
-load checkpoint
-save checkpoint
-home/log
-home/models/checkpoints
-home/results/diagnostics/
-            /plots/
-
 squeeze into r prior
 l activation functions element wise
 
@@ -23,9 +12,6 @@ may not even support layer number changes. only hyperparameter changes and speci
 make sure it's understood that for our rn topdown update components, we're using a ko
 set ko to kn to be Li model
 but it's tunable now for the future
-
-iron out pcc
-iron out spcc
 
 '''
 

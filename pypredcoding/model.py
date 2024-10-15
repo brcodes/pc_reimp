@@ -152,10 +152,10 @@ class PredictiveCodingClassifier:
         # For L1diff ('outer') r2 calculation
         # 5d U1 case, 3d r1 case (tiled nonflat)
         if self.tiled_input and not self.flat_input:
-            self.Idiff_einsum_arg = 'ijk,l->ijkl'
+            self.L1diff_einsum_arg = 'ijk,l->ijkl'
         # Otherwise
         else:
-            self.Idiff_einsum_arg = 'ij,k->ijk'
+            self.L1diff_einsum_arg = 'ij,k->ijk'
     
     def config_from_attributes(self):
         '''
@@ -254,7 +254,6 @@ class PredictiveCodingClassifier:
                             self.U[2] = self.U_prior_dist(size=U2_size)
                     else:
                         # Unpack all the dimension sizes in r1
-                        print('r', self.r)
                         U2_size = (*self.r[1].shape, self.r[2].shape[0])
                         self.U[2] = self.U_prior_dist(size=U2_size)
                 # U3+
@@ -614,7 +613,7 @@ class PredictiveCodingClassifier:
             # load_epoch = int(load_name_no_pydb.rsplit('_', 1)[1])
             # epoch = load_epoch
             start_epoch = self.load_epoch
-            printlog('starting epoch is', epoch)
+            printlog('starting epoch is', start_epoch)
         else:
             start_epoch = 0
 
