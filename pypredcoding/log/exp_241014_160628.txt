@@ -1,0 +1,85 @@
+exp_name: architecture tests_li setup_priors_lrfractions_e1lLi
+notes: architecture tests
+train_with: True
+evaluate_with: False
+predict_with: False
+input_shape: (16, 864)
+num_tiles: 16
+num_layers: 3
+hidden_lyr_sizes: [32, 128]
+output_lyr_size: 212
+architecture: flat_hidden_lyrs
+classif_method: c1
+priors: Li_priors
+lr_denominators: Li_denominators
+update_method: {'r_niters_W': 100}
+softmax_type: normal
+softmax_k: 1
+model_type: static
+tiled_input: True
+flat_input: True
+activ_func: linear
+num_imgs: 212
+num_classes: 212
+dataset_train: ds.trace212_212_li_trace212_132_84_tl_16_36_24_32_20.pydb
+epoch_n: 1
+kr: {1: 0.001, 2: 0.001, 3: 0.001, 'o': 0.001}
+kU: {1: 0.001, 2: 0.001, 3: 0.001, 'o': 0.001}
+alph: {1: 1.0, 2: 0.05, 3: 0.05}
+lam: {1: 0.001, 2: 0.001, 3: 0.001, 'o': 0.001}
+ssq: {0: 1, 1: 10, 2: 10, 3: 2}
+batch_size: 1
+save_checkpoint: {'save_every': 50}
+load_checkpoint: None
+online_diagnostics: True
+plot_train: True
+
+
+
+priors: Li_priors init preview:
+r0 shape: (16, 864)
+r1 shape: (32,)
+U1 shape: (16, 864, 32)
+r2 shape: (128,)
+U2 shape: (32, 128)
+r3 shape: (212,)
+U3 shape: (128, 212)
+
+
+r0 first 3: [[0. 0. 0. ... 0. 0. 0.]
+ [0. 0. 0. ... 0. 0. 0.]
+ [0. 0. 0. ... 0. 0. 0.]]
+r1 first 3: [0. 0. 0.]
+U1 first 3x3x3: [[[ 0.20728171 -0.28992139  0.0662644 ]
+  [ 0.36746196 -0.14667098 -0.1158995 ]
+  [-0.31394869  0.25740495  0.02149588]]
+
+ [[-0.20076959  0.09696339 -0.09214463]
+  [ 0.07344441 -0.34134297  0.39781948]
+  [-0.4957698   0.22435186  0.13541236]]
+
+ [[ 0.37342561  0.2228585  -0.33299884]
+  [ 0.23064238 -0.27546126 -0.08340796]
+  [-0.26234741 -0.36146314 -0.22838874]]]
+r2 first 3: [0. 0. 0.]
+U2 first 3x3: [[ 0.48700377 -0.36094118  0.42387332]
+ [-0.09191529 -0.28871797  0.44068082]
+ [ 0.26845444 -0.19072881 -0.14083041]]
+r3 first 3: [0. 0. 0.]
+U3 first 3x3: [[-0.06706561 -0.1777682   0.3081489 ]
+ [ 0.36794812  0.01583047  0.13133601]
+ [ 0.28860768 -0.45566603  0.05276325]]
+
+
+test: reshaping X into num imgs, num tiles per image, flattened tile
+Train init:
+X shape: (212, 16, 864)
+Y shape: (212, 212)
+
+
+Diagnostics on
+Epoch: 0
+Jr: 34581395.12694439, Jc: 1127.5027880442533, Accuracy: 0.5518867924528302
+Training...
+Epoch 1
+eval 1

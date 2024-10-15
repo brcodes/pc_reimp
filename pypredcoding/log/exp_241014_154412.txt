@@ -1,0 +1,78 @@
+exp_name: architecture tests_li setup_priors_lrfractions_e1lLi
+notes: architecture tests
+train_with: True
+evaluate_with: False
+predict_with: False
+input_shape: (16, 864)
+num_tiles: 16
+num_layers: 3
+hidden_lyr_sizes: [32, 128]
+output_lyr_size: 212
+architecture: expand_first_lyr_Li
+classif_method: c1
+priors: Li_priors
+lr_denominators: Li_denominators
+update_method: {'r_niters_W': 100}
+softmax_type: normal
+softmax_k: 1
+model_type: static
+tiled_input: True
+flat_input: True
+activ_func: linear
+num_imgs: 212
+num_classes: 212
+dataset_train: ds.trace212_212_li_trace212_132_84_tl_16_36_24_32_20.pydb
+epoch_n: 1000
+kr: {1: 0.001, 2: 0.001, 3: 0.001, 'o': 0.001}
+kU: {1: 0.001, 2: 0.001, 3: 0.001, 'o': 0.001}
+alph: {1: 1.0, 2: 0.05, 3: 0.05}
+lam: {1: 0.001, 2: 0.001, 3: 0.001, 'o': 0.001}
+ssq: {0: 1, 1: 10, 2: 10, 3: 2}
+batch_size: 1
+save_checkpoint: {'save_every': 50}
+load_checkpoint: None
+online_diagnostics: True
+plot_train: True
+
+
+
+priors: Li_priors init preview:
+r0 shape: (16, 864)
+r0 first 3: [[0. 0. 0. ... 0. 0. 0.]
+ [0. 0. 0. ... 0. 0. 0.]
+ [0. 0. 0. ... 0. 0. 0.]]
+r1 shape: (16, 32)
+r1 first 3: [[0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0.
+  0. 0. 0. 0. 0. 0. 0. 0.]
+ [0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0.
+  0. 0. 0. 0. 0. 0. 0. 0.]
+ [0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0.
+  0. 0. 0. 0. 0. 0. 0. 0.]]
+U1 shape: (16, 864, 32)
+U1 first 3x3x3: [[[ 0.41565359 -0.41348904  0.15101174]
+  [ 0.44340656  0.43753105  0.48517186]
+  [ 0.32663461 -0.22955181  0.41355171]]
+
+ [[ 0.10253662  0.12930989 -0.39486641]
+  [ 0.38943054  0.38863567  0.49845017]
+  [ 0.45569786  0.02137416  0.14858189]]
+
+ [[ 0.26057615  0.20446904 -0.39418902]
+  [ 0.25965531 -0.35957812  0.39419352]
+  [-0.49840267  0.39550097 -0.30362547]]]
+r2 shape: (128,)
+r2 first 3: [0. 0. 0.]
+U2 shape: (512, 128)
+U2 first 3x3: [[-0.08762897  0.22959301  0.30086413]
+ [-0.33212428 -0.41885916 -0.3493263 ]
+ [ 0.4412651  -0.20794277  0.17246452]]
+r3 shape: (212,)
+r3 first 3: [0. 0. 0.]
+U3 shape: (128, 212)
+U3 first 3x3: [[-0.49128518  0.21371997  0.34325349]
+ [ 0.36492589  0.31064501  0.31871241]
+ [ 0.41507138 -0.07526078  0.32413512]]
+test: reshaping X into num imgs, num tiles per image, flattened tile
+Train init:
+X shape: (212, 16, 864)
+Y shape: (212, 212)

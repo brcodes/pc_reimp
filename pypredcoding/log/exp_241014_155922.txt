@@ -1,0 +1,97 @@
+exp_name: architecture tests_li setup_priors_lrfractions_e1lLi
+notes: architecture tests
+train_with: True
+evaluate_with: False
+predict_with: False
+input_shape: (16, 864)
+num_tiles: 16
+num_layers: 3
+hidden_lyr_sizes: [32, 128]
+output_lyr_size: 212
+architecture: expand_first_lyr
+classif_method: c1
+priors: Li_priors
+lr_denominators: Li_denominators
+update_method: {'r_niters_W': 100}
+softmax_type: normal
+softmax_k: 1
+model_type: static
+tiled_input: True
+flat_input: True
+activ_func: linear
+num_imgs: 212
+num_classes: 212
+dataset_train: ds.trace212_212_li_trace212_132_84_tl_16_36_24_32_20.pydb
+epoch_n: 1
+kr: {1: 0.001, 2: 0.001, 3: 0.001, 'o': 0.001}
+kU: {1: 0.001, 2: 0.001, 3: 0.001, 'o': 0.001}
+alph: {1: 1.0, 2: 0.05, 3: 0.05}
+lam: {1: 0.001, 2: 0.001, 3: 0.001, 'o': 0.001}
+ssq: {0: 1, 1: 10, 2: 10, 3: 2}
+batch_size: 1
+save_checkpoint: {'save_every': 50}
+load_checkpoint: None
+online_diagnostics: True
+plot_train: True
+
+
+
+priors: Li_priors init preview:
+r0 shape: (16, 864)
+r1 shape: (16, 32)
+U1 shape: (16, 864, 32)
+r2 shape: (128,)
+U2 shape: (16, 32, 128)
+r3 shape: (212,)
+U3 shape: (128, 212)
+
+
+r0 first 3: [[0. 0. 0. ... 0. 0. 0.]
+ [0. 0. 0. ... 0. 0. 0.]
+ [0. 0. 0. ... 0. 0. 0.]]
+r1 first 3: [[0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0.
+  0. 0. 0. 0. 0. 0. 0. 0.]
+ [0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0.
+  0. 0. 0. 0. 0. 0. 0. 0.]
+ [0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0.
+  0. 0. 0. 0. 0. 0. 0. 0.]]
+U1 first 3x3x3: [[[-0.00138344 -0.31302887  0.13377032]
+  [-0.13066716 -0.01248809 -0.40609397]
+  [-0.25864759 -0.12272033  0.28498005]]
+
+ [[-0.3900952   0.3966002   0.32963451]
+  [-0.1784627   0.1149456  -0.34011013]
+  [-0.41013823  0.02933934 -0.29223425]]
+
+ [[ 0.16753929  0.27451534 -0.20901461]
+  [ 0.152584   -0.05686191  0.49659747]
+  [ 0.33132505 -0.33376336 -0.46349332]]]
+r2 first 3: [0. 0. 0.]
+U2 first 3x3x3: [[[-0.40574532 -0.0486795  -0.10086584]
+  [ 0.15013634 -0.29048371 -0.13300821]
+  [ 0.44190426  0.01271296  0.31484505]]
+
+ [[ 0.43127541  0.21924019 -0.42019096]
+  [ 0.2918271  -0.17290646  0.23857488]
+  [-0.49127592 -0.09003549 -0.48222499]]
+
+ [[ 0.36424981  0.16293811  0.35285671]
+  [ 0.26256334  0.14253968  0.4791476 ]
+  [-0.10582172 -0.18780844 -0.21235633]]]
+r3 first 3: [0. 0. 0.]
+U3 first 3x3: [[ 0.00062704 -0.20079589 -0.36192646]
+ [ 0.27111465 -0.0488146  -0.21687317]
+ [-0.23409024 -0.39196559 -0.408587  ]]
+
+
+test: reshaping X into num imgs, num tiles per image, flattened tile
+Train init:
+X shape: (212, 16, 864)
+Y shape: (212, 212)
+
+
+Diagnostics on
+Epoch: 0
+Jr: 33410104.700714428, Jc: 1127.402543530609, Accuracy: 0.3584905660377358
+Training...
+Epoch 1

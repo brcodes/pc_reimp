@@ -1,0 +1,113 @@
+exp_name: architecture tests
+notes: architecture tests
+train_with: True
+evaluate_with: False
+predict_with: False
+input_shape: (16, 864)
+num_tiles: 16
+num_layers: 3
+hidden_lyr_sizes: [32, 128]
+output_lyr_size: 212
+architecture: expand_first_lyr_Li
+classif_method: c1
+priors: Li_priors
+lr_denominators: Li_denominators
+update_method: {'rW_niters': 30}
+softmax_type: normal
+softmax_k: 1
+model_type: static
+tiled_input: True
+flat_input: True
+activ_func: linear
+num_imgs: 212
+num_classes: 212
+dataset_train: ds.trace212_212_li_trace212_132_84_tl_16_36_24_32_20.pydb
+epoch_n: 1
+kr: {1: 0.001, 2: 0.001, 3: 0.001, 'o': 0.001}
+kU: {1: 0.001, 2: 0.001, 3: 0.001, 'o': 0.001}
+alph: {1: 1.0, 2: 0.05, 3: 0.05}
+lam: {1: 0.001, 2: 0.001, 3: 0.001, 'o': 0.001}
+ssq: {0: 1, 1: 10, 2: 10, 3: 2}
+plot_train: True
+batch_size: 1
+save_checkpoint: {'save_every': 50}
+load_checkpoint: None
+
+
+
+shapes
+r0 shape: (16, 864)
+r1 shape: (16, 32)
+U1 shape: (16, 864, 32)
+r2 shape: (128,)
+U2 shape: (512, 128)
+r3 shape: (212,)
+U3 shape: (128, 212)
+
+
+priors: Li_priors init preview:
+r0 first 3: [[0. 0. 0. ... 0. 0. 0.]
+ [0. 0. 0. ... 0. 0. 0.]
+ [0. 0. 0. ... 0. 0. 0.]]
+r1 first 3: [[0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0.
+  0. 0. 0. 0. 0. 0. 0. 0.]
+ [0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0.
+  0. 0. 0. 0. 0. 0. 0. 0.]
+ [0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0.
+  0. 0. 0. 0. 0. 0. 0. 0.]]
+U1 first 3x3x3: [[[-0.0644479   0.24047565  0.43491476]
+  [-0.13944077  0.16640586 -0.04306682]
+  [ 0.1404772   0.0882168   0.00414207]]
+
+ [[-0.25048172 -0.33594566  0.41803219]
+  [-0.09069624  0.39790698  0.37331999]
+  [-0.06938747 -0.49198775 -0.24904662]]
+
+ [[-0.41552    -0.28154688 -0.36396906]
+  [-0.18029424 -0.3772071  -0.02214822]
+  [-0.04600893  0.23903223 -0.38114797]]]
+r2 first 3: [0. 0. 0.]
+U2 first 3x3: [[ 0.40597546 -0.46727055 -0.19697879]
+ [ 0.1295415  -0.23681213  0.32728834]
+ [-0.18943683  0.03886179  0.08737178]]
+r3 first 3: [0. 0. 0.]
+U3 first 3x3: [[-0.26048144 -0.18193756 -0.3381002 ]
+ [ 0.36211415 -0.01790828 -0.33976309]
+ [-0.1268685   0.47171641 -0.2876429 ]]
+
+
+test: reshaping X into num imgs, num tiles per image, flattened tile
+Train init:
+X shape: (212, 16, 864)
+Y shape: (212, 212)
+
+
+Epoch: 0
+Jr: 33435172.42044564, Jc: 1133.2932467425944, Accuracy: 0.07075471698113207
+Training...
+Epoch 1
+eval 1
+
+plot:
+loaded diag file: mod.st_tl_3_32-128-212_212_eflL_lin_Li_priors_c1_rW_niters-30_architecture tests_1.pydb
+Saved plot: results/plots/mod.st_tl_3_32-128-212_212_eflL_lin_Li_priors_c1_rW_niters-30_architecture tests_1.pydb
+Jr: 434186.06348818383, Jc: 1133.3643673353388, Accuracy: 0.0047169811320754715
+Epoch time: 0:01:05.769369.
+Est. time remaining: 0:00:00.
+Est. tot time: 0:01:05.769369.
+Training complete.
+Tot time: 0:01:05.769490.
+Saving final model...
+
+plot:
+loaded diag file: mod.st_tl_3_32-128-212_212_eflL_lin_Li_priors_c1_rW_niters-30_architecture tests_1.pydb
+Saved plot: results/plots/mod.st_tl_3_32-128-212_212_eflL_lin_Li_priors_c1_rW_niters-30_architecture tests_1.pydb
+
+
+
+Final diagnostics over 1 epochs:
+Ep. 0 Jr: 33435172.42044564, Jc: 1133.2932467425944, Accuracy: 0.07075471698113207
+Ep. 1 Jr: 434186.06348818383, Jc: 1133.3643673353388, Accuracy: 0.0047169811320754715
+Percent diff Jr: 98.70140922849652, Jc: -0.006275568388745371, Accuracy: 93.33333333333333
+Change per epoch Jr: 98.70140922849652, Jc: -0.006275568388745371, Accuracy: 93.33333333333333
+Change per min Jr: 90.04303596865037, Jc: -0.005725057368161472, Accuracy: 85.14586322624669

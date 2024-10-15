@@ -1,0 +1,407 @@
+Experiment log begin: log/exp_241015_140513.txt
+exp_name: architecture tests Li
+notes: architecture tests
+train_with: True
+evaluate_with: False
+predict_with: False
+input_shape: (16, 864)
+num_tiles: 16
+num_layers: 3
+hidden_lyr_sizes: [32, 128]
+output_lyr_size: 212
+architecture: expand_first_lyr_Li
+classif_method: c1
+priors: Li_priors
+lr_denominators: Li_denominators
+update_method: {'rW_niters': 30}
+softmax_type: normal
+softmax_k: 1
+model_type: static
+tiled_input: True
+flat_input: True
+activ_func: linear
+num_imgs: 212
+num_classes: 212
+dataset_train: ds.trace212_212_li_trace212_132_84_tl_16_36_24_32_20.pydb
+epoch_n: 300
+kr: {1: 0.001, 2: 0.001, 3: 0.001, 'o': 0.001}
+kU: {1: 0.001, 2: 0.001, 3: 0.001, 'o': 0.001}
+alph: {1: 1.0, 2: 0.05, 3: 0.05}
+lam: {1: 0.001, 2: 0.001, 3: 0.001, 'o': 0.001}
+ssq: {0: 1, 1: 10, 2: 10, 3: 2}
+plot_train: True
+save_checkpoint: {'save_every': 50}
+load_checkpoint: -1
+batch_size: 1
+
+
+
+shapes
+r0 shape: (16, 864)
+r1 shape: (16, 32)
+U1 shape: (16, 864, 32)
+r2 shape: (128,)
+U2 shape: (512, 128)
+r3 shape: (212,)
+U3 shape: (128, 212)
+
+
+priors: Li_priors init preview:
+r0 first 3: [[ 0.          0.         -1.87191818 ...  4.85371278  3.19027875
+   3.1557941 ]
+ [ 0.          0.         -1.14442204 ...  0.          0.
+   0.        ]
+ [ 0.          0.          0.         ... -8.80379619 -8.86961889
+  -8.9338539 ]]
+r1 first 3: [[ 1.19660548e+00  1.99474312e-01 -9.07819535e-02  6.10458075e-01
+   1.11823839e-01 -4.06715975e-02 -2.31232883e-02 -3.37607126e-01
+   1.46162594e-01 -8.28452642e-02  4.37356669e-01  9.08995779e-01
+  -1.94074335e+00  4.34747052e-02  6.80885638e-01 -5.89388915e-01
+  -4.01508610e-01 -3.34299570e-01 -9.70562217e-02 -1.54252735e-01
+   3.46514854e-01  3.84173344e-01 -1.96765652e-01  1.17010799e-01
+   2.75515019e-02  2.75770006e+00  4.70481908e-01 -1.35357661e+00
+   2.32579529e-02  9.65609565e-02  3.24518068e-01 -2.27091346e-01]
+ [-2.05103861e+00 -1.09797995e+00  3.03277784e-01 -2.71907948e-01
+   7.05970047e-02  1.17416151e+00 -2.33999530e-01 -7.26250988e-01
+  -1.09668872e-01 -4.56951024e-01  2.38163300e-01  6.06684458e-01
+  -1.19698210e-01 -9.90447343e-01  7.33349908e-01 -5.43285652e-01
+   7.35566693e-01  6.95533836e-01  1.10554158e+00  9.00259076e-01
+   1.23257692e+00 -1.13664658e-01  1.90527540e-02 -4.57838338e-02
+   4.99386141e-01 -8.08409326e-01 -5.02023319e-01 -1.11929174e+00
+   1.07765901e+00  1.20919938e-01  1.69648802e-01 -4.36444915e-01]
+ [-1.47128036e+00  4.32947112e-01  8.12144635e-01  1.04831207e-01
+   5.45638282e-01 -2.56662947e-01 -3.19975249e-01  3.55746979e-01
+  -3.33682711e-01 -2.45511766e-01  3.95065398e-01  7.66810864e-01
+   5.21474574e-01 -1.30043817e+00 -7.71889594e-01  4.07429181e-01
+   1.15871856e-01  7.95654842e-01 -3.46372761e-01  7.95542604e-02
+  -3.37111223e-01  5.64871544e-01 -9.78248244e-02 -1.26447879e-01
+  -1.37996443e+00 -1.91006346e-03  6.47300853e-01 -1.95003531e-02
+   1.84510023e+00 -8.02821088e-01  8.26144196e-01 -3.52317458e-01]]
+U1 first 3x3x3: [[[-0.18797169 -0.11137267 -0.17658666]
+  [ 0.12640127 -0.07201654  0.16824744]
+  [-0.30811133  0.27537181  0.22317622]]
+
+ [[ 0.10976417  0.11567631  0.00208076]
+  [-0.14109627  0.03997721  0.194233  ]
+  [ 0.15087997  0.15984024 -0.12218376]]
+
+ [[-0.04250953 -0.23558456 -0.24221144]
+  [-0.04587013 -0.22947193 -0.18180794]
+  [-0.27524525  0.34635378  0.13289003]]]
+r2 first 3: [-0.0584255  -0.06563454  0.07516581]
+U2 first 3x3: [[ 0.09710679  0.08255022 -0.42525423]
+ [ 0.15703199 -0.2480801   0.40513999]
+ [-0.4340697  -0.11271473  0.24889039]]
+r3 first 3: [-0.01060707  0.00292731 -0.03636756]
+U3 first 3x3: [[ 0.02232666  0.0050694   0.34794303]
+ [ 0.16463013  0.34925286  0.04329527]
+ [-0.10415273 -0.25321552 -0.03192351]]
+
+
+original X shape: (3392, 864)
+test: reshaping X into num imgs, num tiles per image, flattened tile
+Train init:
+X shape: (212, 16, 864)
+Y shape: (212, 212)
+Checkpoint method: {'save_every': 50} 
+ saving every 50
+Load checkpoint method: -1
+starting epoch is 50
+
+
+Epoch: 50
+Jr: 64263.093738654665, Jc: 1133.2632010247378, Accuracy: 0.018867924528301886
+Training...
+Epoch 51
+eval 51
+Jr: 52507.05523242233, Jc: 1133.3366523116981, Accuracy: 0.018867924528301886
+Epoch time: 0:01:03.466513.
+Est. time remaining: 4:23:23.161737.
+Epoch 52
+eval 52
+Jr: 52480.827603916194, Jc: 1133.3807812916275, Accuracy: 0.018867924528301886
+Epoch time: 0:01:12.931251.
+Est. time remaining: 5:01:26.950248.
+Epoch 53
+eval 53
+Jr: 52383.63931198296, Jc: 1133.3739843501912, Accuracy: 0.018867924528301886
+Epoch time: 0:01:02.144382.
+Est. time remaining: 4:15:49.662354.
+Epoch 54
+eval 54
+Jr: 52304.166459218155, Jc: 1133.4168613235227, Accuracy: 0.018867924528301886
+Epoch time: 0:01:02.002634.
+Est. time remaining: 4:14:12.647964.
+Epoch 55
+eval 55
+Jr: 52318.874701607885, Jc: 1133.4408588890212, Accuracy: 0.02358490566037736
+Epoch time: 0:01:00.478236.
+Est. time remaining: 4:06:57.167820.
+Epoch 56
+eval 56
+Jr: 52195.02541128882, Jc: 1133.418785244793, Accuracy: 0.02358490566037736
+Epoch time: 0:01:00.270205.
+Est. time remaining: 4:05:05.930020.
+Epoch 57
+eval 57
+Jr: 52196.927461342566, Jc: 1133.4214748146676, Accuracy: 0.02358490566037736
+Epoch time: 0:01:01.498614.
+Est. time remaining: 4:09:04.163202.
+Epoch 58
+eval 58
+Jr: 52103.82312857353, Jc: 1133.4286818827918, Accuracy: 0.018867924528301886
+Epoch time: 0:01:02.118715.
+Est. time remaining: 4:10:32.729030.
+Epoch 59
+eval 59
+Jr: 52121.75962298176, Jc: 1133.371810004909, Accuracy: 0.02358490566037736
+Epoch time: 0:01:07.801507.
+Est. time remaining: 4:32:20.163187.
+Epoch 60
+eval 60
+
+plot:
+loaded diag file:
+results/diagnostics/diag.mod.st_tl_3_32-128-212_212_eflL_lin_Li_priors_c1_rW_niters-30_architecture tests Li_60.pydb
+Saved plot:
+ results/plots/diag.mod.st_tl_3_32-128-212_212_eflL_lin_Li_priors_c1_rW_niters-30_architecture tests Li_60.pydb 
+
+Jr: 52069.5544327053, Jc: 1133.3757917326539, Accuracy: 0.018867924528301886
+Epoch time: 0:01:07.788002.
+Est. time remaining: 4:31:09.120480.
+Epoch 61
+eval 61
+Jr: 52054.411118865304, Jc: 1133.3962836660635, Accuracy: 0.018867924528301886
+Epoch time: 0:01:17.334467.
+Est. time remaining: 5:08:02.937613.
+Epoch 62
+eval 62
+Jr: 51932.9623221432, Jc: 1133.435134284075, Accuracy: 0.018867924528301886
+Epoch time: 0:01:07.123521.
+Est. time remaining: 4:26:15.397998.
+Epoch 63
+eval 63
+Jr: 51958.555943399806, Jc: 1133.4068020025156, Accuracy: 0.018867924528301886
+Epoch time: 0:01:04.559795.
+Est. time remaining: 4:15:00.671415.
+Epoch 64
+eval 64
+Jr: 51950.685076112175, Jc: 1133.4170443817686, Accuracy: 0.02358490566037736
+Epoch time: 0:01:05.025260.
+Est. time remaining: 4:15:45.961360.
+Epoch 65
+eval 65
+Jr: 51882.58227798261, Jc: 1133.3971307752006, Accuracy: 0.02358490566037736
+Epoch time: 0:01:03.759955.
+Est. time remaining: 4:09:43.589425.
+Epoch 66
+eval 66
+Jr: 51955.52541152623, Jc: 1133.4584867246551, Accuracy: 0.02358490566037736
+Epoch time: 0:01:02.191204.
+Est. time remaining: 4:02:32.741736.
+Epoch 67
+eval 67
+Jr: 51806.884836016485, Jc: 1133.4425688119748, Accuracy: 0.02358490566037736
+Epoch time: 0:01:05.917155.
+Est. time remaining: 4:15:58.697115.
+Epoch 68
+eval 68
+Jr: 51848.63828423474, Jc: 1133.419126359066, Accuracy: 0.02358490566037736
+Epoch time: 0:01:05.543647.
+Est. time remaining: 4:13:26.126104.
+Epoch 69
+eval 69
+Jr: 51693.2682480478, Jc: 1133.4430528463402, Accuracy: 0.02358490566037736
+Epoch time: 0:01:06.523333.
+Est. time remaining: 4:16:06.889923.
+Epoch 70
+eval 70
+
+plot:
+loaded diag file:
+results/diagnostics/diag.mod.st_tl_3_32-128-212_212_eflL_lin_Li_priors_c1_rW_niters-30_architecture tests Li_70.pydb
+Saved plot:
+ results/plots/diag.mod.st_tl_3_32-128-212_212_eflL_lin_Li_priors_c1_rW_niters-30_architecture tests Li_70.pydb 
+
+Jr: 51791.25089321371, Jc: 1133.4161934432486, Accuracy: 0.02358490566037736
+Epoch time: 0:01:07.356431.
+Est. time remaining: 4:18:11.979130.
+Epoch 71
+eval 71
+Jr: 51713.46163434481, Jc: 1133.4071285633722, Accuracy: 0.02358490566037736
+Epoch time: 0:01:07.752555.
+Est. time remaining: 4:18:35.335095.
+Epoch 72
+eval 72
+Jr: 51705.26843258826, Jc: 1133.443428615712, Accuracy: 0.014150943396226415
+Epoch time: 0:01:08.805869.
+Est. time remaining: 4:21:27.738132.
+Epoch 73
+eval 73
+Jr: 51681.29785964956, Jc: 1133.4489054239132, Accuracy: 0.014150943396226415
+Epoch time: 0:01:02.696077.
+Est. time remaining: 3:57:12.009479.
+Epoch 74
+eval 74
+Jr: 51705.6106132498, Jc: 1133.447797805579, Accuracy: 0.009433962264150943
+Epoch time: 0:01:06.813838.
+Est. time remaining: 4:11:39.927388.
+Epoch 75
+eval 75
+Jr: 51614.316629683985, Jc: 1133.4581233179124, Accuracy: 0.02358490566037736
+Epoch time: 0:01:02.109839.
+Est. time remaining: 3:52:54.713775.
+Epoch 76
+eval 76
+Jr: 51637.667446853804, Jc: 1133.4875636886404, Accuracy: 0.009433962264150943
+Epoch time: 0:01:01.900288.
+Est. time remaining: 3:51:05.664512.
+Epoch 77
+eval 77
+Jr: 51598.289223959444, Jc: 1133.4724840896702, Accuracy: 0.018867924528301886
+Epoch time: 0:01:02.129377.
+Est. time remaining: 3:50:54.851071.
+Epoch 78
+eval 78
+Jr: 51588.77357977549, Jc: 1133.4900049098621, Accuracy: 0.018867924528301886
+Epoch time: 0:01:05.032265.
+Est. time remaining: 4:00:37.162830.
+Epoch 79
+eval 79
+Jr: 51582.8587573858, Jc: 1133.4347040535781, Accuracy: 0.018867924528301886
+Epoch time: 0:00:57.963872.
+Est. time remaining: 3:33:30.015712.
+Epoch 80
+eval 80
+
+plot:
+loaded diag file:
+results/diagnostics/diag.mod.st_tl_3_32-128-212_212_eflL_lin_Li_priors_c1_rW_niters-30_architecture tests Li_80.pydb
+Saved plot:
+ results/plots/diag.mod.st_tl_3_32-128-212_212_eflL_lin_Li_priors_c1_rW_niters-30_architecture tests Li_80.pydb 
+
+Jr: 51529.50505265289, Jc: 1133.506442305326, Accuracy: 0.014150943396226415
+Epoch time: 0:00:58.612388.
+Est. time remaining: 3:34:54.725360.
+Epoch 81
+eval 81
+Jr: 51485.15299921384, Jc: 1133.4459117127758, Accuracy: 0.02830188679245283
+Epoch time: 0:01:02.557656.
+Est. time remaining: 3:48:20.126664.
+Epoch 82
+eval 82
+Jr: 51461.20783940667, Jc: 1133.4565521535285, Accuracy: 0.02358490566037736
+Epoch time: 0:01:05.916008.
+Est. time remaining: 3:59:29.689744.
+Epoch 83
+eval 83
+Jr: 51453.6341601054, Jc: 1133.4854291248043, Accuracy: 0.018867924528301886
+Epoch time: 0:01:02.041924.
+Est. time remaining: 3:44:23.097508.
+Epoch 84
+eval 84
+Jr: 51438.57008653157, Jc: 1133.4641114783683, Accuracy: 0.009433962264150943
+Epoch time: 0:01:04.806801.
+Est. time remaining: 3:53:18.269016.
+Epoch 85
+eval 85
+Jr: 51447.679549113695, Jc: 1133.4581904154952, Accuracy: 0.009433962264150943
+Epoch time: 0:00:57.212204.
+Est. time remaining: 3:25:00.623860.
+Epoch 86
+eval 86
+Jr: 51415.036369336674, Jc: 1133.4589292075896, Accuracy: 0.014150943396226415
+Epoch time: 0:00:58.100459.
+Est. time remaining: 3:27:13.498226.
+Epoch 87
+eval 87
+Jr: 51420.05550897645, Jc: 1133.4698464205321, Accuracy: 0.009433962264150943
+Epoch time: 0:00:59.488345.
+Est. time remaining: 3:31:11.017485.
+Epoch 88
+eval 88
+Jr: 51373.54697682429, Jc: 1133.4902814886673, Accuracy: 0.018867924528301886
+Epoch time: 0:00:58.218648.
+Est. time remaining: 3:25:42.353376.
+Epoch 89
+eval 89
+Jr: 51327.190409200295, Jc: 1133.559024152607, Accuracy: 0.009433962264150943
+Epoch time: 0:01:00.041483.
+Est. time remaining: 3:31:08.752913.
+Epoch 90
+eval 90
+
+plot:
+loaded diag file:
+results/diagnostics/diag.mod.st_tl_3_32-128-212_212_eflL_lin_Li_priors_c1_rW_niters-30_architecture tests Li_90.pydb
+Saved plot:
+ results/plots/diag.mod.st_tl_3_32-128-212_212_eflL_lin_Li_priors_c1_rW_niters-30_architecture tests Li_90.pydb 
+
+Jr: 51298.19056859478, Jc: 1133.5195421782657, Accuracy: 0.009433962264150943
+Epoch time: 0:01:01.180335.
+Est. time remaining: 3:34:07.870350.
+Epoch 91
+eval 91
+Jr: 51300.83243197336, Jc: 1133.4750302469572, Accuracy: 0.014150943396226415
+Epoch time: 0:00:57.959886.
+Est. time remaining: 3:21:53.616174.
+Epoch 92
+eval 92
+Jr: 51307.64410104835, Jc: 1133.4968247109093, Accuracy: 0.018867924528301886
+Epoch time: 0:00:58.223818.
+Est. time remaining: 3:21:50.554144.
+Epoch 93
+eval 93
+Jr: 51297.62687065425, Jc: 1133.4965445049872, Accuracy: 0.014150943396226415
+Epoch time: 0:00:58.188442.
+Est. time remaining: 3:20:45.007494.
+Epoch 94
+eval 94
+Jr: 51267.54136097835, Jc: 1133.5284990430093, Accuracy: 0.009433962264150943
+Epoch time: 0:01:03.894126.
+Est. time remaining: 3:39:22.189956.
+Epoch 95
+eval 95
+Jr: 51269.573941157876, Jc: 1133.5051030331472, Accuracy: 0.009433962264150943
+Epoch time: 0:01:03.217347.
+Est. time remaining: 3:35:59.556135.
+Epoch 96
+eval 96
+Jr: 51237.33692256129, Jc: 1133.554740233532, Accuracy: 0.014150943396226415
+Epoch time: 0:01:11.605161.
+Est. time remaining: 4:03:27.452844.
+Epoch 97
+eval 97
+Jr: 51256.38079494941, Jc: 1133.4845091609657, Accuracy: 0.009433962264150943
+Epoch time: 0:01:01.433905.
+Est. time remaining: 3:27:51.082715.
+Epoch 98
+eval 98
+Jr: 51232.083782817026, Jc: 1133.5040117844032, Accuracy: 0.009433962264150943
+Epoch time: 0:01:02.524798.
+Est. time remaining: 3:30:30.009196.
+Epoch 99
+eval 99
+Jr: 51216.56512556494, Jc: 1133.5142513665303, Accuracy: 0.009433962264150943
+Epoch time: 0:01:08.129949.
+Est. time remaining: 3:48:14.119749.
+Epoch 100
+eval 100
+
+plot:
+loaded diag file:
+results/diagnostics/diag.mod.st_tl_3_32-128-212_212_eflL_lin_Li_priors_c1_rW_niters-30_architecture tests Li_100.pydb
+Saved plot:
+ results/plots/diag.mod.st_tl_3_32-128-212_212_eflL_lin_Li_priors_c1_rW_niters-30_architecture tests Li_100.pydb 
+
+Checkpoint model saved at epoch 100:
+models/checkpoints/mod.st_tl_3_32-128-212_212_eflL_lin_Li_priors_c1_rW_niters-30_architecture tests Li_100.pydb
+Jr: 51144.25872848991, Jc: 1133.482845963573, Accuracy: 0.014150943396226415
+Epoch time: 0:01:10.488208.
+Est. time remaining: 3:54:57.641600.
+Epoch 101
+eval 101
+Jr: 51147.899929692205, Jc: 1133.458810030463, Accuracy: 0.009433962264150943
+Epoch time: 0:01:10.350218.
+Est. time remaining: 3:53:19.693382.
+Epoch 102
