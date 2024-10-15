@@ -660,6 +660,7 @@ class PredictiveCodingClassifier:
         clean up
         '''
         
+        epoch_n = self.epoch_n
         num_imgs = self.num_imgs
         num_tiles = self.num_tiles
         '''
@@ -687,6 +688,7 @@ class PredictiveCodingClassifier:
         '''
         '''
 
+        # Methods
         reset_rs_gteq1 = partial(self.reset_rs_gteq1, all_lyr_sizes=self.all_lyr_sizes)
         
         update_method_name = next(iter(self.update_method))
@@ -700,6 +702,26 @@ class PredictiveCodingClassifier:
         classif_cost = self.classif_cost
         
         evaluate = partial(self.evaluate, update_method_name=update_method_name, update_method_number=update_method_number, classif_method=classif_method, plot=None)
+        
+        # Checkpointing
+        if 'save_every' in self.save_checkpoint:
+            # If N
+            checkpoint = self.save_checkpoint['save_every'] 
+        elif 'fraction' in self.save_checkpoint:
+            fraction_value = self.save_checkpoint['fraction']
+            # If frac tuple
+            if isinstance(fraction_value, tuple):
+                numerator, denominator = fraction_value
+                checkpoint = (numerator/denominator) * epoch_n
+            # If it's a decimal
+            else:
+                checkpoint = fraction_value * epoch_n
+            # Round up to the nearest whole number
+            checkpoint = np.ceil(checkpoint)
+        else:
+            checkpoint = None  # Default case if neither key is found
+        printlog(f'Checkpoint method: {self.save_checkpoint}', '\n', 'saving every', checkpoint)
+        
 
         # Epoch 0 evaluation
         epoch = 0
@@ -723,7 +745,6 @@ class PredictiveCodingClassifier:
         self.accuracy[epoch] = accuracy
         
         # Training
-        epoch_n = self.epoch_n
         printlog('Training...')
         t_start_train = datetime.now()
         for e in range(epoch_n):
@@ -755,13 +776,21 @@ class PredictiveCodingClassifier:
             hard-coded in here for KB investigation'''
             
             # For every 10 epochs, save mid-training diagnostics
-            if epoch % 1 == 0:
+            if epoch % 10 == 0:
                 # Save mid-training diagnostics
                 online_name = self.generate_output_name(self.mod_name, epoch)
                 self.save_diagnostics(output_dir='results/diagnostics/', output_name=online_name)
-                if plot:
+                if plot: 
                     self.plot(input_dir='results/diagnostics/', input_name=online_name)
             ''''''
+            
+            # Checkpointing
+            if checkpoint is not None and epoch % checkpoint == 0:
+                # Save checkpoint model
+                checkpoint_name = self.generate_output_name(self.mod_name, epoch)
+                self.save_model(output_dir='models/checkpoints/', output_name=checkpoint_name)
+                checkpoint_path = join('models/checkpoints/', checkpoint_name)
+                printlog(f'Checkpoint model saved at epoch {epoch}:\n{checkpoint_path}')
             
             printlog(f'Jr: {Jre}, Jc: {Jce}, Accuracy: {accuracy}')
             t_end_epoch = datetime.now()
@@ -781,6 +810,7 @@ class PredictiveCodingClassifier:
         # Save final diagnostics
         self.save_diagnostics(output_dir='results/diagnostics/', output_name=final_name)
         
+        # Plot
         if plot:
             self.plot(input_dir='results/diagnostics/', input_name=final_name)
         
@@ -789,7 +819,7 @@ class PredictiveCodingClassifier:
         printlog(f'Final diagnostics over {epoch} epochs:')
         printlog(f'Ep. 0 Jr: {self.Jr[0]}, Jc: {self.Jc[0]}, Accuracy: {self.accuracy[0]}')
         printlog(f'Ep. {epoch} Jr: {self.Jr[epoch]}, Jc: {self.Jc[epoch]}, Accuracy: {self.accuracy[epoch]}')
-        
+
         # Corrected percent difference calculation
         epsilon = 1e-6
         percent_diff_Jr = ((self.Jr[0] - self.Jr[epoch]) / (self.Jr[0] + epsilon)) * 100
