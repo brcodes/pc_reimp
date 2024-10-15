@@ -51,9 +51,10 @@ def model_name_from_params(params):
     update_method, um_int = next(iter(params['update_method'].items()))
     um_int_str = str(um_int)  # Convert the value to a string
 
-    name = 'mod.' + params['model_type'][0] + '_' + ('tl' if params['tiled_input'] else 'ntl') + '_' \
-                    + str(params['num_layers']) + '_' + layer_sizes + '_' + num_imgs + '_' + params['activ_func'][:3] + '_' \
+    name = 'mod.' + params['model_type'][:2] + '_' + ('tl' if params['tiled_input'] else 'ntl') + '_' \
+                    + str(params['num_layers']) + '_' + layer_sizes + '_' + num_imgs + '_' \
                     + ''.join([word[0] for word in params['architecture'].split('_')]) + '_' \
+                    + params['activ_func'][:3] + '_' \
                     + params['priors'] + '_' + params['classif_method'] + '_' \
                     + update_method + '-' + um_int_str + '_' + params['exp_name'] + '_' + str(params['epoch_n']) + '.pydb'
                     
@@ -186,6 +187,8 @@ def initiate_log(params):
     log_file_name = f'exp_{timestamp}.txt'
     log_file_path = join(log_dir, log_file_name)
     with open(log_file_path, 'w') as log_file:
+        # Init log
+        log_file.write(f'Experiment log begin: {log_file_path}\n')
         for key, value in params.items():
             log_file.write(f'{key}: {value}\n')
     return log_file_name
@@ -213,7 +216,7 @@ def run_experiment(config_file_path):
             model = instantiate_model(params)
             model_name_param = {'mod_name': model_name}
             model.set_model_attributes(model_name_param)
-            print(f'Instantiated model for desired final state: {model_name}')
+            print(f'Instantiated model for desired final state: {model_name}\n')
     
         # Print and log params (base log for appending)
         log_file_name, initiated_log = init_log_print_params(params)
@@ -225,7 +228,7 @@ def run_experiment(config_file_path):
         print(f'Loaded data: {params["dataset_train"]}')
         
         # Train: will shuffle data automatically
-        model.train(X_train, Y_train, save_checkpoint=params['save_checkpoint'], online_diagnostics=params['online_diagnostics'], plot=params['plot_train'])
+        model.train(X_train, Y_train, save_checkpoint=params['save_checkpoint'], plot=params['plot_train'])
         
         '''
         later remove load_checkpoint from train- this is an outside function

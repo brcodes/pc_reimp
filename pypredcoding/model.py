@@ -128,15 +128,20 @@ class PredictiveCodingClassifier:
             self.U1_einsum_arg = 'ijk,ik->ij'
             
     def set_U1T_dims(self, U1_size):
-        # Applicable to all architectures
-        # Transpose dims
-        ndims_U1 = len(U1_size)
-        range_ndims_U1 = range(ndims_U1)
-        last_dim_id_U1 = range_ndims_U1[-1]
-        nonlast_dim_ids_U1 = range_ndims_U1[:-1]
-        transpose_dims_U1 = tuple([last_dim_id_U1] + list(nonlast_dim_ids_U1))
-        self.U1T_dims = transpose_dims_U1
-        
+        # Applicable to all architectures, except e1L_Li
+        # 'Transpose' (permute) dims
+        if not self.architecture == 'expand_first_lyr_Li':
+            ndims_U1 = len(U1_size)
+            range_ndims_U1 = range(ndims_U1)
+            last_dim_id_U1 = range_ndims_U1[-1]
+            nonlast_dim_ids_U1 = range_ndims_U1[:-1]
+            transpose_dims_U1 = tuple([last_dim_id_U1] + list(nonlast_dim_ids_U1))
+            self.U1T_dims = transpose_dims_U1
+        # e1L_Li
+        else:
+            # Li permutation
+            self.U1T_dims = (0, 2, 1)
+
     def set_U1T_tdot_dims(self, U1_size):
         # Only affects 'flat hidden layers' architecture
         # For U1T Idiff calculation
@@ -293,7 +298,6 @@ class PredictiveCodingClassifier:
                 input_shape_list = list(input_shape)
                 input_shape_list.append(self.hidden_lyr_sizes[0])
                 U1_size = tuple(input_shape_list)
-                print(f'U1_size: {U1_size}')
                 self.U[1] = self.U_prior_dist(size=U1_size)
                 
             # Layer i > 1 and i < n
@@ -619,7 +623,7 @@ class PredictiveCodingClassifier:
         with open(exp_log_path, "a") as f:
             print(*args, **kwargs, file=f)
     
-    def train(self, X, Y, save_checkpoint=None, online_diagnostics=False, plot=False):
+    def train(self, X, Y, save_checkpoint=None, plot=False):
         
         printlog = self.print_and_log
         
@@ -697,28 +701,23 @@ class PredictiveCodingClassifier:
         
         evaluate = partial(self.evaluate, update_method_name=update_method_name, update_method_number=update_method_number, classif_method=classif_method, plot=None)
 
+        # Epoch 0 evaluation
         epoch = 0
         Jr0 = 0
         Jc0 = 0
         accuracy = 0
-        if online_diagnostics:
-            printlog('\n')
-            printlog('Diagnostics on')
-            printlog('Epoch: 0')
-            for img in range(num_imgs):
-                input = X[img]
-                label = Y[img]
-                self.r[0] = input
-                reset_rs_gteq1(prior_dist=prior_dist)
-                update_non_weight_components(label=label)
-                Jr0 += rep_cost()
-                Jc0 += classif_cost(label)
-            accuracy += evaluate(X, Y)
-            printlog(f'Jr: {Jr0}, Jc: {Jc0}, Accuracy: {accuracy}')
-        else:
-            printlog('\n')
-            printlog('Diagnostics: Off. No epoch 0 calculation')
-            printlog(f'Jr: {Jr0}, Jc: {Jc0}, Accuracy: {accuracy}')
+        printlog('\n')
+        printlog('Epoch: 0')
+        for img in range(num_imgs):
+            input = X[img]
+            label = Y[img]
+            self.r[0] = input
+            reset_rs_gteq1(prior_dist=prior_dist)
+            update_non_weight_components(label=label)
+            Jr0 += rep_cost()
+            Jc0 += classif_cost(label)
+        accuracy += evaluate(X, Y)
+        printlog(f'Jr: {Jr0}, Jc: {Jc0}, Accuracy: {accuracy}')
         self.Jr[epoch] = Jr0
         self.Jc[epoch] = Jc0
         self.accuracy[epoch] = accuracy
@@ -744,12 +743,10 @@ class PredictiveCodingClassifier:
                 self.r[0] = input
                 reset_rs_gteq1(prior_dist=prior_dist)
                 update_all_components(label=label)
-                if online_diagnostics:
-                    Jre += rep_cost()
-                    Jce += classif_cost(label)
-            if online_diagnostics:
-                printlog(f'eval {epoch}')
-                accuracy += evaluate(X, Y)
+                Jre += rep_cost()
+                Jce += classif_cost(label)
+            printlog(f'eval {epoch}')
+            accuracy += evaluate(X, Y)
             self.Jr[epoch] = Jre
             self.Jc[epoch] = Jce
             self.accuracy[epoch] = accuracy
@@ -762,7 +759,8 @@ class PredictiveCodingClassifier:
                 # Save mid-training diagnostics
                 online_name = self.generate_output_name(self.mod_name, epoch)
                 self.save_diagnostics(output_dir='results/diagnostics/', output_name=online_name)
-                self.plot(input_dir='results/diagnostics/', input_name=online_name)
+                if plot:
+                    self.plot(input_dir='results/diagnostics/', input_name=online_name)
             ''''''
             
             printlog(f'Jr: {Jre}, Jc: {Jce}, Accuracy: {accuracy}')
@@ -788,22 +786,29 @@ class PredictiveCodingClassifier:
         
         # Final diagnostics terminal readout
         # Functionize later
-        printlog('\n\n')
         printlog(f'Final diagnostics over {epoch} epochs:')
         printlog(f'Ep. 0 Jr: {self.Jr[0]}, Jc: {self.Jc[0]}, Accuracy: {self.accuracy[0]}')
         printlog(f'Ep. {epoch} Jr: {self.Jr[epoch]}, Jc: {self.Jc[epoch]}, Accuracy: {self.accuracy[epoch]}')
-        percent_diff_Jr = (self.Jr[0] - self.Jr[epoch]) / self.Jr[0] * 100 if self.Jr[0] != 0 else 0
-        percent_diff_Jc = (self.Jc[0] - self.Jc[epoch]) / self.Jc[0] * 100 if self.Jc[0] != 0 else 0
-        percent_diff_accuracy = (self.accuracy[0] - self.accuracy[epoch]) / self.accuracy[0] * 100 if self.accuracy[0] != 0 else 0
-        printlog(f'Percent diff Jr: {percent_diff_Jr}, Jc: {percent_diff_Jc}, Accuracy: {percent_diff_accuracy}')
+        
+        # Corrected percent difference calculation
+        epsilon = 1e-6
+        percent_diff_Jr = ((self.Jr[0] - self.Jr[epoch]) / (self.Jr[0] + epsilon)) * 100
+        percent_diff_Jc = ((self.Jc[0] - self.Jc[epoch]) / (self.Jc[0] + epsilon)) * 100
+        percent_diff_accuracy = ((self.accuracy[0] - self.accuracy[epoch]) / (self.accuracy[0] + epsilon)) * 100
+        
+        printlog(f'Percent diff Jr: {percent_diff_Jr}%, Jc: {percent_diff_Jc}%, Accuracy: {percent_diff_accuracy}%')
+        
         change_per_epoch_Jr = percent_diff_Jr / epoch
         change_per_epoch_Jc = percent_diff_Jc / epoch
         change_per_epoch_accuracy = percent_diff_accuracy / epoch
-        printlog(f'Change per epoch Jr: {change_per_epoch_Jr}, Jc: {change_per_epoch_Jc}, Accuracy: {change_per_epoch_accuracy}')
+        
+        printlog(f'Change per epoch Jr: {change_per_epoch_Jr}%, Jc: {change_per_epoch_Jc}%, Accuracy: {change_per_epoch_accuracy}%')
+        
         change_per_min_Jr = percent_diff_Jr / tot_time.total_seconds() * 60
         change_per_min_Jc = percent_diff_Jc / tot_time.total_seconds() * 60
         change_per_min_accuracy = percent_diff_accuracy / tot_time.total_seconds() * 60
-        printlog(f'Change per min Jr: {change_per_min_Jr}, Jc: {change_per_min_Jc}, Accuracy: {change_per_min_accuracy}')
+        
+        printlog(f'Change per min Jr: {change_per_min_Jr}%, Jc: {change_per_min_Jc}%, Accuracy: {change_per_min_accuracy}%')
 
     def evaluate(self, X, Y, update_method_name, update_method_number, classif_method, plot=None):
         
@@ -951,6 +956,9 @@ class PredictiveCodingClassifier:
             pickle.dump({'Jr': self.Jr, 'Jc': self.Jc, 'accuracy':self.accuracy}, f)
             
     def plot(self, input_dir, input_name):
+        
+        printlog = self.print_and_log
+        
         diags_name = 'diag.' + input_name
         diags_path = join(input_dir, diags_name)
         
@@ -958,10 +966,10 @@ class PredictiveCodingClassifier:
         with open(diags_path, 'rb') as file:
             diags = pickle.load(file)
         
-        print(f'loaded diag file: {input_name}')
+        printlog(f'\nplot:\nloaded diag file:\n{diags_path}')
         
         # Split the filename by _ and take the last, then split by . and take the first. This is epoch_n
-        epoch_n = int(input_name.split('_')[-1].split('.')[0])
+        epoch_n = int(diags_name.split('_')[-1].split('.')[0])
         
         # clip diags at epoch_n
         diags['Jr'] = diags['Jr'][:epoch_n]
@@ -1014,11 +1022,13 @@ class PredictiveCodingClassifier:
         plt.text(0.1, 0.90, f'Jc % Change: {percent_change_Jc:.2f}%', transform=ax1.transAxes, color='b')
         plt.text(0.1, 0.85, f'Accuracy % Change: {percent_change_accuracy:.2f}%', transform=ax1.transAxes, color='r')
         
-        plt.title('Training Diagnostics\n' + input_name)
+        plt.title('Training Diagnostics\n' + diags_name + '\n')
         
         results_folder = 'results/plots'
-        results_path = join(results_folder, input_name)
+        results_path = join(results_folder, diags_name)
         fig.savefig(results_path + '.png', dpi=300, bbox_inches='tight')
+        
+        printlog(f'Saved plot:\n',results_path,'\n')
             
         
 class StaticPCC(PredictiveCodingClassifier):
