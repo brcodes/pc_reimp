@@ -1,5 +1,6 @@
 import numpy as np
-
+from copy import deepcopy
+from functools import partial
 '''
 to-do
 
@@ -572,20 +573,55 @@ class RecurrentCostFunction():
         # Copy attributes from the model
         self.__dict__.update(rPCC.__dict__)
 
+
+        self.r_prior_dist_dict = {'gaussian': partial(np.random.normal, loc=0, scale=1),
+                                'kurtotic': partial(np.random.laplace, loc=0.0, scale=0.5),
+                                'Li_gaussian': partial(np.random.normal, loc=0, scale=0.1)}
+        
+        self.U_prior_dist_dict = {'gaussian': partial(np.random.normal, loc=0, scale=1),
+                                'kurtotic': partial(np.random.laplace, loc=0.0, scale=0.5),
+                                'Li_gaussian': partial(np.random.normal, loc=0, scale=0.1)}
+
+        self.config_from_attributes()
          
     def config_from_attributes(self):
 
+        n = self.num_layers
 
-        # Turn to random normal loc 0 scale 0.1 (U,V) before continuing
-        # Initiate r hats and bars (after and before the input is given, respectively)
-        self.r = {i:np.zeros(self.r[i].shape) for i in self.r}
-        self.rbar = self.rhat = self.r
-        # Initiate U hats and bars
-        self.U = {i:np.random.normal(loc=0, scale=0.1, size=(self.r[i - 1].shape[0],self.r[i].shape[0]) for i in self.r}
-        self.Ubar = self.Uhat = self.U
-        # Initiate Vs
-        self.V = {i:np.random.normal(loc=0, scale=0.1, size=(self.r[i].shape[0],self.r[i].shape[0]) for i in self.r}
+        # Inits on representations and weights
+        self.r = {}
+        self.U = {}
+        self.V = {}
+        # r0
+        self.r[0] = np.zeros(self.input_shape)
+        # r1 - rn, U1 - Un
+        for i in range(1, n + 1):
+            if i < n:
+                # r
+                self.r[i] = self.r_prior_dist(size=(self.hidden_lyr_sizes[i - 1]))
+            # Layer n
+            elif i == n:
+                self.r[n] = self.r_prior_dist(size=(self.output_lyr_size))
+            # U
+            self.U[i] = self.U_prior_dist(size=(self.r[i - 1].shape[0], self.r[i].shape[0]))
+            # V
+            self.V[i] = self.V_prior_dist(size=(self.r[i].shape[0], self.r[i].shape[0]))
+                
+        # Classification now
+        if self.classif_method == 'c2':
+            Uo_size = (self.num_classes, self.output_lyr_size)
+            self.U['o'] = self.U_prior_dist(size=Uo_size)
 
+        # Create deep copies for rhat, rbar, Uhat, Ubar, Vhat, Vbar
+        self.rhat = self.rbar = deepcopy(self.r)
+        self.Uhat = self.Ubar = deepcopy(self.U)
+        self.Vhat = self.Vbar = deepcopy(self.V)
+        
+    def r_prior_dist(self, size):
+
+
+
+        pass
     def r_updates(self,label):
 
 
