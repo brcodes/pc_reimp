@@ -1,7 +1,7 @@
 from cost_functions import StaticCostFunction
 import numpy as np
 from functools import partial
-
+from copy import deepcopy
 from datetime import datetime
 import pickle
 from os import makedirs
@@ -628,15 +628,15 @@ class PredictiveCodingClassifier:
         '''
         
         epoch_n = self.epoch_n
-        num_imgs = self.num_imgs
+        num_inps = self.num_inps
         num_tiles = self.num_tiles
         '''
-        test: re-shape 3392,864 (num imgs * tiles per image, flattened tile) to 212, 16, 864 (num imgs, tiles per image, flattened tile)
+        test: re-shape 3392,864 (num inps * tiles per image, flattened tile) to 212, 16, 864 (num imgs, tiles per image, flattened tile)
         This will be completed by data.py in the future, by God's grace.
         '''
         printlog('original X shape:', X.shape)
-        X = X.reshape(num_imgs, num_tiles, -1)
-        printlog('test: reshaping X into num imgs, num tiles per image, flattened tile')
+        X = X.reshape(num_inps, num_tiles, -1)
+        printlog('test: reshaping X into num inps, num tiles per image, flattened tile')
 
         '''
         test
@@ -723,6 +723,9 @@ class PredictiveCodingClassifier:
             else:
                 raise ValueError(f'You have loaded a model checkpoint originally set to train to a greater number of epochs: {epoch_n}\n'+ \
                     f'than has now been requested in your config.txt: {self.config_epoch_n}.\nBoost epoch_n in config greater than {epoch_n} before training.')
+                
+        model_type = self.model_type
+        num_ts = self.num_ts
 
         # Epoch '0' evaluation (pre-training, or if checkpoint has been loaded, pre-additional-training)
         Jr0 = 0
@@ -730,12 +733,17 @@ class PredictiveCodingClassifier:
         accuracy = 0
         printlog('\n')
         printlog(f'Epoch: {start_epoch}')
-        for img in range(num_imgs):
-            input = X[img]
-            label = Y[img]
-            self.r[0] = input
+        for inp in range(num_inps):
             reset_rs_gteq1(prior_dist=prior_dist)
-            update_non_weight_components(label=label)
+            input = X[inp]
+            label = Y[inp]
+            if model_type == 'static':
+                self.r[0] = input
+                update_non_weight_components(label=label)
+            elif model_type == 'recurrent':
+                for ts in range(num_ts):
+                    self.r[0] = input[:, ts]
+                    update_non_weight_components(label=label)
             Jr0 += rep_cost()
             Jc0 += classif_cost(label)
         accuracy += evaluate(X, Y)
@@ -755,15 +763,20 @@ class PredictiveCodingClassifier:
             Jce = 0
             accuracy = 0
             # Shuffle X, Y
-            shuffle_indices = np.random.permutation(num_imgs)
+            shuffle_indices = np.random.permutation(num_inps)
             X_shuff = X[shuffle_indices]
             Y_shuff = Y[shuffle_indices]
-            for img in range(num_imgs):
-                input = X_shuff[img]
-                label = Y_shuff[img]
-                self.r[0] = input
+            for inp in range(num_inps):
                 reset_rs_gteq1(prior_dist=prior_dist)
-                update_all_components(label=label)
+                input = X_shuff[inp]
+                label = Y_shuff[inp]
+                if model_type == 'static':
+                    self.r[0] = input
+                    update_all_components(label=label)
+                elif model_type == 'recurrent':
+                    for ts in range(num_ts):
+                        self.r[0] = input[:, ts]
+                        update_all_components(label=label)
                 Jre += rep_cost()
                 Jce += classif_cost(label)
             printlog(f'eval {epoch}')
@@ -858,17 +871,25 @@ class PredictiveCodingClassifier:
         update_non_weight_components = partial(self.update_method_no_weight_dict[update_method_name], update_method_number)
         
         classify = self.classify
-        num_imgs = self.num_imgs
+        num_inps = self.num_inps
+        model_type = self.model_type
+        num_ts = self.num_ts
+        
         accuracy = 0
-        for img in range(num_imgs):
-            input = X[img]
-            label = Y[img]
-            self.r[0] = input
+        for inp in range(num_inps):
             reset_rs_gteq1(prior_dist=prior_dist)
-            update_non_weight_components(label=label)
+            input = X[inp]
+            label = Y[inp]
+            if model_type == 'static':
+                self.r[0] = input
+                update_non_weight_components(label=label)
+            elif model_type == 'recurrent':
+                for ts in range(num_ts):
+                    self.r[0] = input[:, ts]
+                    update_non_weight_components(label=label)
             guess = classify(label)
             accuracy += guess
-        accuracy /= num_imgs
+        accuracy /= num_inps
     
         return accuracy
     
@@ -1038,32 +1059,64 @@ class RecurrentPCC(PredictiveCodingClassifier):
 
         # Copy attributes from the base instance
         self.__dict__.update(base_instance.__dict__)
+
+        self.r_prior_dist_dict = {'gaussian': partial(np.random.normal, loc=0, scale=1),
+                                'kurtotic': partial(np.random.laplace, loc=0.0, scale=0.5),
+                                'Li_gaussian': partial(np.random.normal, loc=0, scale=0.1)}
         
-        # General method, grabs r,U (Uo, V when applicable) update funcs and cost funcs
-        self.set_component_update_funcs(num_layers=self.num_layers)
+        self.U_prior_dist_dict = {'gaussian': partial(np.random.normal, loc=0, scale=1),
+                                'kurtotic': partial(np.random.laplace, loc=0.0, scale=0.5),
+                                'Li_gaussian': partial(np.random.normal, loc=0, scale=0.1)}
         
-        # Component updates: r, U, Uo, and cost calculato
+        self.V_prior_dist_dict = {'gaussian': partial(np.random.normal, loc=0, scale=1),
+                                'kurtotic': partial(np.random.laplace, loc=0.0, scale=0.5),
+                                'Li_gaussian': partial(np.random.normal, loc=0, scale=0.1)}
+        
+        
+
+        self.config_from_attributes()
+        
+        
+    def config_from_attributes(self):
+
         n = self.num_layers
-        if n == 1:
-            self.r_updates = self.r_updates_n_1
-            self.U_updates = self.U_updates_n_1
-            self.V_updates = self.V_updates
-            self.rep_cost = self.rep_cost_n_1
-        elif n == 2:
-            self.r_updates = self.r_updates_n_2
-            self.U_updates = self.U_updates_n_gt_eq_2
-            self.V_updates = self.V_updates
-            self.rep_cost = self.rep_cost_n_2
-        elif n >= 3:
-            self.r_updates = self.r_updates_n_gt_eq_3
-            self.U_updates = self.U_updates_n_gt_eq_2
-            self.V_updates = self.V_updates
-            self.rep_cost = self.rep_cost_n_gt_eq_3
-        else:
-            raise ValueError("Number of layers must be at least 1.")
-        self.component_updates = [self.r_updates, self.U_updates]
-        classif_method = self.classif_method
-        if classif_method == 'c2':
-            self.component_updates.append(self.Uo_update)
-        # Add Vs
-        self.component_updates.append(self.V_updates)
+
+        # Inits on representations and weights
+        self.r = {}
+        self.U = {}
+        self.V = {}
+        # r0
+        self.r[0] = np.zeros(self.input_shape)
+        # r1 - rn, U1 - Un
+        for i in range(1, n + 1):
+            if i < n:
+                # r
+                self.r[i] = self.r_prior_dist(size=(self.hidden_lyr_sizes[i - 1]))
+            # Layer n
+            elif i == n:
+                self.r[n] = self.r_prior_dist(size=(self.output_lyr_size))
+            # U
+            self.U[i] = self.U_prior_dist(size=(self.r[i - 1].shape[0], self.r[i].shape[0]))
+            # V
+            self.V[i] = self.V_prior_dist(size=(self.r[i].shape[0], self.r[i].shape[0]))
+                
+        # Classification now
+        if self.classif_method == 'c2':
+            Uo_size = (self.num_classes, self.output_lyr_size)
+            self.U['o'] = self.U_prior_dist(size=Uo_size)
+
+        # Create deep copies for rhat, rbar, Uhat, Ubar, Vhat, Vbar
+        self.rhat = self.rbar = deepcopy(self.r)
+        self.Uhat = self.Ubar = deepcopy(self.U)
+        self.Vhat = self.Vbar = deepcopy(self.V)
+        
+    def V_prior_dist(self, size):
+        return self.V_prior_dist_dict[self.priors](size=size)
+
+    # def train(self):
+    #     # This will be mostly the same, but with r[0] = 1 vector, and overtime processesing added.
+    #     # also, don't reset r's
+
+        pass
+    def r_updates(self,label):
+        pass
