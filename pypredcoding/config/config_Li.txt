@@ -19,7 +19,7 @@
 
 ## METADATA AND EXPERIMENT
 # Will append model filenames
-exp_name='architecture tests Li'
+exp_name='architecture tests Li_li_dataset'
 # Extra text about the experiments.
 notes='architecture tests'
 #
@@ -96,11 +96,13 @@ num_classes=212
 # or: 212 (n) imgs x 16 (n) tiles per image, size of one flat tile (A) (864) *** (see below)
 # this is reshaped in model.train() to be 212,16,864. Then, each 16,864 image is fed to the model.
 # You can change this dataset, the name doesn't matter. Just make sure model gets something tiled, in the shape format above *** (see above)
-dataset_train='ds.trace212_212_li_trace212_132_84_tl_16_36_24_32_20.pydb'
+# dataset_train='ds.trace212_212_li_trace212_132_84_tl_16_36_24_32_20.pydb'
+dataset_train='Li_train_set_ep1.pkl'
 
 ## TRAINING HYPERPARAMETERS
 # how many exposures to all of the data (shuffled)
-epoch_n=300
+epoch_n=1000
+
 
 # learning rates r, one per layer plus o needs to be correct if classif_method == 'c2'
 # Note that Li learning rate k1 == kr, and she had one k1 for all layers. 
@@ -131,7 +133,7 @@ plot_train= True
 save_checkpoint= {'save_every':5} 
 
 # if checkpoints present, load? None for none. Int != -1 for checkpoint epoch desired. Int == -1 for latest checkpoint.
-load_checkpoint=-1
+load_checkpoint=None
 
 # Don't change (unless you add batch support. Li's should be stochastic, though):
 # Stochastic gradient descent is 1, all above is batch gd.

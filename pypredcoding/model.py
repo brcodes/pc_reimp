@@ -600,22 +600,41 @@ class PredictiveCodingClassifier:
             checkpoint = np.ceil(checkpoint)
         else:
             checkpoint = None  # Default case if neither key is found
-        printlog(f'Checkpoint method: {save_checkpoint}', '\n', 'saving every', checkpoint)
-        
+        if checkpoint is not None:
+            printlog(f'\nSaving checkpoints.')
+            printlog(f'Checkpoint method: {save_checkpoint}', '\n', 'saving every', checkpoint, '\n')
+            
         # If loading
         if load_checkpoint is not None:
+            printlog('Loaded a checkpoint for training.')
             printlog(f'Load checkpoint method: {load_checkpoint}')
-            # # Then add the number of epochs it already has to the starting '0'
-            # load_name = self.load_name 
-            # # take off .pydb
-            # load_name_no_pydb = load_name.rsplit('.', 1)[0]
-            # # isolate epoch number
-            # load_epoch = int(load_name_no_pydb.rsplit('_', 1)[1])
-            # epoch = load_epoch
             start_epoch = self.load_epoch
-            printlog('starting epoch is', start_epoch)
+            printlog('Starting epoch is:', start_epoch,'\n')
         else:
             start_epoch = 0
+            
+        # if new max epoch (loaded, new goal)
+        if self.config_epoch_n:
+            # this will only exist in the loaded checkpoint case.
+            # it will either be the same as the checkpoint epoch_n
+            if self.config_epoch_n == epoch_n:
+                pass
+            # or it will be greater (pushing the number of epochs now past the original experiment)
+            elif self.config_epoch_n > epoch_n:
+                printlog(f"Requested config epoch_n (max epochs): {self.config_epoch_n} greater than \nyour checkpoint's epoch_n: {epoch_n}.\nRaising model.epoch_n (max epochs) to: {self.config_epoch_n}")
+                # Calculate the number of zeros to add to evaluation lists
+                num_zeros_to_add = self.config_epoch_n - epoch_n
+                # Extend each list with the calculated number of zeros
+                self.Jr.extend([0] * num_zeros_to_add)
+                self.Jc.extend([0] * num_zeros_to_add)
+                self.accuracy.extend([0] * num_zeros_to_add)
+                self.epoch_n = self.config_epoch_n
+                epoch_n = self.epoch_n
+                
+            # or less, probably accidentally
+            else:
+                raise ValueError(f'You have loaded a model checkpoint originally set to train to a greater number of epochs: {epoch_n}\n'+ \
+                    f'than has now been requested in your config.txt: {self.config_epoch_n}.\nBoost epoch_n in config greater than {epoch_n} before training.')
 
         # Epoch '0' evaluation (pre-training, or if checkpoint has been loaded, pre-additional-training)
         Jr0 = 0

@@ -105,7 +105,7 @@ def load_checkpoint(model_name, params):
                 file_name_valid = True
                 
                 if epoch > max_epoch:
-                    max_epoch = epoch
+                    max_epoch = chk_epoch = epoch
                     chk_file_path = join(checkpoint_dir, filename)
             except ValueError:
                 continue
@@ -128,7 +128,7 @@ def load_checkpoint(model_name, params):
                 
                 if epoch == desired_epoch:
                     chk_file_path = join(checkpoint_dir, filename)
-                    max_epoch = desired_epoch
+                    chk_epoch = desired_epoch
             except ValueError:
                 continue
             
@@ -139,7 +139,7 @@ def load_checkpoint(model_name, params):
     
     print(f'Loaded checkpoint: {chk_file_path}')
     
-    return checkpoint, max_epoch
+    return checkpoint, chk_epoch
             
 def instantiate_model(params):
     
@@ -218,13 +218,13 @@ def run_experiment(config_file_path):
         # Model
         if params['load_checkpoint'] is not None:
             model, epoch = load_checkpoint(model_name, params)
-            load_name_ep_params = {'load_name': model_name, 'load_epoch': epoch}
+            load_name_ep_params = {'load_name': model_name, 'load_epoch': epoch, 'config_epoch_n': params['epoch_n']}
             model.set_model_attributes(load_name_ep_params)
             print(f'Desired final state: {model_name}\n')
         else:
             model = instantiate_model(params)
-            model_name_param = {'mod_name': model_name}
-            model.set_model_attributes(model_name_param)
+            model_name_ep_param = {'mod_name': model_name, 'config_epoch_n': None}
+            model.set_model_attributes(model_name_ep_param)
             print(f'Instantiated model for desired final state: {model_name}\n')
     
         # Print and log params (base log for appending)

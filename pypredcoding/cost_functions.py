@@ -84,10 +84,14 @@ class StaticCostFunction():
         return np.tensordot(U1T, Idiff, axes=(self.U1T_tdot_dims, self.Idiff_tdot_dims))
     
     def U1T_Idiff_e1l_Li(self, U1T, Idiff):
+        # 0,2,1
+        # 16,32,864 U1T     16,864,1
         return np.matmul(U1T, Idiff[:, :, None]).squeeze()
     
     def U1T_Idiff_e1l(self, U1T, Idiff):
         # np.einsum(self.U1T_einsum_arg...
+        # 0,1,2
+        # 32,16,864 U1T     16,864    ->  16,32  
         # ijk,jk->ji in 3d U1 case, 2d r1 case
         # ijklm,jklm->jki in 5d U1 case, 3d r1 case
         return np.einsum(self.U1T_einsum_arg, U1T, Idiff)
@@ -562,3 +566,46 @@ class StaticCostFunction():
         
     def classif_guess_None(self, label):
         return 0
+
+class RecurrentCostFunction():
+    def __init__(self, rPCC):
+        # Copy attributes from the model
+        self.__dict__.update(rPCC.__dict__)
+
+         
+    def config_from_attributes(self):
+
+
+        # Turn to random normal loc 0 scale 0.1 (U,V) before continuing
+        # Initiate r hats and bars (after and before the input is given, respectively)
+        self.r = {i:np.zeros(self.r[i].shape) for i in self.r}
+        self.rbar = self.rhat = self.r
+        # Initiate U hats and bars
+        self.U = {i:np.random.normal(loc=0, scale=0.1, size=(self.r[i - 1].shape[0],self.r[i].shape[0]) for i in self.r}
+        self.Ubar = self.Uhat = self.U
+        # Initiate Vs
+        self.V = {i:np.random.normal(loc=0, scale=0.1, size=(self.r[i].shape[0],self.r[i].shape[0]) for i in self.r}
+
+    def r_updates(self,label):
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+        pass
+
