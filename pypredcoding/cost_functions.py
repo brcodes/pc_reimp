@@ -572,76 +572,59 @@ class RecurrentCostFunction():
     def __init__(self, rPCC):
         # Copy attributes from the model
         self.__dict__.update(rPCC.__dict__)
-
-
-        self.r_prior_dist_dict = {'gaussian': partial(np.random.normal, loc=0, scale=1),
-                                'kurtotic': partial(np.random.laplace, loc=0.0, scale=0.5),
-                                'Li_gaussian': partial(np.random.normal, loc=0, scale=0.1)}
+    
+    def r_updates_n_2_Li(self, label):
+        # r bars first
+        # Sequence of hats and bars to do with the fact that r, U, V is the global update order.
+        self.rbar[1] = np.matmul(self.Vhat[1],self.rhat[1])
+        rbar1 = self.rbar[1]
+        self.rbar[2] = np.matmul(self.Vhat[2],self.rhat[2])
+        rbar2 = self.rbar[2]
         
-        self.U_prior_dist_dict = {'gaussian': partial(np.random.normal, loc=0, scale=1),
-                                'kurtotic': partial(np.random.laplace, loc=0.0, scale=0.5),
-                                'Li_gaussian': partial(np.random.normal, loc=0, scale=0.1)}
-
-        self.config_from_attributes()
-         
-    def config_from_attributes(self):
-
-        n = self.num_layers
-
-        # Inits on representations and weights
-        self.r = {}
-        self.U = {}
-        self.V = {}
-        # r0
-        self.r[0] = np.zeros(self.input_shape)
-        # r1 - rn, U1 - Un
-        for i in range(1, n + 1):
-            if i < n:
-                # r
-                self.r[i] = self.r_prior_dist(size=(self.hidden_lyr_sizes[i - 1]))
-            # Layer n
-            elif i == n:
-                self.r[n] = self.r_prior_dist(size=(self.output_lyr_size))
-            # U
-            self.U[i] = self.U_prior_dist(size=(self.r[i - 1].shape[0], self.r[i].shape[0]))
-            # V
-            self.V[i] = self.V_prior_dist(size=(self.r[i].shape[0], self.r[i].shape[0]))
-                
-        # Classification now
-        if self.classif_method == 'c2':
-            Uo_size = (self.num_classes, self.output_lyr_size)
-            self.U['o'] = self.U_prior_dist(size=Uo_size)
-
-        # Create deep copies for rhat, rbar, Uhat, Ubar, Vhat, Vbar
-        self.rhat = self.rbar = deepcopy(self.r)
-        self.Uhat = self.Ubar = deepcopy(self.U)
-        self.Vhat = self.Vbar = deepcopy(self.V)
+        Uhat1 = self.Uhat[1]
+        Uhat2 = self.Uhat[2]
         
-    def r_prior_dist(self, size):
+        kr1 = self.kr[1]
+        kr2 = self.kr[2]
+        
+        ssqr1 = self.ssqr[1]
+        
+        # r hat (t-1) storage for V updates
+        self.rhat_tmin1[1] = deepcopy(self.rhat[1])
+        self.rhat_tmin1[2] = deepcopy(self.rhat[2])
+        
+        # r hats
+        self.rhat[1] = rbar1 + (kr1 / self.ssqr[0]) \
+                                * np.matmul(Uhat1.T, (self.r[0] - np.matmul(Uhat1, rbar1))) \
+                                - (kr1 / ssqr1) * (rbar1  - np.matmul(Uhat2,rbar2))
+        
+        # Layer 2                     
+        self.rhat[2] = rbar2 + (kr2 / ssqr1) \
+                                * np.matmul(Uhat2.T, (rbar1 - np.matmul(Uhat2, rbar2)))
+        
+        # Monica's r2hatx is called r_context here.                  
+        self.rhat['c'] = self.rhat[2] - (1 / 2) * (kr2 / self.ssqr[2]) * (self.softmax_func(rbar2)  - label)
 
-
-
-        pass
-    def r_updates(self,label):
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-        pass
-
+    def U_updates_n_2_Li(self, label):
+        # U bars first
+        self.Ubar[1] = self.Uhat[1]
+        self.Ubar[2] = self.Uhat[2]
+        c = 'c'
+        
+        # U hats
+        self.Uhat[1] = self.Ubar[1] + (self.kU[1] / self.ssqr[0]) \
+                                    * np.outer((self.r[0] - np.matmul(self.Ubar[1], self.rhat[1])), self.rhat[1])
+                                    
+        self.Uhat[2] = self.Ubar[2] + (self.kU[2] / self.ssqr[1]) \
+                                    * np.outer((self.rbar[1] - np.matmul(self.Ubar[2], self.rhat[c])), self.rhat[c])
+                                    
+    def V_updates_n_2_Li(self, label):
+        # Bars first
+        self.Vbar[1] = self.Vhat[1]
+        self.Vbar[2] = self.Vhat[2]
+        
+        # Hats
+        self.Vhat[1] = self.Vbar[1] + (self.kV[1] / self.ssqV[0]) \
+                                    * np.outer((self.rhat[1] - self.rbar[1]), self.rhat_tmin1[1])
+        self.Vhat[2] = self.Vbar[2] + (self.kV[2] / self.ssqV[1]) \
+                                    * np.outer((self.rhat[2] - self.rbar[2]), self.rhat_tmin1[2])

@@ -628,7 +628,7 @@ class PredictiveCodingClassifier:
         '''
         
         epoch_n = self.epoch_n
-        num_inps = self.num_inps
+        num_inps = self.num_imgs
         num_tiles = self.num_tiles
         '''
         test: re-shape 3392,864 (num inps * tiles per image, flattened tile) to 212, 16, 864 (num imgs, tiles per image, flattened tile)
@@ -725,6 +725,7 @@ class PredictiveCodingClassifier:
                     f'than has now been requested in your config.txt: {self.config_epoch_n}.\nBoost epoch_n in config greater than {epoch_n} before training.')
                 
         model_type = self.model_type
+        self.num_ts = 98
         num_ts = self.num_ts
 
         # Epoch '0' evaluation (pre-training, or if checkpoint has been loaded, pre-additional-training)
@@ -871,8 +872,9 @@ class PredictiveCodingClassifier:
         update_non_weight_components = partial(self.update_method_no_weight_dict[update_method_name], update_method_number)
         
         classify = self.classify
-        num_inps = self.num_inps
+        num_inps = self.num_imgs
         model_type = self.model_type
+        self.num_ts = 98
         num_ts = self.num_ts
         
         accuracy = 0
@@ -1113,10 +1115,5 @@ class RecurrentPCC(PredictiveCodingClassifier):
     def V_prior_dist(self, size):
         return self.V_prior_dist_dict[self.priors](size=size)
 
-    # def train(self):
-    #     # This will be mostly the same, but with r[0] = 1 vector, and overtime processesing added.
-    #     # also, don't reset r's
-
-        pass
     def r_updates(self,label):
         pass
