@@ -1,7 +1,7 @@
-from cost_functions import StaticCostFunction
+from cost_functions import StaticCostFunction, RecurrentCostFunction
 import numpy as np
 from functools import partial
-from copy import deepcopy
+from copy import copy
 from datetime import datetime
 import pickle
 from os import makedirs
@@ -1061,6 +1061,32 @@ class RecurrentPCC(PredictiveCodingClassifier):
 
         # Copy attributes from the base instance
         self.__dict__.update(base_instance.__dict__)
+        
+        # Cost functions
+        recurrent_cost_func_class = RecurrentCostFunction(self)
+        
+        # Component cost funcs: r, U, Uo updates, and cost calculators
+        n = self.num_layers
+        if n == 1:
+            raise ValueError("1 layer not yet written")
+        elif n == 2:
+            if self.rpcc_architecture == 'Li':
+                self.r_updates = recurrent_cost_func_class.r_updates_n_2_Li
+                self.U_updates = recurrent_cost_func_class.U_updates_n_2_Li
+                self.V_updates = recurrent_cost_func_class.V_updates_n_2_Li
+            elif self.rpcc_architecture == 'Rogers':
+                self.r_updates = recurrent_cost_func_class.r_updates_n_2
+                self.U_updates = recurrent_cost_func_class.U_updates_n_2
+                self.V_updates = recurrent_cost_func_class.V_updates_n_2
+            self.rep_cost = recurrent_cost_func_class.rep_cost_n_2
+        elif n >= 3:
+            raise ValueError("3+ layers model not yet written")
+        else:
+            raise ValueError("Number of layers must be at least 1.")
+        # Components together
+        self.component_updates = [self.r_updates, self.U_updates]
+        if self.classif_method == 'c2':
+            self.component_updates.append(self.Uo_update)
 
         self.r_prior_dist_dict = {'gaussian': partial(np.random.normal, loc=0, scale=1),
                                 'kurtotic': partial(np.random.laplace, loc=0.0, scale=0.5),
@@ -1108,9 +1134,9 @@ class RecurrentPCC(PredictiveCodingClassifier):
             self.U['o'] = self.U_prior_dist(size=Uo_size)
 
         # Create deep copies for rhat, rbar, Uhat, Ubar, Vhat, Vbar
-        self.rhat = self.rbar = deepcopy(self.r)
-        self.Uhat = self.Ubar = deepcopy(self.U)
-        self.Vhat = self.Vbar = deepcopy(self.V)
+        self.rhat = self.rbar = copy(self.r)
+        self.Uhat = self.Ubar = copy(self.U)
+        self.Vhat = self.Vbar = copy(self.V)
         
     def V_prior_dist(self, size):
         return self.V_prior_dist_dict[self.priors](size=size)

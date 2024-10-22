@@ -1,5 +1,6 @@
 import numpy as np
-from copy import deepcopy
+from copy import copy
+from functools import partial
 
 '''
 to-do
@@ -203,7 +204,7 @@ class StaticCostFunction():
         U1r1 = self.U1mat_mult_r1vecormat(U1, r1)
         bu_vec = self.r[0] - U1r1
         bu_square = np.tensordot(bu_vec, bu_vec, axes=(bu_tdot_dims, bu_tdot_dims))
-        bu_total = (1 / self.ssq[1]) * bu_square
+        bu_total = (1 / self.ssq[0]) * bu_square
         
         # Priors on that layer
         prior_r = self.g(np.squeeze(r1), self.alph[1])[0]
@@ -225,13 +226,13 @@ class StaticCostFunction():
         U1r1 = self.U1mat_mult_r1vecormat(U1, r1)
         bu_vec = self.r[0] - U1r1
         bu_square = np.tensordot(bu_vec, bu_vec, axes=(bu_tdot_dims, bu_tdot_dims))
-        bu_total = (1 / self.ssq[1]) * bu_square
+        bu_total = (1 / self.ssq[0]) * bu_square
         
         # Top-down component of the representation error
         U2r2 = self.U2mat_mult_r2vec(U2, r2)
         td_vec = r1 - U2r2
         td_square = np.tensordot(td_vec, td_vec, axes=(td_tdot_dims, td_tdot_dims))
-        td_total = (1 / self.ssq[2]) * td_square
+        td_total = (1 / self.ssq[1]) * td_square
         
         # Priors on that layer
         prior_r = self.g(np.squeeze(r1), self.alph[1])[0]
@@ -590,8 +591,8 @@ class RecurrentCostFunction():
         ssqr1 = self.ssqr[1]
         
         # r hat (t-1) storage for V updates
-        self.rhat_tmin1[1] = deepcopy(self.rhat[1])
-        self.rhat_tmin1[2] = deepcopy(self.rhat[2])
+        self.rhat_tmin1[1] = copy(self.rhat[1])
+        self.rhat_tmin1[2] = copy(self.rhat[2])
         
         # r hats
         self.rhat[1] = rbar1 + (kr1 / self.ssqr[0]) \
@@ -607,8 +608,8 @@ class RecurrentCostFunction():
 
     def U_updates_n_2_Li(self, label):
         # U bars first
-        self.Ubar[1] = self.Uhat[1]
-        self.Ubar[2] = self.Uhat[2]
+        self.Ubar[1] = copy(self.Uhat[1])
+        self.Ubar[2] = copy(self.Uhat[2])
         c = 'c'
         
         # U hats
@@ -620,11 +621,47 @@ class RecurrentCostFunction():
                                     
     def V_updates_n_2_Li(self, label):
         # Bars first
-        self.Vbar[1] = self.Vhat[1]
-        self.Vbar[2] = self.Vhat[2]
+        self.Vbar[1] = copy(self.Vhat[1])
+        self.Vbar[2] = copy(self.Vhat[2])
         
         # Hats
         self.Vhat[1] = self.Vbar[1] + (self.kV[1] / self.ssqV[0]) \
                                     * np.outer((self.rhat[1] - self.rbar[1]), self.rhat_tmin1[1])
         self.Vhat[2] = self.Vbar[2] + (self.kV[2] / self.ssqV[1]) \
                                     * np.outer((self.rhat[2] - self.rbar[2]), self.rhat_tmin1[2])
+                                    
+        self.V[1] = self.Vhat[1]
+        self.V[2] = self.Vhat[2]
+                                    
+    def total_cost_n_2(self, input, label):
+        
+        update_method_name = next(iter(self.update_method))
+        update_method_number = self.update_method[update_method_name]
+        update_non_weight_components = partial(self.update_method_no_weight_dict[update_method_name], update_method_number)
+        
+        bu_total = 0
+        td_total = 0
+        bu_total2 = 0
+        
+        for ts in range(self.num_ts):
+            # L1
+            # Input
+            self.r[0] = input[:, ts]
+            update_non_weight_components(label=label)
+            
+            # Bottom-Up
+            bu_vec = self.r[0] - np.matmul(self.Uhat[1], self.rhat[1])
+            bu_square = np.dot(bu_vec, bu_vec)
+            bu_total += (1 / self.ssqr[0]) * bu_square
+            # Top-Down
+            td_vec = self.r[1] - np.matmul(self.Uhat[2], self.rhat[2])
+            td_square = np.dot(td_vec, td_vec)
+            td_total += (1 / self.ssq[1]) * td_square
+
+            #L2
+            # Bottom-up
+            bu_total2 += td_total
+        
+        # Return total
+        return bu_total + td_total + bu_total2
+    
