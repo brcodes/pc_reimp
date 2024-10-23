@@ -606,18 +606,28 @@ class RecurrentCostFunction():
         # Monica's r2hatx is called r_context here.                  
         self.rhat['c'][ts_slice_r] = self.rhat[2][ts_slice_r] - (1 / 2) * (kr2 / self.ssqr[2]) * (self.softmax_func(rbar2ts) - label)
 
-    def U_updates_n_2(self, label):
-        # U bars first
-        self.Ubar[1] = copy(self.Uhat[1])
-        self.Ubar[2] = copy(self.Uhat[2])
+    def U_updates_n_2(self, ts, label):
+        # time slices
+        ts_slice_r = (slice(None), ts) # [:, ts]
+        ts_slice_W = (slice(None), slice(None), ts) # [:, :, ts]
+        tsmin1 = ts - 1
+        tsmin1_slice_r = (slice(None), tsmin1) # [:, ts - 1]
+        tsmin1_slice_W = (slice(None), slice(None), tsmin1) # [:, :, ts - 1]
+        
+        # U bars first: Ubar(t) = Uhat(t-1)
+        Ubar1ts = self.Ubar[1][ts_slice_W] = copy(self.Uhat[1][tsmin1_slice_W])
+        Ubar2ts = self.Ubar[2][ts_slice_W] = copy(self.Uhat[2][tsmin1_slice_W])
         c = 'c'
         
+        rhat1ts = self.rhat[1][ts_slice_r]
+        rhatcts = self.rhat[c][ts_slice_r]
+        
         # U hats
-        self.Uhat[1] = self.Ubar[1] + (self.kU[1] / self.ssqr[0]) \
-                                    * np.outer((self.r[0] - np.matmul(self.Ubar[1], self.rhat[1])), self.rhat[1])
+        self.Uhat[1][ts_slice_W] = Ubar1ts + (self.kU[1] / self.ssqr[0]) \
+                                    * np.outer((self.r[0] - np.matmul(Ubar1ts, rhat1ts)), rhat1ts)
                                     
-        self.Uhat[2] = self.Ubar[2] + (self.kU[2] / self.ssqr[1]) \
-                                    * np.outer((self.rbar[1] - np.matmul(self.Ubar[2], self.rhat[c])), self.rhat[c])
+        self.Uhat[2][ts_slice_W] = Ubar2ts + (self.kU[2] / self.ssqr[1]) \
+                                    * np.outer((self.rbar[1][ts_slice_r] - np.matmul(Ubar2ts, rhatcts)), rhatcts)
                                     
     def V_updates_n_2(self, label):
         # Bars first
