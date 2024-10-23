@@ -656,20 +656,21 @@ class RecurrentCostFunction():
         td_total = 0
         bu_total2 = 0
         
+        # Uhat and rbar for representation cost (no explicit J given in rpCC paper, Li dissertation.)
+        # Not sure if should be rhat, instead. Minimal difference suspected.
         for ts in range(self.num_ts):
             # L1
             # Input
             self.r[0] = input[:, ts]
-            update_non_weight_components(label=label)
             
             # Bottom-Up
-            bu_vec = self.r[0] - np.matmul(self.Uhat[1][:, :, ts], self.rhat[1][:, ts])
+            bu_vec = self.r[0] - np.matmul(self.Uhat[1][:, :, ts], self.rbar[1][:, ts])
             bu_square = np.dot(bu_vec, bu_vec)
             bu_total += (1 / self.ssqr[0]) * bu_square
             # Top-Down
-            td_vec = self.r[1] - np.matmul(self.Uhat[2][:, :, ts], self.rhat[2][:, ts])
+            td_vec = self.rbar[1][:, ts] - np.matmul(self.Uhat[2][:, :, ts], self.rbar[2][:, ts])
             td_square = np.dot(td_vec, td_vec)
-            td_total += (1 / self.ssq[1]) * td_square
+            td_total += (1 / self.ssqr[1]) * td_square
 
             #L2
             # Bottom-up
