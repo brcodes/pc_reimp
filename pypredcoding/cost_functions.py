@@ -574,39 +574,39 @@ class RecurrentCostFunction():
         # Copy attributes from the model
         self.__dict__.update(rPCC.__dict__)
     
-    def r_updates_n_2_Li(self, label):
+    def r_updates_n_2(self, ts, label):
+        # time slices
+        ts_slice_r = (slice(None), ts) # [:, ts]
+        tsmin1 = ts - 1
+        tsmin1_slice_r = (slice(None), tsmin1) # [:, ts - 1]
+        tsmin1_slice_W = (slice(None), slice(None), tsmin1) # [:, :, ts - 1]
+        
         # r bars first
         # Sequence of hats and bars to do with the fact that r, U, V is the global update order.
-        self.rbar[1] = np.matmul(self.Vhat[1],self.rhat[1])
-        rbar1 = self.rbar[1]
-        self.rbar[2] = np.matmul(self.Vhat[2],self.rhat[2])
-        rbar2 = self.rbar[2]
+        rbar1ts = self.rbar[1][ts_slice_r] = np.matmul(self.Vhat[1][tsmin1_slice_W],self.rhat[1][tsmin1_slice_r])
+        rbar2ts = self.rbar[2][ts_slice_r] = np.matmul(self.Vhat[2][tsmin1_slice_W],self.rhat[2][tsmin1_slice_r])
         
-        Uhat1 = self.Uhat[1]
-        Uhat2 = self.Uhat[2]
+        Ubar1ts = self.Uhat[1][tsmin1_slice_W]
+        Ubar2ts = self.Uhat[2][tsmin1_slice_W]
         
         kr1 = self.kr[1]
         kr2 = self.kr[2]
         
         ssqr1 = self.ssqr[1]
         
-        # r hat (t-1) storage for V updates
-        self.rhat_tmin1[1] = copy(self.rhat[1])
-        self.rhat_tmin1[2] = copy(self.rhat[2])
-        
         # r hats
-        self.rhat[1] = rbar1 + (kr1 / self.ssqr[0]) \
-                                * np.matmul(Uhat1.T, (self.r[0] - np.matmul(Uhat1, rbar1))) \
-                                - (kr1 / ssqr1) * (rbar1  - np.matmul(Uhat2,rbar2))
+        self.rhat[1][ts_slice_r] = rbar1ts + (kr1 / self.ssqr[0]) \
+                                * np.matmul(Ubar1ts.T, (self.r[0] - np.matmul(Ubar1ts, rbar1ts))) \
+                                - (kr1 / ssqr1) * (rbar1ts  - np.matmul(Ubar2ts, rbar2ts))
         
         # Layer 2                     
-        self.rhat[2] = rbar2 + (kr2 / ssqr1) \
-                                * np.matmul(Uhat2.T, (rbar1 - np.matmul(Uhat2, rbar2)))
+        self.rhat[2][ts_slice_r] = rbar2ts + (kr2 / ssqr1) \
+                                * np.matmul(Ubar2ts.T, (rbar1ts - np.matmul(Ubar2ts, rbar2ts)))
         
         # Monica's r2hatx is called r_context here.                  
-        self.rhat['c'] = self.rhat[2] - (1 / 2) * (kr2 / self.ssqr[2]) * (self.softmax_func(rbar2)  - label)
+        self.rhat['c'] = self.rhat[2] - (1 / 2) * (kr2 / self.ssqr[2]) * (self.softmax_func(rbar2ts)  - label)
 
-    def U_updates_n_2_Li(self, label):
+    def U_updates_n_2(self, label):
         # U bars first
         self.Ubar[1] = copy(self.Uhat[1])
         self.Ubar[2] = copy(self.Uhat[2])
@@ -619,7 +619,7 @@ class RecurrentCostFunction():
         self.Uhat[2] = self.Ubar[2] + (self.kU[2] / self.ssqr[1]) \
                                     * np.outer((self.rbar[1] - np.matmul(self.Ubar[2], self.rhat[c])), self.rhat[c])
                                     
-    def V_updates_n_2_Li(self, label):
+    def V_updates_n_2(self, label):
         # Bars first
         self.Vbar[1] = copy(self.Vhat[1])
         self.Vbar[2] = copy(self.Vhat[2])
@@ -650,11 +650,11 @@ class RecurrentCostFunction():
             update_non_weight_components(label=label)
             
             # Bottom-Up
-            bu_vec = self.r[0] - np.matmul(self.Uhat[1], self.rhat[1])
+            bu_vec = self.r[0] - np.matmul(self.Uhat[1][:, :, ts], self.rhat[1][:, ts])
             bu_square = np.dot(bu_vec, bu_vec)
             bu_total += (1 / self.ssqr[0]) * bu_square
             # Top-Down
-            td_vec = self.r[1] - np.matmul(self.Uhat[2], self.rhat[2])
+            td_vec = self.r[1] - np.matmul(self.Uhat[2][:, :, ts], self.rhat[2][:, ts])
             td_square = np.dot(td_vec, td_vec)
             td_total += (1 / self.ssq[1]) * td_square
 

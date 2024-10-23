@@ -738,13 +738,8 @@ class PredictiveCodingClassifier:
             reset_rs_gteq1(prior_dist=prior_dist)
             input = X[inp]
             label = Y[inp]
-            if model_type == 'static':
-                self.r[0] = input
-                update_non_weight_components(label=label)
-            elif model_type == 'recurrent':
-                for ts in range(num_ts):
-                    self.r[0] = input[:, ts]
-                    update_non_weight_components(label=label)
+            self.r[0] = input
+            update_non_weight_components(label=label)
             Jr0 += rep_cost()
             Jc0 += classif_cost(label)
         accuracy += evaluate(X, Y)
@@ -771,13 +766,8 @@ class PredictiveCodingClassifier:
                 reset_rs_gteq1(prior_dist=prior_dist)
                 input = X_shuff[inp]
                 label = Y_shuff[inp]
-                if model_type == 'static':
-                    self.r[0] = input
-                    update_all_components(label=label)
-                elif model_type == 'recurrent':
-                    for ts in range(num_ts):
-                        self.r[0] = input[:, ts]
-                        update_all_components(label=label)
+                self.r[0] = input
+                update_all_components(label=label)
                 Jre += rep_cost()
                 Jce += classif_cost(label)
             printlog(f'eval {epoch}')
@@ -873,22 +863,14 @@ class PredictiveCodingClassifier:
         
         classify = self.classify
         num_inps = self.num_imgs
-        model_type = self.model_type
-        self.num_ts = 98
-        num_ts = self.num_ts
         
         accuracy = 0
         for inp in range(num_inps):
             reset_rs_gteq1(prior_dist=prior_dist)
             input = X[inp]
             label = Y[inp]
-            if model_type == 'static':
-                self.r[0] = input
-                update_non_weight_components(label=label)
-            elif model_type == 'recurrent':
-                for ts in range(num_ts):
-                    self.r[0] = input[:, ts]
-                    update_non_weight_components(label=label)
+            self.r[0] = input
+            update_non_weight_components(label=label)
             guess = classify(label)
             accuracy += guess
         accuracy /= num_inps
@@ -1143,3 +1125,11 @@ class RecurrentPCC(PredictiveCodingClassifier):
 
     def r_updates(self,label):
         pass
+    
+    def train(self, X, Y):
+        
+        num_ts = self.num_ts
+        
+        for ts in range(num_ts):
+            self.r[0] = input[:, ts]
+            update_non_weight_components(label=label)
