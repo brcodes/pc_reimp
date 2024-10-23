@@ -611,7 +611,6 @@ class RecurrentCostFunction():
         ts_slice_r = (slice(None), ts) # [:, ts]
         ts_slice_W = (slice(None), slice(None), ts) # [:, :, ts]
         tsmin1 = ts - 1
-        tsmin1_slice_r = (slice(None), tsmin1) # [:, ts - 1]
         tsmin1_slice_W = (slice(None), slice(None), tsmin1) # [:, :, ts - 1]
         
         # U bars first: Ubar(t) = Uhat(t-1)
@@ -629,19 +628,23 @@ class RecurrentCostFunction():
         self.Uhat[2][ts_slice_W] = Ubar2ts + (self.kU[2] / self.ssqr[1]) \
                                     * np.outer((self.rbar[1][ts_slice_r] - np.matmul(Ubar2ts, rhatcts)), rhatcts)
                                     
-    def V_updates_n_2(self, label):
+    def V_updates_n_2(self, ts, label):
+        # time slices
+        ts_slice_r = (slice(None), ts) # [:, ts]
+        ts_slice_W = (slice(None), slice(None), ts) # [:, :, ts]
+        tsmin1 = ts - 1
+        tsmin1_slice_r = (slice(None), tsmin1) # [:, ts - 1]
+        tsmin1_slice_W = (slice(None), slice(None), tsmin1) # [:, :, ts - 1]
+        
         # Bars first
-        self.Vbar[1] = copy(self.Vhat[1])
-        self.Vbar[2] = copy(self.Vhat[2])
+        Vbar1ts = self.Vbar[1][ts_slice_W] = copy(self.Vhat[1][tsmin1_slice_W])
+        Vbar2ts = self.Vbar[2][ts_slice_W] = copy(self.Vhat[2][tsmin1_slice_W])
         
         # Hats
-        self.Vhat[1] = self.Vbar[1] + (self.kV[1] / self.ssqV[0]) \
-                                    * np.outer((self.rhat[1] - self.rbar[1]), self.rhat_tmin1[1])
-        self.Vhat[2] = self.Vbar[2] + (self.kV[2] / self.ssqV[1]) \
-                                    * np.outer((self.rhat[2] - self.rbar[2]), self.rhat_tmin1[2])
-                                    
-        self.V[1] = self.Vhat[1]
-        self.V[2] = self.Vhat[2]
+        self.Vhat[1][ts_slice_W] = Vbar1ts + (self.kV[1] / self.ssqV[0]) \
+                                    * np.outer((self.rhat[1][ts_slice_r] - self.rbar[1][ts_slice_r]), self.rhat[1][tsmin1_slice_r])
+        self.Vhat[2][ts_slice_W] = Vbar2ts + (self.kV[2] / self.ssqV[1]) \
+                                    * np.outer((self.rhat[2][ts_slice_r] - self.rbar[2][ts_slice_r]), self.rhat[2][tsmin1_slice_r])
                                     
     def total_cost_n_2(self, input, label):
         
