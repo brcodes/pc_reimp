@@ -604,7 +604,7 @@ class RecurrentCostFunction():
                                 * np.matmul(Ubar2ts.T, (rbar1ts - np.matmul(Ubar2ts, rbar2ts)))
         
         # Monica's r2hatx is called r_context here.                  
-        self.rhat['c'] = self.rhat[2] - (1 / 2) * (kr2 / self.ssqr[2]) * (self.softmax_func(rbar2ts)  - label)
+        self.rhat['c'][ts_slice_r] = self.rhat[2][ts_slice_r] - (1 / 2) * (kr2 / self.ssqr[2]) * (self.softmax_func(rbar2ts) - label)
 
     def U_updates_n_2(self, label):
         # U bars first
