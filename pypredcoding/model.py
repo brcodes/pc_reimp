@@ -666,10 +666,9 @@ class PredictiveCodingClassifier:
         
         rep_cost = self.rep_cost
         
-        classif_method = self.classif_method
         classif_cost = self.classif_cost
         
-        evaluate = partial(self.evaluate, update_method_name=update_method_name, update_method_number=update_method_number, classif_method=classif_method, plot=None)
+        evaluate = partial(self.evaluate, update_method_name=update_method_name, update_method_number=update_method_number, plot=None)
         
         # Checkpointing
         if 'save_every' in save_checkpoint:
@@ -1229,7 +1228,7 @@ class RecurrentPCC(PredictiveCodingClassifier):
         '''
 
         # # Methods
-        # reset_rs_gteq1 = partial(self.reset_rs_gteq1, all_lyr_sizes=self.all_lyr_sizes)
+        reset_rs_gteq1 = partial(self.reset_rs_gteq1, all_lyr_sizes=self.all_lyr_sizes)
         
         fill_UsVs_with_last_timestep = self.fill_UsVs_with_last_timestep
         
@@ -1243,7 +1242,7 @@ class RecurrentPCC(PredictiveCodingClassifier):
         classif_method = self.classif_method
         classif_cost = partial(self.classif_cost, num_ts=self.num_ts)
         
-        evaluate = partial(self.evaluate, update_method_name=update_method_name, update_method_number=update_method_number, classif_method=classif_method, plot=None)
+        evaluate = partial(self.evaluate, update_method_name=update_method_name, update_method_number=update_method_number, plot=None)
         
         
         
@@ -1309,7 +1308,7 @@ class RecurrentPCC(PredictiveCodingClassifier):
         printlog('\n')
         printlog(f'Epoch: {start_epoch}')
         for inp in range(num_inps):
-            # reset_rs_gteq1(prior_dist=prior_dist)
+            reset_rs_gteq1(prior_dist=prior_dist)
             input = X[inp]
             label = Y[inp]
             # If non-weight components are being updated only,
@@ -1326,7 +1325,7 @@ class RecurrentPCC(PredictiveCodingClassifier):
             Jc0 += classif_cost(label=label)
             
         # Do this before running
-        # accuracy += evaluate(X, Y)  
+        accuracy += evaluate(X, Y)  
         
         printlog(f'Jr: {Jr0}, Jc: {Jc0}, Accuracy: {accuracy}')
         self.Jr[start_epoch] = Jr0
@@ -1348,7 +1347,7 @@ class RecurrentPCC(PredictiveCodingClassifier):
             X_shuff = X[shuffle_indices]
             Y_shuff = Y[shuffle_indices]
             for inp in range(num_inps):
-                # reset_rs_gteq1(prior_dist=prior_dist)
+                reset_rs_gteq1(prior_dist=prior_dist)
                 input = X_shuff[inp]
                 label = Y_shuff[inp]
                 for ts in range(num_ts):
@@ -1358,7 +1357,7 @@ class RecurrentPCC(PredictiveCodingClassifier):
                 Jce += classif_cost(label=label)
                 
             printlog(f'eval {epoch}')
-            # accuracy += evaluate(X, Y)
+            accuracy += evaluate(X, Y)
             self.Jr[epoch] = Jre
             self.Jc[epoch] = Jce
             self.accuracy[epoch] = accuracy
@@ -1444,7 +1443,7 @@ class RecurrentPCC(PredictiveCodingClassifier):
         test
         '''
         
-        # reset_rs_gteq1 = partial(self.reset_rs_gteq1, all_lyr_sizes=self.all_lyr_sizes)
+        reset_rs_gteq1 = partial(self.reset_rs_gteq1, all_lyr_sizes=self.all_lyr_sizes)
         fill_UsVs_with_last_timestep = self.fill_UsVs_with_last_timestep
         
         update_non_weight_components = partial(self.update_method_no_weight_dict[update_method_name], update_method_number)
@@ -1454,7 +1453,7 @@ class RecurrentPCC(PredictiveCodingClassifier):
         
         accuracy = 0
         for inp in range(num_inps):
-            # reset_rs_gteq1(prior_dist=prior_dist)
+            reset_rs_gteq1(prior_dist=prior_dist)
             input = X[inp]
             label = Y[inp]
             # If non-weight components are being updated only,
