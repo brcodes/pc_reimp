@@ -844,7 +844,7 @@ class PredictiveCodingClassifier:
         
         printlog(f'Change per min Jr: {change_per_min_Jr}%, Jc: {change_per_min_Jc}%, Accuracy: {change_per_min_accuracy}%')
 
-    def evaluate(self, X, Y, update_method_name, update_method_number, classif_method, plot=None):
+    def evaluate(self, X, Y, update_method_name, update_method_number, plot=None):
         
         '''
         training test
@@ -1069,6 +1069,7 @@ class RecurrentPCC(PredictiveCodingClassifier):
         self.component_updates = [self.r_updates, self.U_updates]
         if self.classif_method == 'c2':
             self.component_updates.append(self.Uo_update)
+        self.component_updates.append(self.V_updates)
 
         self.r_prior_dist_dict = {'gaussian': partial(np.random.normal, loc=0, scale=1),
                                 'kurtotic': partial(np.random.laplace, loc=0.0, scale=0.5),
@@ -1082,14 +1083,23 @@ class RecurrentPCC(PredictiveCodingClassifier):
                                 'kurtotic': partial(np.random.laplace, loc=0.0, scale=0.5),
                                 'Li_gaussian': partial(np.random.normal, loc=0, scale=0.1)}
         
+        self.classif_cost_dict = {'c1': partial(recurrent_cost_func_class.classif_cost_c1, num_ts=self.num_ts)}
+                                # 'c2': recurrent_cost_func_class.classif_cost_c2,
+                                # None: recurrent_cost_func_class.classif_cost_None}
         
+        self.classif_guess_dict = {'c1': partial(recurrent_cost_func_class.classif_guess_c1, num_ts=self.num_ts)}
+                                # 'c2': recurrent_cost_func_class.classif_guess_c2,
+                                # None: recurrent_cost_func_class.classif_guess_None}
 
         self.config_from_attributes()
         
         
     def config_from_attributes(self):
+        
+        printlog = self.print_and_log
 
         n = self.num_layers
+        num_ts = self.num_ts
 
         # Inits on representations and weights
         self.r = {}
@@ -1098,27 +1108,38 @@ class RecurrentPCC(PredictiveCodingClassifier):
         # r0
         self.r[0] = np.zeros(self.input_shape)
         # r1 - rn, U1 - Un
+        printlog('Inits:')
         for i in range(1, n + 1):
             if i < n:
                 # r
                 self.r[i] = self.r_prior_dist(size=(self.hidden_lyr_sizes[i - 1]))
+                self.r_expansion[i] = self.r_prior_dist(size=(self.hidden_lyr_sizes[i - 1], num_ts))
             # Layer n
             elif i == n:
                 self.r[n] = self.r_prior_dist(size=(self.output_lyr_size))
+                self.r_expansion[n] = self.r_prior_dist(size=(self.output_lyr_size, num_ts))
+            printlog(f'r{i} shape: {self.r[i].shape}', f'r{i} expansion shape: {self.r_expansion[i].shape}')
             # U
             self.U[i] = self.U_prior_dist(size=(self.r[i - 1].shape[0], self.r[i].shape[0]))
+            self.U_expansion[i] = self.U_prior_dist(size=(self.r[i - 1].shape[0], self.r[i].shape[0], num_ts))
+            printlog(f'U{i} shape: {self.U[i].shape}', f'U{i} expansion shape: {self.U_expansion[i].shape}')
             # V
             self.V[i] = self.V_prior_dist(size=(self.r[i].shape[0], self.r[i].shape[0]))
+            self.V_expansion[i] = self.V_prior_dist(size=(self.r[i].shape[0], self.r[i].shape[0], num_ts))
+            printlog(f'V{i} shape: {self.V[i].shape}', f'V{i} expansion shape: {self.V_expansion[i].shape}')
                 
         # Classification now
         if self.classif_method == 'c2':
             Uo_size = (self.num_classes, self.output_lyr_size)
             self.U['o'] = self.U_prior_dist(size=Uo_size)
-
-        # Create deep copies for rhat, rbar, Uhat, Ubar, Vhat, Vbar
-        self.rhat = self.rbar = copy(self.r)
-        self.Uhat = self.Ubar = copy(self.U)
-        self.Vhat = self.Vbar = copy(self.V)
+            printlog(f'Uo shape: {self.U["o"].shape}')
+        
+        # Create shallow copies for rhat, rbar, Uhat, Ubar, Vhat, Vbar
+        printlog('self.r,U,V are kept for final state save.')
+        printlog('self.r_expansion,U_expansion,V_expansion have had copies made and will be used for rbars, hats, Ubars, hats, Vbars, hats.')
+        self.rhat = self.rbar = copy(self.r_expansion)
+        self.Uhat = self.Ubar = copy(self.U_expansion)
+        self.Vhat = self.Vbar = copy(self.V_expansion)
         
     def V_prior_dist(self, size):
         return self.V_prior_dist_dict[self.priors](size=size)
@@ -1275,14 +1296,18 @@ class RecurrentPCC(PredictiveCodingClassifier):
             # Differentiates it from static
             for ts in range(num_ts):
                 self.r[0] = input[:, ts]
+                # If non-weight components are being updated only,
+                # U, V "timeslices" will all be accessing values from ts == num_ts
                 update_non_weight_components(label=label)
             # Rep cost we're interested in every timestep
             Jr0 += rep_cost(input=input)
             # Classification accuracy is only based on rbar_n at final timestep
             # But Classification Cost we'll do at every timestep, in an effort to keep magnitude of Jr ~ Jc
             Jc0 += classif_cost(label=label)
+            
         # Do this before running
         # accuracy += evaluate(X, Y)  
+        
         printlog(f'Jr: {Jr0}, Jc: {Jc0}, Accuracy: {accuracy}')
         self.Jr[start_epoch] = Jr0
         self.Jc[start_epoch] = Jc0
@@ -1303,15 +1328,17 @@ class RecurrentPCC(PredictiveCodingClassifier):
             X_shuff = X[shuffle_indices]
             Y_shuff = Y[shuffle_indices]
             for inp in range(num_inps):
-                reset_rs_gteq1(prior_dist=prior_dist)
+                # reset_rs_gteq1(prior_dist=prior_dist)
                 input = X_shuff[inp]
                 label = Y_shuff[inp]
-                self.r[0] = input
-                update_all_components(label=label)
-                Jre += rep_cost()
-                Jce += classif_cost(label)
+                for ts in range(num_ts):
+                    self.r[0] = input[:, ts]
+                    update_all_components(label=label)
+                Jre += rep_cost(input=input)
+                Jce += classif_cost(label=label)
+                
             printlog(f'eval {epoch}')
-            accuracy += evaluate(X, Y)
+            # accuracy += evaluate(X, Y)
             self.Jr[epoch] = Jre
             self.Jc[epoch] = Jce
             self.accuracy[epoch] = accuracy
@@ -1383,3 +1410,39 @@ class RecurrentPCC(PredictiveCodingClassifier):
         change_per_min_accuracy = percent_diff_accuracy / tot_time.total_seconds() * 60
         
         printlog(f'Change per min Jr: {change_per_min_Jr}%, Jc: {change_per_min_Jc}%, Accuracy: {change_per_min_accuracy}%')
+        
+    def evaluate(self, X, Y, update_method_name, update_method_number, plot=None):
+        
+        '''
+        training test
+        pre-initiate all distributions
+        for speed
+        '''
+        prior_dist = self.load_hard_r_prior_dist
+        # Else: prior_dist = self.r_prior_dist
+        '''
+        test
+        '''
+        
+        # reset_rs_gteq1 = partial(self.reset_rs_gteq1, all_lyr_sizes=self.all_lyr_sizes)
+        
+        update_non_weight_components = partial(self.update_method_no_weight_dict[update_method_name], update_method_number)
+        
+        classify = self.classify
+        num_inps = self.num_inps
+        
+        accuracy = 0
+        for inp in range(num_inps):
+            # reset_rs_gteq1(prior_dist=prior_dist)
+            input = X[inp]
+            label = Y[inp]
+            for ts in range(self.num_ts):
+                self.r[0] = input[:, ts]
+                # If non-weight components are being updated only,
+                # U, V "timeslices" will all be accessing values from ts == num_ts
+                update_non_weight_components(label=label)
+            guess = classify(label)
+            accuracy += guess
+        accuracy /= num_inps
+    
+        return accuracy

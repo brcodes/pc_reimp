@@ -577,7 +577,10 @@ class RecurrentCostFunction():
     def r_updates_n_2(self, ts, label):
         # time slices
         ts_slice_r = (slice(None), ts) # [:, ts]
-        tsmin1 = ts - 1
+        if ts - 1 < 0:
+            tsmin1 = 0
+        else:
+            tsmin1 = ts - 1
         tsmin1_slice_r = (slice(None), tsmin1) # [:, ts - 1]
         tsmin1_slice_W = (slice(None), slice(None), tsmin1) # [:, :, ts - 1]
         
@@ -610,7 +613,10 @@ class RecurrentCostFunction():
         # time slices
         ts_slice_r = (slice(None), ts) # [:, ts]
         ts_slice_W = (slice(None), slice(None), ts) # [:, :, ts]
-        tsmin1 = ts - 1
+        if ts - 1 < 0:
+            tsmin1 = 0
+        else:
+            tsmin1 = ts - 1
         tsmin1_slice_W = (slice(None), slice(None), tsmin1) # [:, :, ts - 1]
         
         # U bars first: Ubar(t) = Uhat(t-1)
@@ -632,7 +638,10 @@ class RecurrentCostFunction():
         # time slices
         ts_slice_r = (slice(None), ts) # [:, ts]
         ts_slice_W = (slice(None), slice(None), ts) # [:, :, ts]
-        tsmin1 = ts - 1
+        if ts - 1 < 0:
+            tsmin1 = 0
+        else:
+            tsmin1 = ts - 1
         tsmin1_slice_r = (slice(None), tsmin1) # [:, ts - 1]
         tsmin1_slice_W = (slice(None), slice(None), tsmin1) # [:, :, ts - 1]
         
@@ -686,4 +695,9 @@ class RecurrentCostFunction():
             c1tot += -label.dot(np.log(self.softmax_func(vector=self.rbar[self.num_layers][:, ts])))
         return c1tot
     
-    
+    def classif_guess_c1(self, label, num_ts):
+        guess = np.argmax(self.softmax_func(vector=self.rbar[self.num_layers][:, num_ts - 1]))
+        if guess == np.argmax(label):
+            return 1
+        else:
+            return 0
