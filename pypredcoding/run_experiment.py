@@ -50,10 +50,11 @@ def model_name_from_params(params):
     # Assuming params['update_method'] is a dictionary with exactly one key-value pair
     update_method, um_int = next(iter(params['update_method'].items()))
     um_int_str = str(um_int)  # Convert the value to a string
+    architecture = params.get('architecture')
 
     name = 'mod.' + params['model_type'][:2] + '_' + ('tl' if params['tiled_input'] else 'ntl') + '_' \
                     + str(params['num_layers']) + '_' + layer_sizes + '_' + num_inps + '_' \
-                    + ''.join([word[0] for word in params['architecture'].split('_')]) + '_' \
+                    + ''.join([word[0] for word in architecture.split('_')]) + '_' \
                     + params['activ_func'][:3] + '_' \
                     + params['priors'] + '_' + params['classif_method'] + '_' \
                     + update_method + '-' + um_int_str + '_' + params['exp_name'] + '_' + str(params['epoch_n']) + '.pydb'

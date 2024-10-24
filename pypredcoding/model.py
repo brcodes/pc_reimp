@@ -18,15 +18,21 @@ class PredictiveCodingClassifier:
                                 'tanh': self.tanh_transform}
         self.prior_cost_dict = {'gaussian': self.gaussian_prior_costs, 
                                 'kurtotic': self.kurtotic_prior_costs,
-                                'Li_priors': self.Li_prior_costs}
+                                'Li_priors': self.Li_prior_costs,
+                                'Li_gaussian': self.gaussian_prior_costs}
+        
+        """Li gaussian will not get used in rPCC, but is here for the sake of the shell class init"""
         
         self.r_prior_dist_dict = {'gaussian': partial(np.random.normal, loc=0, scale=1),
                                 'kurtotic': partial(np.random.laplace, loc=0.0, scale=0.5),
-                                'Li_priors': self.create_zeros}
+                                'Li_priors': self.create_zeros,
+                                'Li_gaussian': partial(np.random.normal, loc=0, scale=0.1)}
+                                
         
         self.U_prior_dist_dict = {'gaussian': partial(np.random.normal, loc=0, scale=1),
                                 'kurtotic': partial(np.random.laplace, loc=0.0, scale=0.5),
-                                'Li_priors': self.create_Li_rand}
+                                'Li_priors': self.create_Li_rand,
+                                'Li_gaussian': partial(np.random.normal, loc=0, scale=0.1)}
         
         self.softmax_dict = {'normal': self.softmax,
                             'stable': self.stable_softmax}
@@ -169,145 +175,145 @@ class PredictiveCodingClassifier:
         self.g = self.prior_cost_dict[self.priors]
         self.h = self.prior_cost_dict[self.priors]
         
-        # Lr denominators (Brown method or Li method)
-        if self.lr_denominators == "Li_denominators":
-            # Prior terms
-            self.lr_prior_denominator = 1
-            # rn top-down update term
-            self.lr_rn_td_denominator = self.ssq[self.num_layers]
-        elif self.lr_denominators == "Brown_denominators":
-            self.lr_prior_denominator = 2
-            # rn top-down update term
-            self.lr_rn_td_denominator = 2
+        # # Lr denominators (Brown method or Li method)
+        # if self.lr_denominators == "Li_denominators":
+        #     # Prior terms
+        #     self.lr_prior_denominator = 1
+        #     # rn top-down update term
+        #     self.lr_rn_td_denominator = self.ssq[self.num_layers]
+        # elif self.lr_denominators == "Brown_denominators":
+        #     self.lr_prior_denominator = 2
+        #     # rn top-down update term
+        #     self.lr_rn_td_denominator = 2
 
-        '''
-        scenario
+        # '''
+        # scenario
         
-        tiling IS receptive fields.
-        No tiling removes that.
+        # tiling IS receptive fields.
+        # No tiling removes that.
         
-        tiled: True, flat: True    Input (e.g.) 16,864    U1 16,864,32    32 r1  (FHL)          U2 32,128
-                                                16,864    U1 16,864,32    16,32 r1 (E1L_Li)     U2 512,128
-                                                16,864    U1 16,864,32    16,32 r1 (E1L)        U2 16,32,128
+        # tiled: True, flat: True    Input (e.g.) 16,864    U1 16,864,32    32 r1  (FHL)          U2 32,128
+        #                                         16,864    U1 16,864,32    16,32 r1 (E1L_Li)     U2 512,128
+        #                                         16,864    U1 16,864,32    16,32 r1 (E1L)        U2 16,32,128
         
-        tiled: True, flat: False   I (e.g.) 4,4,24,36     U1 4,4,24,36,32    32 r1  (FHL)       U2 32,128
-                                            4,4,24,36     U1 4,4,24,36,32    4,4,32 r1 (E1L)    U2 4,4,32,128
+        # tiled: True, flat: False   I (e.g.) 4,4,24,36     U1 4,4,24,36,32    32 r1  (FHL)       U2 32,128
+        #                                     4,4,24,36     U1 4,4,24,36,32    4,4,32 r1 (E1L)    U2 4,4,32,128
                                             
-        tiled: False, flat: True   I (e.g.) 1,11088       U1 1,11088,32     32 r1  (all)        U2 32,128
+        # tiled: False, flat: True   I (e.g.) 1,11088       U1 1,11088,32     32 r1  (all)        U2 32,128
                                             
-        tiled: False, flat: False  I (e.g.) 84,132     U1 84,132,32    32 r1  (all)             U2 32,128
+        # tiled: False, flat: False  I (e.g.) 84,132     U1 84,132,32    32 r1  (all)             U2 32,128
         
-        '''
-        # In all cases, U1 is input dims plus r1 (hidden layer sizes [0])
-        # U2 is r1dims plus r2 dims 
-        #                                       (except EIL_li which is r1dims.flatten() plus r2 dims)
-        # U3 - n is r1dims plus r2 dims
+        # '''
+        # # In all cases, U1 is input dims plus r1 (hidden layer sizes [0])
+        # # U2 is r1dims plus r2 dims 
+        # #                                       (except EIL_li which is r1dims.flatten() plus r2 dims)
+        # # U3 - n is r1dims plus r2 dims
         
-        # If flat hidden layers, r1 is hidden layer sizes [0]
+        # # If flat hidden layers, r1 is hidden layer sizes [0]
         
-        # Params needed
-        tiled_input = self.tiled_input
-        flat_input = self.flat_input
-        architecture = self.architecture
-        input_shape = self.input_shape
-        num_layers = self.num_layers
-        n = num_layers
+        # # Params needed
+        # tiled_input = self.tiled_input
+        # flat_input = self.flat_input
+        # architecture = self.architecture
+        # input_shape = self.input_shape
+        # num_layers = self.num_layers
+        # n = num_layers
 
-        # Inits on representations and weights
-        self.r = {}
-        self.U = {}
-        # r0
-        self.r[0] = np.zeros(input_shape)
-        for i in range(1, n + 1):
-            # Layer 1
-            if i == 1:
-                # r1
-                if architecture == 'flat_hidden_lyrs':
-                    self.r[1] = self.r_prior_dist(size=(self.hidden_lyr_sizes[0]))
-                # Li architecture is only meant for one type of input
-                elif architecture == 'expand_first_lyr_Li':
-                    if tiled_input and flat_input:
-                        self.r[1] = self.r_prior_dist(size=(self.num_tiles, self.hidden_lyr_sizes[0]))
+        # # Inits on representations and weights
+        # self.r = {}
+        # self.U = {}
+        # # r0
+        # self.r[0] = np.zeros(input_shape)
+        # for i in range(1, n + 1):
+        #     # Layer 1
+        #     if i == 1:
+        #         # r1
+        #         if architecture == 'flat_hidden_lyrs':
+        #             self.r[1] = self.r_prior_dist(size=(self.hidden_lyr_sizes[0]))
+        #         # Li architecture is only meant for one type of input
+        #         elif architecture == 'expand_first_lyr_Li':
+        #             if tiled_input and flat_input:
+        #                 self.r[1] = self.r_prior_dist(size=(self.num_tiles, self.hidden_lyr_sizes[0]))
                         
-                elif architecture == 'expand_first_lyr':
-                    if tiled_input and flat_input:
-                        self.r[1] = self.r_prior_dist(size=(self.num_tiles, self.hidden_lyr_sizes[0]))
-                    elif tiled_input and not flat_input:
-                        self.r[1] = self.r_prior_dist(size=(self.input_shape[0], self.input_shape[1], self.hidden_lyr_sizes[0]))
-                    elif not tiled_input:
-                        self.r[1] = self.r_prior_dist(size=(self.hidden_lyr_sizes[0]))
-                # U1
-                input_shape_list = list(input_shape)
-                input_shape_list.append(self.hidden_lyr_sizes[0])
-                U1_size = tuple(input_shape_list)
-                self.U[1] = self.U_prior_dist(size=U1_size)
+        #         elif architecture == 'expand_first_lyr':
+        #             if tiled_input and flat_input:
+        #                 self.r[1] = self.r_prior_dist(size=(self.num_tiles, self.hidden_lyr_sizes[0]))
+        #             elif tiled_input and not flat_input:
+        #                 self.r[1] = self.r_prior_dist(size=(self.input_shape[0], self.input_shape[1], self.hidden_lyr_sizes[0]))
+        #             elif not tiled_input:
+        #                 self.r[1] = self.r_prior_dist(size=(self.hidden_lyr_sizes[0]))
+        #         # U1
+        #         input_shape_list = list(input_shape)
+        #         input_shape_list.append(self.hidden_lyr_sizes[0])
+        #         U1_size = tuple(input_shape_list)
+        #         self.U[1] = self.U_prior_dist(size=U1_size)
                 
-            # Layer i > 1 and i < n
-            elif i > 1 and i < n:
-                # ri
-                self.r[i] = self.r_prior_dist(size=(self.hidden_lyr_sizes[i - 1]))
-                # U2
-                if i == 2:
-                    if architecture == 'expand_first_lyr_Li':
-                        if tiled_input and flat_input:
-                            U2_size = (self.r[1].shape[0] * self.r[1].shape[1], self.hidden_lyr_sizes[i - 1])
-                            self.U[2] = self.U_prior_dist(size=U2_size)
-                    else:
-                        # Unpack all the dimension sizes in r1
-                        U2_size = (*self.r[1].shape, self.r[2].shape[0])
-                        self.U[2] = self.U_prior_dist(size=U2_size)
-                # U3+
-                else:
-                    Ui_size = (self.r[i-1].shape[0], self.r[i].shape[0])
-                    self.U[i] = self.U_prior_dist(size=Ui_size)
-            # Layer n
-            elif i == n:
-                # rn
-                self.r[n] = self.r_prior_dist(size=(self.output_lyr_size))
-                # Un
-                Un_size = (self.r[n-1].shape[0], self.r[n].shape[0])
-                self.U[n] = self.U_prior_dist(size=Un_size)
+        #     # Layer i > 1 and i < n
+        #     elif i > 1 and i < n:
+        #         # ri
+        #         self.r[i] = self.r_prior_dist(size=(self.hidden_lyr_sizes[i - 1]))
+        #         # U2
+        #         if i == 2:
+        #             if architecture == 'expand_first_lyr_Li':
+        #                 if tiled_input and flat_input:
+        #                     U2_size = (self.r[1].shape[0] * self.r[1].shape[1], self.hidden_lyr_sizes[i - 1])
+        #                     self.U[2] = self.U_prior_dist(size=U2_size)
+        #             else:
+        #                 # Unpack all the dimension sizes in r1
+        #                 U2_size = (*self.r[1].shape, self.r[2].shape[0])
+        #                 self.U[2] = self.U_prior_dist(size=U2_size)
+        #         # U3+
+        #         else:
+        #             Ui_size = (self.r[i-1].shape[0], self.r[i].shape[0])
+        #             self.U[i] = self.U_prior_dist(size=Ui_size)
+        #     # Layer n
+        #     elif i == n:
+        #         # rn
+        #         self.r[n] = self.r_prior_dist(size=(self.output_lyr_size))
+        #         # Un
+        #         Un_size = (self.r[n-1].shape[0], self.r[n].shape[0])
+        #         self.U[n] = self.U_prior_dist(size=Un_size)
                 
-        # Classification now
-        if self.classif_method == 'c2':
-            Uo_size = (self.num_classes, self.output_lyr_size)
-            self.U['o'] = self.U_prior_dist(size=Uo_size)
+        # # Classification now
+        # if self.classif_method == 'c2':
+        #     Uo_size = (self.num_classes, self.output_lyr_size)
+        #     self.U['o'] = self.U_prior_dist(size=Uo_size)
         
-        # Initiate U1 and U2-based operations dims (dimentions flex based on input and architecture)
-        # If the rep cost is being calculated
-        self.set_Idiff_tdot_dims(input_shape)
-        self.set_L1diff_tdot_dims(self.r[1].shape)
-        # Used in U "dot" r at higher dims
-        self.set_U1_einsum_arg()
-        # Transposes
-        self.set_U1T_dims(U1_size)
-        self.set_U2T_dims(U2_size)
-        # U1-2T stuff
-        self.set_U1T_tdot_dims(U1_size)
-        self.set_U1T_einsum_arg()
-        self.set_U2T_einsum_arg()
-        # U-only stuff
-        self.set_Idiff_einsum_arg()
-        self.set_L1diff_einsum_arg()
+        # # Initiate U1 and U2-based operations dims (dimentions flex based on input and architecture)
+        # # If the rep cost is being calculated
+        # self.set_Idiff_tdot_dims(input_shape)
+        # self.set_L1diff_tdot_dims(self.r[1].shape)
+        # # Used in U "dot" r at higher dims
+        # self.set_U1_einsum_arg()
+        # # Transposes
+        # self.set_U1T_dims(U1_size)
+        # self.set_U2T_dims(U2_size)
+        # # U1-2T stuff
+        # self.set_U1T_tdot_dims(U1_size)
+        # self.set_U1T_einsum_arg()
+        # self.set_U2T_einsum_arg()
+        # # U-only stuff
+        # self.set_Idiff_einsum_arg()
+        # self.set_L1diff_einsum_arg()
         
-        # All layer sizes for priors
-        self.all_lyr_sizes = self.hidden_lyr_sizes.copy()
-        self.all_lyr_sizes.append(self.output_lyr_size)
-        if architecture == 'expand_first_lyr_Li' or architecture == 'expand_first_lyr':
-            self.all_lyr_sizes[0] = self.r[1].shape
+        # # All layer sizes for priors
+        # self.all_lyr_sizes = self.hidden_lyr_sizes.copy()
+        # self.all_lyr_sizes.append(self.output_lyr_size)
+        # if architecture == 'expand_first_lyr_Li' or architecture == 'expand_first_lyr':
+        #     self.all_lyr_sizes[0] = self.r[1].shape
             
-        # Set softmax
-        self.softmax_func = partial(self.set_softmax_func, softmax_type=self.softmax_type, k=self.softmax_k)
+        # # Set softmax
+        # self.softmax_func = partial(self.set_softmax_func, softmax_type=self.softmax_type, k=self.softmax_k)
         
-        # Initiate Jr, Jc, and accuracy (diagnostics) for storage, print, plot
-        epoch_n = self.epoch_n
-        self.Jr = [0] * (epoch_n + 1)
-        self.Jc = [0] * (epoch_n + 1)
-        self.accuracy = [0] * (epoch_n + 1)
+        # # Initiate Jr, Jc, and accuracy (diagnostics) for storage, print, plot
+        # epoch_n = self.epoch_n
+        # self.Jr = [0] * (epoch_n + 1)
+        # self.Jc = [0] * (epoch_n + 1)
+        # self.accuracy = [0] * (epoch_n + 1)
         
-        # Later: by layer
-        # self.Jr = {i: [0] * (epoch_n + 1) for i in range(n)}
-        # self.Jc = {i: [0] * (epoch_n + 1) for i in range(n)}
+        # # Later: by layer
+        # # self.Jr = {i: [0] * (epoch_n + 1) for i in range(n)}
+        # # self.Jc = {i: [0] * (epoch_n + 1) for i in range(n)}
         
     # Activation functions
     def linear_transform(self, U_dot_r):
@@ -1051,15 +1057,11 @@ class RecurrentPCC(PredictiveCodingClassifier):
         if n == 1:
             raise ValueError("1 layer not yet written")
         elif n == 2:
-            if self.rpcc_architecture == 'Li':
-                self.r_updates = recurrent_cost_func_class.r_updates_n_2_Li
-                self.U_updates = recurrent_cost_func_class.U_updates_n_2_Li
-                self.V_updates = recurrent_cost_func_class.V_updates_n_2_Li
-            elif self.rpcc_architecture == 'Rogers':
-                self.r_updates = recurrent_cost_func_class.r_updates_n_2
-                self.U_updates = recurrent_cost_func_class.U_updates_n_2
-                self.V_updates = recurrent_cost_func_class.V_updates_n_2
+            self.r_updates = recurrent_cost_func_class.r_updates_n_2
+            self.U_updates = recurrent_cost_func_class.U_updates_n_2
+            self.V_updates = recurrent_cost_func_class.V_updates_n_2
             self.rep_cost = recurrent_cost_func_class.rep_cost_n_2
+            
         elif n >= 3:
             raise ValueError("3+ layers model not yet written")
         else:
@@ -1094,20 +1096,24 @@ class RecurrentPCC(PredictiveCodingClassifier):
         
         
     def config_from_attributes(self):
-        
-        printlog = self.print_and_log
 
         n = self.num_layers
         num_ts = self.num_ts
 
         # Inits on representations and weights
         self.r = {}
+        self.r_expansion = {}
         self.U = {}
+        self.U_expansion = {}
         self.V = {}
+        self.V_expansion = {}
+        
         # r0
         self.r[0] = np.zeros(self.input_shape)
+        print(f'total input shape (1 input. if speech, 1 word): {(self.r[0].shape, self.num_ts)}')
+        print(f'r0 shape (slice at t): {self.r[0].shape}')
         # r1 - rn, U1 - Un
-        printlog('Inits:')
+        print('Inits:')
         for i in range(1, n + 1):
             if i < n:
                 # r
@@ -1118,26 +1124,26 @@ class RecurrentPCC(PredictiveCodingClassifier):
             elif i == n:
                 self.r[n] = self.r_prior_dist(size=(self.output_lyr_size))
                 self.r_expansion[n] = np.repeat(self.r[n][:, None], num_ts, axis=1)
-            printlog(f'r{i} shape: {self.r[i].shape}', f'r{i} expansion shape: {self.r_expansion[i].shape}')
+            print(f'r{i} shape: {self.r[i].shape}', f'r{i} expansion shape: {self.r_expansion[i].shape}')
             # U
             self.U[i] = self.U_prior_dist(size=(self.r[i - 1].shape[0], self.r[i].shape[0]))
             self.U_expansion[i] = np.repeat(self.U[i][:, :, None], num_ts, axis=2)
-            printlog(f'U{i} shape: {self.U[i].shape}', f'U{i} expansion shape: {self.U_expansion[i].shape}')
+            print(f'U{i} shape: {self.U[i].shape}', f'U{i} expansion shape: {self.U_expansion[i].shape}')
             # V
             self.V[i] = self.V_prior_dist(size=(self.r[i].shape[0], self.r[i].shape[0]))
             self.V_expansion[i] = np.repeat(self.V[i][:, :, None], num_ts, axis=2)
-            printlog(f'V{i} shape: {self.V[i].shape}', f'V{i} expansion shape: {self.V_expansion[i].shape}')
+            print(f'V{i} shape: {self.V[i].shape}', f'V{i} expansion shape: {self.V_expansion[i].shape}')
                 
         # Classification now
         if self.classif_method == 'c2':
             Uo_size = (self.num_classes, self.output_lyr_size)
             self.U['o'] = self.U_prior_dist(size=Uo_size)
             self.U_expansion['o'] = np.repeat(self.U['o'][:, :, None], num_ts, axis=2)
-            printlog(f'Uo shape: {self.U["o"].shape}', f'Uo expansion shape: {self.U_expansion["o"].shape}')
+            print(f'Uo shape: {self.U["o"].shape}', f'Uo expansion shape: {self.U_expansion["o"].shape}')
         
         # Create shallow copies for rhat, rbar, Uhat, Ubar, Vhat, Vbar
-        printlog('self.r,U,V are kept for final state save.')
-        printlog('self.r_expansion,U_expansion,V_expansion have had copies made and will be used for rbars, hats, Ubars, hats, Vbars, hats.')
+        print('self.r,U,V are kept for final state save.')
+        print('self.r_expansion,U_expansion,V_expansion have had copies made and will be used for rbars, hats, Ubars, hats, Vbars, hats.')
         self.rhat = self.rbar = copy(self.r_expansion)
         self.Uhat = self.Ubar = copy(self.U_expansion)
         self.Vhat = self.Vbar = copy(self.V_expansion)

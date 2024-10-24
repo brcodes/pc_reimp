@@ -655,11 +655,7 @@ class RecurrentCostFunction():
         self.Vhat[2][ts_slice_W] = Vbar2ts + (self.kV[2] / self.ssqV[1]) \
                                     * np.outer((self.rhat[2][ts_slice_r] - self.rbar[2][ts_slice_r]), self.rhat[2][tsmin1_slice_r])
                                     
-    def total_cost_n_2(self, input, num_ts):
-        
-        update_method_name = next(iter(self.update_method))
-        update_method_number = self.update_method[update_method_name]
-        update_non_weight_components = partial(self.update_method_no_weight_dict[update_method_name], update_method_number)
+    def rep_cost_n_2(self, input, num_ts):
         
         bu_total = 0
         td_total = 0      
