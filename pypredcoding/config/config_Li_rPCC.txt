@@ -8,10 +8,7 @@
 ## Note for Kevin
 ## ********
 
-# While Li_priors and Li learning rate denominators will work with models of any type
-# Li architecture 'expand_first_lyr_Li' includes her funky update math, which will probably not.
-# This config is designed for a strict replication of her model params, only
-# i.e. n = 3 layers, tiled_input = true, flat_input = true.
+# Should be able to take any 2d input where the second dim is time. See dataset below for specs.
 
 ## ********
 
@@ -31,6 +28,8 @@ predict_with= False
 ## PCC MODEL
 # Must be a tuple.
 input_shape=(21,)
+# Recurrent only, will ignore otherwise
+num_ts=98
 
 #tiles per image
 num_tiles=None
@@ -49,6 +48,9 @@ hidden_lyr_sizes=[10]
 # if 'c1', this must == number of classes
 output_lyr_size=12
 
+# This is code for exactly as Monica had it "Li", or if there were any differences that needed mathematical rectification, "Rogers"
+rpcc_architecture='Li'
+
 # Keep r_context (r2hatx) or not- Rogers model only. Li comes with it no matter what.
 rc=True
 
@@ -60,7 +62,7 @@ priors='Li_gaussian'
 
 # Update method: now rs and Us are updated, and when. This system has been designed to work with V's, as well.
 # Li method, spcc: rW (Weights) updated together (r1-n then U1-n) for 30 iters per image: {'rW_niters':30}
-# Li method, rpcc: rW (Weights) updated together (r1-n then U1-n) for 1 iters per image: {'rW_niters':1} (This is done once each timestep)
+# Li method, rpcc: rW (Weights) updated together (r1-n then U1-n, V1-n) for 1 iters per image: {'rW_niters':1} (This is done once each timestep)
 # Rogers/Brown proposal #1: r updated (1-n) for 100 iters per image before W update (U1-n) {'r_niters_W':100}
 # Rogers/Brown proposal #2. rs updated until change in ea. indiv. vector < some stop criterion per image, then U or V  {'r_eq_W':0.05}
 update_method={'rW_niters':1}
@@ -79,12 +81,12 @@ tiled_input=False
 flat_input=True
 # Tanh or linear
 activ_func='linear'
-# Recurrent only, will ignore otherwise
-num_ts=98
 
 ## TRAINING DATASET
 num_inps=12
 num_classes=12
+# Dataset needs to be in the format: tuple(X, Y), where X is num_inps, input_shape,  num_ts (eg 12, 21, 98: Li cvcv12)
+# and Y is num_inps, num_classes. (eg 12, 12: Li cvcv12)
 dataset_train='Li_cvcv12.pkl'
 
 ## TRAINING HYPERPARAMETERS
@@ -94,21 +96,23 @@ epoch_n=1000
 
 
 # learning rates r, one per layer plus o needs to be correct if classif_method == 'c2'
-# Note that Li learning rate k1 == kr, and she had one k1 for all layers. 
+# Li nomenclature: alpha
 kr={1:0.001, 2:0.001, 3:0.001, 'o':0.001}
 
 # learning rates U, one per layer plus o needs to be correct if classif_method == 'c2'
-# Note that Li learning rate k2 == kU, and she had one k2 for all layers.
-# Consistency with her method means all kr need to be the same for each layer, all kU " ".
-kU={1:0.001, 2:0.001, 3:0.001, 'o':0.001}
+# Li nomenclature: beta
+kU={1:0.1, 2:0.1, 3:0.1, 'o':0.1}
 
 # V recurrent weights
-kV={1:0.001, 2:0.001, 3:0.001, 'o':0.001}
+# Li nomenclature: gamma
+kV={1:0.01, 2:0.01, 3:0.01, 'o':0.001}
 
 # layer covariance parameters, sigma squared.
-ssqr= {0:1, 1:10, 2:10, 3:2} 
+# Li nomenclature: s10, s21, s32
+ssqr= {0:10, 1:10, 2:5} 
 # for V
-ssqV= {0:1, 1:10, 2:10, 3:2} 
+# Li nomenclature: s11, s22
+ssqV= {1:1, 2:1} 
 
 # plot loss and accuracy by epoch directly after training
 # If you're running something on the cluster, it may not work unless you turn this off, comment out matplotlib, plot code.

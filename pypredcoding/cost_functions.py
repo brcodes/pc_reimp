@@ -646,19 +646,19 @@ class RecurrentCostFunction():
         self.Vhat[2][ts_slice_W] = Vbar2ts + (self.kV[2] / self.ssqV[1]) \
                                     * np.outer((self.rhat[2][ts_slice_r] - self.rbar[2][ts_slice_r]), self.rhat[2][tsmin1_slice_r])
                                     
-    def total_cost_n_2(self, input, label):
+    def total_cost_n_2(self, input, num_ts):
         
         update_method_name = next(iter(self.update_method))
         update_method_number = self.update_method[update_method_name]
         update_non_weight_components = partial(self.update_method_no_weight_dict[update_method_name], update_method_number)
         
         bu_total = 0
-        td_total = 0
+        td_total = 0      
         bu_total2 = 0
         
         # Uhat and rbar for representation cost (no explicit J given in rpCC paper, Li dissertation.)
         # Not sure if should be rhat, instead. Minimal difference suspected.
-        for ts in range(self.num_ts):
+        for ts in range(num_ts):
             # L1
             # Input
             self.r[0] = input[:, ts]
@@ -678,4 +678,12 @@ class RecurrentCostFunction():
         
         # Return total
         return bu_total + td_total + bu_total2
+    
+    def classif_cost_c1(self, label, num_ts):
+        # Format: -label.dot(np.log(softmax(rbar_n)))
+        c1tot = 0
+        for ts in range(num_ts):
+            c1tot += -label.dot(np.log(self.softmax_func(vector=self.rbar[self.num_layers][:, ts])))
+        return c1tot
+    
     

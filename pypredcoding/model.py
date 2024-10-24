@@ -1126,10 +1126,260 @@ class RecurrentPCC(PredictiveCodingClassifier):
     def r_updates(self,label):
         pass
     
-    def train(self, X, Y):
+    def train(self, X, Y, save_checkpoint=None, load_checkpoint=None, plot=False):
+        
+        printlog = self.print_and_log
+        
+        # '''
+        # clean up
+        # '''
+        # printlog('\n\n')
+        # printlog('shapes')
+        # for i in range(0, self.num_layers + 1):
+        #     printlog(f'r{i} shape: {self.r[i].shape}')
+        #     if i > 0:
+        #         # Check if the array is 3D or 5D
+        #         printlog(f'U{i} shape: {self.U[i].shape}')
+        # if self.classif_method == 'c2':
+        #     printlog(f'Uo shape: {self.U["o"].shape}')
+        # printlog('\n')
+            
+        # printlog(f'priors: {self.priors} init preview:')
+        # for i in range(0, self.num_layers + 1):
+        #     printlog(f'r{i} first 3: {self.r[i][:3]}')
+        #     if i > 0:
+        #         # Check if the array is 3D or 5D
+        #         if self.U[i].ndim == 3:
+        #             printlog(f'U{i} first 3x3x3: {self.U[i][:3, :3, :3]}')
+        #         elif self.U[i].ndim == 5:
+        #             printlog(f'U{i} first 3x3x3x3x3: {self.U[i][:3, :3, :3, :3, :3]}')
+        #         else:
+        #             printlog(f'U{i} first 3x3: {self.U[i][:3, :3]}')
+        # if self.classif_method == 'c2':
+        #     printlog(f'Uo first 3x3: {self.U["o"][:3, :3]}')
+        # printlog('\n')
+            
+        # '''
+        # clean up
+        # '''
+        
+        epoch_n = self.epoch_n
+        num_inps = self.num_inps
+        
+        # '''
+        # test: re-shape 3392,864 (num inps * tiles per image, flattened tile) to 212, 16, 864 (num imgs, tiles per image, flattened tile)
+        # This will be completed by data.py in the future, by God's grace.
+        # '''
+        # printlog('original X shape:', X.shape)
+        # X = X.reshape(num_inps, num_tiles, -1)
+        # printlog('test: reshaping X into num inps, num tiles per image, flattened tile')
+
+        # '''
+        # test
+        # '''
+        printlog('Train init:')
+        printlog('X shape:', X.shape)
+        printlog('Y shape:', Y.shape)
+        
+        
+        '''
+        pre-initiate all distributions
+        for speed
+        '''
+        self.hard_set_r_prior_dist()
+        prior_dist = self.load_hard_r_prior_dist
+        # Else: prior_dist = self.r_prior_dist
+        '''
+        '''
+
+        # # Methods
+        # reset_rs_gteq1 = partial(self.reset_rs_gteq1, all_lyr_sizes=self.all_lyr_sizes)
+        
+        update_method_name = next(iter(self.update_method))
+        update_method_number = self.update_method[update_method_name]
+        update_all_components = partial(self.update_method_dict[update_method_name], update_method_number)
+        update_non_weight_components = partial(self.update_method_no_weight_dict[update_method_name], update_method_number)
+        
+        rep_cost = partial(self.rep_cost, num_ts=self.num_ts)
+        
+        classif_method = self.classif_method
+        classif_cost = partial(self.classif_cost, num_ts=self.num_ts)
+        
+        evaluate = partial(self.evaluate, update_method_name=update_method_name, update_method_number=update_method_number, classif_method=classif_method, plot=None)
+        
+        # Checkpointing
+        if 'save_every' in save_checkpoint:
+            # If N
+            checkpoint = save_checkpoint['save_every'] 
+        elif 'fraction' in save_checkpoint:
+            fraction_value = save_checkpoint['fraction']
+            # If frac tuple
+            if isinstance(fraction_value, tuple):
+                numerator, denominator = fraction_value
+                checkpoint = (numerator/denominator) * epoch_n
+            # If it's a decimal
+            else:
+                checkpoint = fraction_value * epoch_n
+            # Round up to the nearest whole number
+            checkpoint = np.ceil(checkpoint)
+        else:
+            checkpoint = None  # Default case if neither key is found
+        if checkpoint is not None:
+            printlog(f'\nSaving checkpoints.')
+            printlog(f'Checkpoint method: {save_checkpoint}', '\n', 'saving every', checkpoint, '\n')
+            
+        # If loading
+        if load_checkpoint is not None:
+            printlog('Loaded a checkpoint for training.')
+            printlog(f'Load checkpoint method: {load_checkpoint}')
+            start_epoch = self.load_epoch
+            printlog('Starting epoch is:', start_epoch,'\n')
+        else:
+            start_epoch = 0
+            
+        # if new max epoch (loaded, new goal)
+        if self.config_epoch_n:
+            # this will only exist in the loaded checkpoint case.
+            # it will either be the same as the checkpoint epoch_n
+            if self.config_epoch_n == epoch_n:
+                pass
+            # or it will be greater (pushing the number of epochs now past the original experiment)
+            elif self.config_epoch_n > epoch_n:
+                printlog(f"Requested config epoch_n (max epochs): {self.config_epoch_n} greater than \nyour checkpoint's epoch_n: {epoch_n}.\nRaising model.epoch_n (max epochs) to: {self.config_epoch_n}")
+                # Calculate the number of zeros to add to evaluation lists
+                num_zeros_to_add = self.config_epoch_n - epoch_n
+                # Extend each list with the calculated number of zeros
+                self.Jr.extend([0] * num_zeros_to_add)
+                self.Jc.extend([0] * num_zeros_to_add)
+                self.accuracy.extend([0] * num_zeros_to_add)
+                self.epoch_n = self.config_epoch_n
+                epoch_n = self.epoch_n
+                
+            # or less, probably accidentally
+            else:
+                raise ValueError(f'You have loaded a model checkpoint originally set to train to a greater number of epochs: {epoch_n}\n'+ \
+                    f'than has now been requested in your config.txt: {self.config_epoch_n}.\nBoost epoch_n in config greater than {epoch_n} before training.')
         
         num_ts = self.num_ts
+
+        # Epoch '0' evaluation (pre-training, or if checkpoint has been loaded, pre-additional-training)
+        Jr0 = 0
+        Jc0 = 0
+        accuracy = 0
+        printlog('\n')
+        printlog(f'Epoch: {start_epoch}')
+        for inp in range(num_inps):
+            # reset_rs_gteq1(prior_dist=prior_dist)
+            input = X[inp]
+            label = Y[inp]
+            # Differentiates it from static
+            for ts in range(num_ts):
+                self.r[0] = input[:, ts]
+                update_non_weight_components(label=label)
+            # Rep cost we're interested in every timestep
+            Jr0 += rep_cost(input=input)
+            # Classification accuracy is only based on rbar_n at final timestep
+            # But Classification Cost we'll do at every timestep, in an effort to keep magnitude of Jr ~ Jc
+            Jc0 += classif_cost(label=label)
+        # Do this before running
+        # accuracy += evaluate(X, Y)  
+        printlog(f'Jr: {Jr0}, Jc: {Jc0}, Accuracy: {accuracy}')
+        self.Jr[start_epoch] = Jr0
+        self.Jc[start_epoch] = Jc0
+        self.accuracy[start_epoch] = accuracy
         
-        for ts in range(num_ts):
-            self.r[0] = input[:, ts]
-            update_non_weight_components(label=label)
+        # Training
+        printlog('Training...')
+        t_start_train = datetime.now()
+        for e in range(epoch_n):
+            epoch = e + 1 + start_epoch
+            printlog(f'Epoch {epoch}')
+            t_start_epoch = datetime.now()
+            Jre = 0
+            Jce = 0
+            accuracy = 0
+            # Shuffle X, Y
+            shuffle_indices = np.random.permutation(num_inps)
+            X_shuff = X[shuffle_indices]
+            Y_shuff = Y[shuffle_indices]
+            for inp in range(num_inps):
+                reset_rs_gteq1(prior_dist=prior_dist)
+                input = X_shuff[inp]
+                label = Y_shuff[inp]
+                self.r[0] = input
+                update_all_components(label=label)
+                Jre += rep_cost()
+                Jce += classif_cost(label)
+            printlog(f'eval {epoch}')
+            accuracy += evaluate(X, Y)
+            self.Jr[epoch] = Jre
+            self.Jc[epoch] = Jce
+            self.accuracy[epoch] = accuracy
+            
+            '''
+            hard-coded in here for KB investigation'''
+            
+            # For every 10 epochs, save mid-training diagnostics
+            if epoch % 10 == 0:
+                # Save mid-training diagnostics
+                online_name = self.generate_output_name(self.mod_name, epoch)
+                self.save_diagnostics(output_dir='results/diagnostics/', output_name=online_name)
+                if plot: 
+                    self.plot(input_dir='results/diagnostics/', input_name=online_name)
+            ''''''
+            
+            # Checkpointing
+            if checkpoint is not None and epoch % checkpoint == 0:
+                # Save checkpoint model
+                checkpoint_name = self.generate_output_name(self.mod_name, epoch)
+                self.save_model(output_dir='models/checkpoints/', output_name=checkpoint_name)
+                checkpoint_path = join('models/checkpoints/', checkpoint_name)
+                printlog(f'Checkpoint model saved at epoch {epoch}:\n{checkpoint_path}')
+            
+            printlog(f'Jr: {Jre}, Jc: {Jce}, Accuracy: {accuracy}')
+            t_end_epoch = datetime.now()
+            printlog(f'Epoch time: {t_end_epoch - t_start_epoch}.')
+            printlog(f'Est. time remaining: {(t_end_epoch - t_start_epoch) * (epoch_n - epoch)}.')
+            if epoch == 1:
+                printlog(f'Est. tot time: {(t_end_epoch - t_start_epoch) * epoch_n}.')
+            
+        printlog('Training complete.')
+        tot_time = t_end_epoch - t_start_train
+        printlog(f'Tot time: {tot_time}.')
+        printlog('Saving final model...')
+        
+        # Save final model
+        final_name = self.generate_output_name(self.mod_name, epoch)
+        self.save_model(output_dir='models/', output_name=final_name)
+        # Save final diagnostics
+        self.save_diagnostics(output_dir='results/diagnostics/', output_name=final_name)
+        
+        # Plot
+        if plot:
+            self.plot(input_dir='results/diagnostics/', input_name=final_name)
+        
+        # Final diagnostics terminal readout
+        # Functionize later
+        printlog(f'Final diagnostics over {epoch} epochs:')
+        printlog(f'Ep. 0 Jr: {self.Jr[0]}, Jc: {self.Jc[0]}, Accuracy: {self.accuracy[0]}')
+        printlog(f'Ep. {epoch} Jr: {self.Jr[epoch]}, Jc: {self.Jc[epoch]}, Accuracy: {self.accuracy[epoch]}')
+
+        # Corrected percent difference calculation
+        epsilon = 1e-6
+        percent_diff_Jr = ((self.Jr[0] - self.Jr[epoch]) / (self.Jr[0] + epsilon)) * 100
+        percent_diff_Jc = ((self.Jc[0] - self.Jc[epoch]) / (self.Jc[0] + epsilon)) * 100
+        percent_diff_accuracy = ((self.accuracy[0] - self.accuracy[epoch]) / (self.accuracy[0] + epsilon)) * 100
+        
+        printlog(f'Percent diff Jr: {percent_diff_Jr}%, Jc: {percent_diff_Jc}%, Accuracy: {percent_diff_accuracy}%')
+        
+        change_per_epoch_Jr = percent_diff_Jr / epoch
+        change_per_epoch_Jc = percent_diff_Jc / epoch
+        change_per_epoch_accuracy = percent_diff_accuracy / epoch
+        
+        printlog(f'Change per epoch Jr: {change_per_epoch_Jr}%, Jc: {change_per_epoch_Jc}%, Accuracy: {change_per_epoch_accuracy}%')
+        
+        change_per_min_Jr = percent_diff_Jr / tot_time.total_seconds() * 60
+        change_per_min_Jc = percent_diff_Jc / tot_time.total_seconds() * 60
+        change_per_min_accuracy = percent_diff_accuracy / tot_time.total_seconds() * 60
+        
+        printlog(f'Change per min Jr: {change_per_min_Jr}%, Jc: {change_per_min_Jc}%, Accuracy: {change_per_min_accuracy}%')
