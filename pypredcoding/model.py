@@ -1084,6 +1084,15 @@ class RecurrentPCC(PredictiveCodingClassifier):
                                 'kurtotic': partial(np.random.laplace, loc=0.0, scale=0.5),
                                 'Li_gaussian': partial(np.random.normal, loc=0, scale=0.1)}
         
+        # Dictionaries for methods from base class and static cost function class
+        self.update_method_dict = {'rW_niters': partial(self.update_method_rWniters, component_updates=self.component_updates)}
+                                    # 'r_niters_W': partial(self.update_method_r_niters_W, component_updates=self.component_updates),
+                                    # 'r_eq_W': partial(self.update_method_r_eq_W, component_updates=self.component_updates)}
+        
+        self.update_method_no_weight_dict = {'rW_niters': partial(self.update_method_r_niters, component_updates=self.component_updates)}
+                                    # 'r_niters_W': partial(self.update_method_r_niters, component_updates=self.component_updates),
+                                    # 'r_eq_W': partial(self.update_method_r_eq, component_updates=self.component_updates)}
+        
         self.classif_cost_dict = {'c1': partial(recurrent_cost_func_class.classif_cost_c1, num_ts=self.num_ts)}
                                 # 'c2': recurrent_cost_func_class.classif_cost_c2,
                                 # None: recurrent_cost_func_class.classif_cost_None}
@@ -1091,6 +1100,10 @@ class RecurrentPCC(PredictiveCodingClassifier):
         self.classif_guess_dict = {'c1': partial(recurrent_cost_func_class.classif_guess_c1, num_ts=self.num_ts)}
                                 # 'c2': recurrent_cost_func_class.classif_guess_c2,
                                 # None: recurrent_cost_func_class.classif_guess_None}
+                                
+        # Classification now
+        self.classif_cost = self.classif_cost_dict[self.classif_method]
+        self.classify = self.classif_guess_dict[self.classif_method]
 
         self.config_from_attributes()
         
@@ -1144,9 +1157,9 @@ class RecurrentPCC(PredictiveCodingClassifier):
         # Create shallow copies for rhat, rbar, Uhat, Ubar, Vhat, Vbar
         print('self.r,U,V are kept for final state save.')
         print('self.r_expansion,U_expansion,V_expansion have had copies made and will be used for rbars, hats, Ubars, hats, Vbars, hats.')
-        self.rhat = self.rbar = copy(self.r_expansion)
-        self.Uhat = self.Ubar = copy(self.U_expansion)
-        self.Vhat = self.Vbar = copy(self.V_expansion)
+        self.rhat, self.rbar = copy(self.r_expansion), copy(self.r_expansion)
+        self.Uhat, self.Ubar = copy(self.U_expansion), copy(self.U_expansion)
+        self.Vhat, self.Vbar = copy(self.V_expansion), copy(self.V_expansion)
         
         # All layer sizes for priors
         self.all_lyr_sizes = self.hidden_lyr_sizes.copy()
@@ -1162,10 +1175,10 @@ class RecurrentPCC(PredictiveCodingClassifier):
         # Fill in the all timesteps of Ubar/hat and Vbar/hat with the last timestep
         # This effectively 'freezes' U and V, allowing all r updates to be based on the most recent U,V
         for i in range(1, self.num_layers + 1):
-            self.Ubar[i] = np.repeat(self.U[i][:, :, -1][:, :, None], self.num_ts, axis=2)
-            self.Uhat[i] = np.repeat(self.U[i][:, :, -1][:, :, None], self.num_ts, axis=2)
-            self.Vbar[i] = np.repeat(self.V[i][:, :, -1][:, :, None], self.num_ts, axis=2)
-            self.Vhat[i] = np.repeat(self.V[i][:, :, -1][:, :, None], self.num_ts, axis=2)
+            self.Ubar[i] = np.repeat(self.Ubar[i][:, :, -1][:, :, None], self.num_ts, axis=2)
+            self.Uhat[i] = np.repeat(self.Uhat[i][:, :, -1][:, :, None], self.num_ts, axis=2)
+            self.Vbar[i] = np.repeat(self.Vbar[i][:, :, -1][:, :, None], self.num_ts, axis=2)
+            self.Vhat[i] = np.repeat(self.Vhat[i][:, :, -1][:, :, None], self.num_ts, axis=2)
     
     def train(self, X, Y, save_checkpoint=None, load_checkpoint=None, plot=False):
         
@@ -1323,7 +1336,7 @@ class RecurrentPCC(PredictiveCodingClassifier):
             # TS Differentiates it from static
             for ts in range(num_ts):
                 self.r[0] = input[:, ts]
-                update_non_weight_components(label=label)
+                update_non_weight_components(ts=ts, label=label)
             # Rep cost we're interested in every timestep
             Jr0 += rep_cost(input=input)
             # Classification accuracy is only based on rbar_n at final timestep
@@ -1358,7 +1371,7 @@ class RecurrentPCC(PredictiveCodingClassifier):
                 label = Y_shuff[inp]
                 for ts in range(num_ts):
                     self.r[0] = input[:, ts]
-                    update_all_components(label=label)
+                    update_all_components(ts=ts, label=label)
                 Jre += rep_cost(input=input)
                 Jce += classif_cost(label=label)
                 
@@ -1467,7 +1480,7 @@ class RecurrentPCC(PredictiveCodingClassifier):
             fill_UsVs_with_last_timestep()
             for ts in range(self.num_ts):
                 self.r[0] = input[:, ts]
-                update_non_weight_components(label=label)
+                update_non_weight_components(ts=ts, label=label)
             guess = classify(label)
             accuracy += guess
         accuracy /= num_inps
@@ -1483,3 +1496,28 @@ class RecurrentPCC(PredictiveCodingClassifier):
             # Repeat the values along the new dimensions (add ts dim)
             self.rbar[i] = np.repeat(rbari[:, None], self.num_ts, axis=1)
             self.rhat[i] = np.repeat(rhati[:, None], self.num_ts, axis=1)
+            
+    def update_method_rWniters(self, niters, label, component_updates, ts):
+        '''
+        in rpcc, niters always 1 (Li), every ts, update the model.
+        '''
+        r_updates = component_updates[0]
+        # Can be U/Uo or U/Uo,V
+        weight_updates = component_updates[1:]
+        num_weight_updates = len(weight_updates)
+        range_num_weight_updates = range(num_weight_updates)
+        
+        for _ in range(niters):
+            r_updates(ts=ts, label=label)
+            for w in range_num_weight_updates:
+                # For as many weight sets are there are to update, update them.
+                weight_updates[w](ts=ts, label=label)
+
+    def update_method_r_niters(self, niters, label, component_updates, ts):
+        '''
+        in rpcc, niters always 1 (Li), every ts, update the model.
+        '''
+        r_updates = component_updates[0]
+        
+        for _ in range(niters):
+            r_updates(ts=ts, label=label)
