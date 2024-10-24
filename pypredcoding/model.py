@@ -1132,7 +1132,8 @@ class RecurrentPCC(PredictiveCodingClassifier):
         if self.classif_method == 'c2':
             Uo_size = (self.num_classes, self.output_lyr_size)
             self.U['o'] = self.U_prior_dist(size=Uo_size)
-            printlog(f'Uo shape: {self.U["o"].shape}')
+            self.U_expansion['o'] = self.U_prior_dist(size=(Uo_size[0], Uo_size[1], num_ts))
+            printlog(f'Uo shape: {self.U["o"].shape}', f'Uo expansion shape: {self.U_expansion["o"].shape}')
         
         # Create shallow copies for rhat, rbar, Uhat, Ubar, Vhat, Vbar
         printlog('self.r,U,V are kept for final state save.')
@@ -1146,6 +1147,15 @@ class RecurrentPCC(PredictiveCodingClassifier):
 
     def r_updates(self,label):
         pass
+    
+    def fill_UsVs_with_last_timestep(self):
+        # Fill in the all timesteps of Ubar/hat and Vbar/hat with the last timestep
+        # This effectively 'freezes' U and V, allowing all r updates to be based on the most recent U,V
+        for i in range(1, self.num_layers + 1):
+            self.Ubar[i] = np.repeat(self.U[i][:, :, -1][:, :, None], self.num_ts, axis=2)
+            self.Uhat[i] = np.repeat(self.U[i][:, :, -1][:, :, None], self.num_ts, axis=2)
+            self.Vbar[i] = np.repeat(self.V[i][:, :, -1][:, :, None], self.num_ts, axis=2)
+            self.Vhat[i] = np.repeat(self.V[i][:, :, -1][:, :, None], self.num_ts, axis=2)
     
     def train(self, X, Y, save_checkpoint=None, load_checkpoint=None, plot=False):
         
@@ -1216,6 +1226,8 @@ class RecurrentPCC(PredictiveCodingClassifier):
         # # Methods
         # reset_rs_gteq1 = partial(self.reset_rs_gteq1, all_lyr_sizes=self.all_lyr_sizes)
         
+        fill_UsVs_with_last_timestep = self.fill_UsVs_with_last_timestep
+        
         update_method_name = next(iter(self.update_method))
         update_method_number = self.update_method[update_method_name]
         update_all_components = partial(self.update_method_dict[update_method_name], update_method_number)
@@ -1227,6 +1239,8 @@ class RecurrentPCC(PredictiveCodingClassifier):
         classif_cost = partial(self.classif_cost, num_ts=self.num_ts)
         
         evaluate = partial(self.evaluate, update_method_name=update_method_name, update_method_number=update_method_number, classif_method=classif_method, plot=None)
+        
+        
         
         # Checkpointing
         if 'save_every' in save_checkpoint:
@@ -1293,11 +1307,12 @@ class RecurrentPCC(PredictiveCodingClassifier):
             # reset_rs_gteq1(prior_dist=prior_dist)
             input = X[inp]
             label = Y[inp]
-            # Differentiates it from static
+            # If non-weight components are being updated only,
+            # U, V "timeslices" will all be accessing values from ts == num_ts
+            fill_UsVs_with_last_timestep()
+            # TS Differentiates it from static
             for ts in range(num_ts):
                 self.r[0] = input[:, ts]
-                # If non-weight components are being updated only,
-                # U, V "timeslices" will all be accessing values from ts == num_ts
                 update_non_weight_components(label=label)
             # Rep cost we're interested in every timestep
             Jr0 += rep_cost(input=input)
@@ -1425,6 +1440,7 @@ class RecurrentPCC(PredictiveCodingClassifier):
         '''
         
         # reset_rs_gteq1 = partial(self.reset_rs_gteq1, all_lyr_sizes=self.all_lyr_sizes)
+        fill_UsVs_with_last_timestep = self.fill_UsVs_with_last_timestep
         
         update_non_weight_components = partial(self.update_method_no_weight_dict[update_method_name], update_method_number)
         
@@ -1436,10 +1452,11 @@ class RecurrentPCC(PredictiveCodingClassifier):
             # reset_rs_gteq1(prior_dist=prior_dist)
             input = X[inp]
             label = Y[inp]
+            # If non-weight components are being updated only,
+            # U, V "timeslices" will all be accessing values from ts == num_ts
+            fill_UsVs_with_last_timestep()
             for ts in range(self.num_ts):
                 self.r[0] = input[:, ts]
-                # If non-weight components are being updated only,
-                # U, V "timeslices" will all be accessing values from ts == num_ts
                 update_non_weight_components(label=label)
             guess = classify(label)
             accuracy += guess
