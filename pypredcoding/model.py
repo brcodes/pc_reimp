@@ -1113,26 +1113,27 @@ class RecurrentPCC(PredictiveCodingClassifier):
             if i < n:
                 # r
                 self.r[i] = self.r_prior_dist(size=(self.hidden_lyr_sizes[i - 1]))
-                self.r_expansion[i] = self.r_prior_dist(size=(self.hidden_lyr_sizes[i - 1], num_ts))
+                self.r_expansion[i] = np.repeat(self.r[i][:, None], num_ts, axis=1)
+
             # Layer n
             elif i == n:
                 self.r[n] = self.r_prior_dist(size=(self.output_lyr_size))
-                self.r_expansion[n] = self.r_prior_dist(size=(self.output_lyr_size, num_ts))
+                self.r_expansion[n] = np.repeat(self.r[n][:, None], num_ts, axis=1)
             printlog(f'r{i} shape: {self.r[i].shape}', f'r{i} expansion shape: {self.r_expansion[i].shape}')
             # U
             self.U[i] = self.U_prior_dist(size=(self.r[i - 1].shape[0], self.r[i].shape[0]))
-            self.U_expansion[i] = self.U_prior_dist(size=(self.r[i - 1].shape[0], self.r[i].shape[0], num_ts))
+            self.U_expansion[i] = np.repeat(self.U[i][:, :, None], num_ts, axis=2)
             printlog(f'U{i} shape: {self.U[i].shape}', f'U{i} expansion shape: {self.U_expansion[i].shape}')
             # V
             self.V[i] = self.V_prior_dist(size=(self.r[i].shape[0], self.r[i].shape[0]))
-            self.V_expansion[i] = self.V_prior_dist(size=(self.r[i].shape[0], self.r[i].shape[0], num_ts))
+            self.V_expansion[i] = np.repeat(self.V[i][:, :, None], num_ts, axis=2)
             printlog(f'V{i} shape: {self.V[i].shape}', f'V{i} expansion shape: {self.V_expansion[i].shape}')
                 
         # Classification now
         if self.classif_method == 'c2':
             Uo_size = (self.num_classes, self.output_lyr_size)
             self.U['o'] = self.U_prior_dist(size=Uo_size)
-            self.U_expansion['o'] = self.U_prior_dist(size=(Uo_size[0], Uo_size[1], num_ts))
+            self.U_expansion['o'] = np.repeat(self.U['o'][:, :, None], num_ts, axis=2)
             printlog(f'Uo shape: {self.U["o"].shape}', f'Uo expansion shape: {self.U_expansion["o"].shape}')
         
         # Create shallow copies for rhat, rbar, Uhat, Ubar, Vhat, Vbar
@@ -1141,6 +1142,10 @@ class RecurrentPCC(PredictiveCodingClassifier):
         self.rhat = self.rbar = copy(self.r_expansion)
         self.Uhat = self.Ubar = copy(self.U_expansion)
         self.Vhat = self.Vbar = copy(self.V_expansion)
+        
+        # All layer sizes for priors
+        self.all_lyr_sizes = self.hidden_lyr_sizes.copy()
+        self.all_lyr_sizes.append(self.output_lyr_size)
         
     def V_prior_dist(self, size):
         return self.V_prior_dist_dict[self.priors](size=size)
@@ -1463,3 +1468,13 @@ class RecurrentPCC(PredictiveCodingClassifier):
         accuracy /= num_inps
     
         return accuracy
+    
+    def reset_rs_gteq1(self, all_lyr_sizes, prior_dist):
+        n = self.num_layers
+        for i in range(1, n + 1):
+            rbari = prior_dist(size=all_lyr_sizes[i - 1])
+            rhati = prior_dist(size=all_lyr_sizes[i - 1])
+            
+            # Repeat the values along the new dimensions (add ts dim)
+            self.rbar[i] = np.repeat(rbari[:, None], self.num_ts, axis=1)
+            self.rhat[i] = np.repeat(rhati[:, None], self.num_ts, axis=1)
